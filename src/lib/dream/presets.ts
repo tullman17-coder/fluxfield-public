@@ -121,3 +121,120 @@ export function applyFraming(
     negativeExtra: framing.negative,
   };
 }
+
+/* ---- Dream Studio workbench port: ratios, framing resolve, prompt assist ---- */
+
+export type DreamRatioId =
+  | "square"
+  | "portrait"
+  | "tall"
+  | "landscape"
+  | "wide"
+  | "ultrawide";
+
+export const DREAM_RATIOS: {
+  id: DreamRatioId;
+  label: string;
+  width: number;
+  height: number;
+  aspect: string;
+}[] = [
+  { id: "square", label: "Square", width: 1024, height: 1024, aspect: "1:1" },
+  { id: "portrait", label: "Portrait", width: 832, height: 1216, aspect: "2:3" },
+  { id: "tall", label: "Tall", width: 768, height: 1344, aspect: "9:16" },
+  { id: "landscape", label: "Landscape", width: 1216, height: 832, aspect: "3:2" },
+  { id: "wide", label: "Wide", width: 1344, height: 768, aspect: "16:9" },
+  { id: "ultrawide", label: "Ultrawide", width: 1536, height: 640, aspect: "21:9" },
+];
+
+export function dreamRatio(id: string | undefined) {
+  return DREAM_RATIOS.find((r) => r.id === id) ?? DREAM_RATIOS[0];
+}
+
+/** Auto-detect framing from prompt wording (ported from local-dream-studio). */
+export function resolveFraming(prompt: string, requested: string): FramingId {
+  if (requested && requested !== "auto") return requested as FramingId;
+  const text = prompt.toLowerCase();
+  if (/\b(extreme[- ]wide|ultra[- ]?wide|wide[- ]angle|far[- ]out|far away|distant view|long shot|establishing shot|panoramic)\b/.test(text))
+    return "extreme-wide";
+  if (/\b(wide shot|environmental shot)\b/.test(text)) return "wide";
+  if (/\b(full[- ]body|head to toe)\b/.test(text)) return "full";
+  if (/\b(medium shot|waist[- ]up)\b/.test(text)) return "medium";
+  if (/\b(close[- ]?up|headshot|tight portrait)\b/.test(text)) return "close";
+  if (/\b(macro|microscopic|extreme detail)\b/.test(text)) return "macro";
+  return "auto";
+}
+
+const PERSON_WORDS =
+  /\b(person|people|woman|man|girl|boy|child|human|portrait|character|dancer|warrior|astronaut|hands?|feet|face)\b/;
+const ENV_WORDS =
+  /\b(background|environment|room|street|forest|mountain|city|landscape|interior|exterior|sky|sea|ocean|field|studio|space)\b/;
+const LIGHT_WORDS =
+  /\b(light|lighting|sun|moon|glow|shadow|dawn|dusk|night|daylight|backlit|rim[- ]light|chiaroscuro)\b/;
+
+/**
+ * Deterministic prompt assist (ported): preset suffix + resolved framing +
+ * fills for missing environment / lighting / structure.
+ */
+export function enhancePrompt(
+  prompt: string,
+  presetId: string,
+  requestedFraming: string,
+  enabled: boolean,
+): string {
+  const styled = applyDreamPreset(prompt, presetId);
+  const framing =
+    requestedFraming === "auto" && !enabled
+      ? "auto"
+      : resolveFraming(prompt, requestedFraming);
+  const framingDef = FRAMINGS.find((f) => f.id === framing) ?? FRAMINGS[0];
+  const composed = [styled, framingDef.suffix].filter(Boolean).join(", ");
+  if (!enabled) return composed;
+
+  const additions: string[] = [];
+  if (!ENV_WORDS.test(prompt.toLowerCase())) {
+    additions.push(
+      "fully described environment with foreground, middle ground, and background",
+    );
+  }
+  if (!LIGHT_WORDS.test(prompt.toLowerCase())) {
+    additions.push(
+      "intentional directional lighting with believable shadow direction",
+    );
+  }
+  if (PERSON_WORDS.test(prompt.toLowerCase())) {
+    additions.push(
+      "anatomically coherent body, natural hands and limbs, consistent facial features",
+    );
+  } else {
+    additions.push(
+      "coherent structure, physically plausible geometry, consistent perspective, clean silhouettes",
+    );
+  }
+  return [composed, ...additions].join(", ");
+}
+
+export function enhanceNegativePrompt(
+  prompt: string,
+  negativePrompt: string,
+  requestedFraming: string,
+  enabled: boolean,
+): string {
+  const userNegative = negativePrompt.trim();
+  const framing =
+    requestedFraming === "auto" && !enabled
+      ? "auto"
+      : resolveFraming(prompt, requestedFraming);
+  const framingNegative =
+    FRAMINGS.find((f) => f.id === framing)?.negative ?? "";
+  if (!enabled)
+    return [userNegative, framingNegative].filter(Boolean).join(", ");
+  const defects = PERSON_WORDS.test(prompt.toLowerCase())
+    ? "mutated anatomy, extra limbs, missing limbs, fused fingers, duplicated features, inconsistent face"
+    : "warped geometry, duplicated objects, fused forms, inconsistent perspective, malformed structure";
+  const outputArtifacts =
+    "text, watermark, logo, signature, caption, UI elements, border";
+  return [userNegative, defects, outputArtifacts, framingNegative]
+    .filter(Boolean)
+    .join(", ");
+}

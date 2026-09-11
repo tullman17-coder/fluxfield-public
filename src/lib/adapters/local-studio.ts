@@ -65,7 +65,7 @@ export async function runLocalStudioAdapter(
     prompt: ctx.job.prompt,
     negative_prompt: ctx.job.negativePrompt || undefined,
     n,
-    size: aspectToSize(ctx.job.aspect),
+    size: ctx.job.inputs.size || aspectToSize(ctx.job.aspect),
     steps: Number(ctx.job.inputs.steps || 4),
     cfg_scale: Number(ctx.job.inputs.cfg || 1),
     seed: ctx.job.inputs.seed ? Number(ctx.job.inputs.seed) : undefined,

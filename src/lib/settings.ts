@@ -17,6 +17,10 @@ export const DEFAULT_SETTINGS: StudioSettings = {
   ffmpegEnabled: true,
   studioUrl: defaultStudioUrlFromEnv(),
   studioApiKey: process.env.LOCAL_STUDIO_API_KEY || "",
+  improveProvider: "local",
+  improveApiBase: process.env.IMPROVE_API_BASE || "https://api.openai.com/v1",
+  improveApiKey: process.env.IMPROVE_API_KEY || "",
+  improveApiModel: process.env.IMPROVE_API_MODEL || "gpt-4o-mini",
 };
 
 async function ensureDataDir() {
@@ -39,6 +43,10 @@ export async function readSettings(): Promise<StudioSettings> {
         parsed.studioApiKey ||
         process.env.LOCAL_STUDIO_API_KEY ||
         DEFAULT_SETTINGS.studioApiKey,
+      improveApiKey:
+        parsed.improveApiKey ||
+        process.env.IMPROVE_API_KEY ||
+        DEFAULT_SETTINGS.improveApiKey,
     };
   } catch {
     return { ...DEFAULT_SETTINGS };

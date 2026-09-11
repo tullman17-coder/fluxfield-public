@@ -19,8 +19,8 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
     stylePrompt:
       "editorial motion graphics still, framed panel composition, soft stylized 3D character, clean graphic design, tasteful type space",
     negativePrompt: "messy collage, low contrast, watermark",
-    accent: "#c8f135",
-    preview: ["#1f2937", "#334155", "#c8f135"],
+    accent: "#e77ae6",
+    preview: ["#1f2937", "#334155", "#e77ae6"],
     overlayHint: "PANEL AROUND",
   },
   {

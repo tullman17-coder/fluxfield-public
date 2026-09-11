@@ -19,6 +19,10 @@ export async function PUT(request: Request) {
     ffmpegEnabled: boolean;
     studioUrl: string;
     studioApiKey: string;
+    improveProvider: "local" | "api";
+    improveApiBase: string;
+    improveApiKey: string;
+    improveApiModel: string;
   }>;
 
   const settings = await writeSettings({
@@ -45,6 +49,18 @@ export async function PUT(request: Request) {
       : {}),
     ...(body.studioApiKey !== undefined
       ? { studioApiKey: body.studioApiKey.trim() }
+      : {}),
+    ...(body.improveProvider !== undefined
+      ? { improveProvider: body.improveProvider }
+      : {}),
+    ...(body.improveApiBase !== undefined
+      ? { improveApiBase: body.improveApiBase.trim() }
+      : {}),
+    ...(body.improveApiKey !== undefined
+      ? { improveApiKey: body.improveApiKey.trim() }
+      : {}),
+    ...(body.improveApiModel !== undefined
+      ? { improveApiModel: body.improveApiModel.trim() }
       : {}),
   });
 

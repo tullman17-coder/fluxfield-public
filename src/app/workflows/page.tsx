@@ -11,7 +11,7 @@ export default function WorkflowsPage() {
         <p className="text-zinc-400">
           Classic studio tools — product shots, ad packs, UGC, motion briefs.
           For composed campaign wrappers, use{" "}
-          <Link href="/" className="text-[#c8f135]">
+          <Link href="/" className="text-[#e77ae6]">
             Image-2
           </Link>
           .

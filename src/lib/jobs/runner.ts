@@ -25,7 +25,14 @@ import {
 import { synthesizeSpeech } from "@/lib/adapters/tts";
 import { assembleExplainerVideo } from "@/lib/adapters/ffmpeg";
 import { composeWrapperSvg } from "@/lib/compose/wrapper-svg";
-import { applyDreamPreset, applyFraming } from "@/lib/dream/presets";
+import {
+  applyDreamPreset,
+  applyFraming,
+  DREAM_PRESETS,
+  dreamRatio,
+  enhanceNegativePrompt,
+  enhancePrompt,
+} from "@/lib/dream/presets";
 import type { JobTool, ModeUsed, StudioJob } from "@/lib/adapters/types";
 import { nanoid } from "nanoid";
 
@@ -47,7 +54,26 @@ export async function createAndRunJob(
   let negativePrompt = "";
   let aspect = "1:1";
 
-  if (input.tool === "image2") {
+  if (input.tool === "dream") {
+    const preset =
+      DREAM_PRESETS.find((p) => p.id === input.presetId) ?? DREAM_PRESETS[0];
+    const base = input.inputs.prompt?.trim() || "";
+    if (!base) throw new Error("Describe the image you want to create.");
+    const ratio = dreamRatio(input.inputs.ratio);
+    const assist = input.inputs.assist !== "off";
+    const framing = input.inputs.framing || "auto";
+    workflowName = "Dream Studio";
+    presetLabel = preset.label;
+    aspect = ratio.aspect;
+    input.inputs.size = `${ratio.width}x${ratio.height}`;
+    prompt = enhancePrompt(base, preset.id, framing, assist);
+    negativePrompt = enhanceNegativePrompt(
+      base,
+      input.inputs.negativePrompt || "",
+      framing,
+      assist,
+    );
+  } else if (input.tool === "image2") {
     const wrapper = getImage2Wrapper(input.workflowSlug);
     if (!wrapper) throw new Error("Unknown Image-2 wrapper");
     const preset =
@@ -149,6 +175,12 @@ async function processJob(jobId: string, referenceImagePath?: string) {
           presetName: preset.name,
           beats,
         });
+    } else if (current.tool === "dream") {
+      script = [
+        `PROMPT: ${current.prompt}`,
+        `NEGATIVE: ${current.negativePrompt || "—"}`,
+        `SIZE: ${current.inputs.size || current.aspect} · STEPS: ${current.inputs.steps || 4} · CFG: ${current.inputs.cfg || 1} · SEED: ${current.inputs.seed || "random"}`,
+      ].join("\n");
     } else {
       script =
         (await generateMarketingCopy(settings, {
@@ -233,6 +265,8 @@ async function processJob(jobId: string, referenceImagePath?: string) {
             : 1;
     } else if (current.tool === "image2") {
       packCount = 1;
+    } else if (current.tool === "dream") {
+      packCount = Math.min(4, Math.max(1, Number(current.inputs.count || 1)));
     } else {
       packCount = Number(current.inputs.beats || 6);
     }

@@ -61,7 +61,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <p className="text-xs uppercase tracking-[0.25em] text-[#c8f135]">
+        <p className="text-xs uppercase tracking-[0.25em] text-[#e77ae6]">
           Self-host adapters
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-4xl">
@@ -91,7 +91,7 @@ export default function SettingsPage() {
       </div>
       <p className="text-sm text-zinc-500">
         Effective mode:{" "}
-        <span className="text-[#c8f135]">{health?.effectiveMode || "…"}</span>
+        <span className="text-[#e77ae6]">{health?.effectiveMode || "…"}</span>
       </p>
       {health?.netbirdHint ? (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
@@ -211,17 +211,75 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, ffmpegEnabled: e.target.checked })
             }
-            className="size-4 accent-[#c8f135]"
+            className="size-4 accent-[#e77ae6]"
           />
         </label>
         <Button
           onClick={save}
           disabled={saving}
-          className="bg-[#c8f135] font-semibold text-black hover:bg-[#d6ff4a]"
+          className="bg-[#e77ae6] font-semibold text-black hover:bg-[#f2a1ed]"
         >
           {saving ? "Saving…" : "Save adapters"}
         </Button>
         {message ? <p className="text-sm text-zinc-400">{message}</p> : null}
+      </div>
+
+      <div className="space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div>
+          <h2 className="text-white">Prompt improvement</h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            Powers the <strong>Improve prompt</strong> button on the Create
+            workbench. Pick Local to use the Ollama server above — or API key
+            to use any OpenAI-compatible chat endpoint.
+          </p>
+        </div>
+        <Field label="Improvement provider">
+          <select
+            className="flex h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm"
+            value={settings.improveProvider}
+            onChange={(e) =>
+              setSettings({
+                ...settings,
+                improveProvider: e.target.value as "local" | "api",
+              })
+            }
+          >
+            <option value="local">Local (Ollama on this mesh)</option>
+            <option value="api">API key (OpenAI-compatible)</option>
+          </select>
+        </Field>
+        <Field
+          label="API base URL"
+          hint="OpenAI-compatible, e.g. https://api.openai.com/v1"
+        >
+          <Input
+            value={settings.improveApiBase}
+            onChange={(e) =>
+              setSettings({ ...settings, improveApiBase: e.target.value })
+            }
+            className="border-white/10 bg-black/40"
+          />
+        </Field>
+        <Field label="API key" hint="Only used when provider is API key">
+          <Input
+            type="password"
+            value={settings.improveApiKey}
+            onChange={(e) =>
+              setSettings({ ...settings, improveApiKey: e.target.value })
+            }
+            className="border-white/10 bg-black/40"
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="API model">
+          <Input
+            value={settings.improveApiModel}
+            onChange={(e) =>
+              setSettings({ ...settings, improveApiModel: e.target.value })
+            }
+            className="border-white/10 bg-black/40"
+          />
+        </Field>
       </div>
 
       <div className="rounded-2xl border border-white/10 p-5 text-sm text-zinc-400">
@@ -230,7 +288,7 @@ export default function SettingsPage() {
           <li>
             <strong className="text-zinc-200">Local Studio controller</strong>{" "}
             — Image generations via{" "}
-            <code className="text-[#c8f135]">/v1/images/generations</code>{" "}
+            <code className="text-[#e77ae6]">/v1/images/generations</code>{" "}
             (same contract as Local Dream Studio)
           </li>
           <li>
@@ -253,10 +311,10 @@ export default function SettingsPage() {
         <p className="mt-3">
           Mesh: use <strong className="text-zinc-200">Netbird</strong> peer DNS
           or current peer IP. Dream Studio&apos;s old Tailscale{" "}
-          <code className="text-[#c8f135]">100.x</code> defaults are not assumed.
+          <code className="text-[#e77ae6]">100.x</code> defaults are not assumed.
         </p>
         <p className="mt-3">
-          See <code className="text-[#c8f135]">docker-compose.yml</code>. Mock
+          See <code className="text-[#e77ae6]">docker-compose.yml</code>. Mock
           mode always works without a GPU.
         </p>
       </div>

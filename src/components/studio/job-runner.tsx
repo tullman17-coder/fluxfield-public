@@ -33,7 +33,7 @@ export function JobRunner({
   workflowSlug,
   fields,
   presets,
-  accent = "#c8f135",
+  accent = "#e77ae6",
   submitLabel = "Generate",
 }: Props) {
   const [presetId, setPresetId] = useState(presets[0]?.id || "");

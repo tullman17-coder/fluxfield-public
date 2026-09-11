@@ -17,10 +17,19 @@ export type StudioSettings = {
   studioUrl: string;
   /** Bearer token for /v1/images/generations (never logged). */
   studioApiKey: string;
+  /**
+   * AI prompt improvement provider.
+   * "local" uses the Ollama server above; "api" uses the OpenAI-compatible
+   * endpoint + key below.
+   */
+  improveProvider: "local" | "api";
+  improveApiBase: string;
+  improveApiKey: string;
+  improveApiModel: string;
 };
 
 export type JobStatus = "queued" | "running" | "completed" | "failed";
-export type JobTool = "workflow" | "image2" | "explainer";
+export type JobTool = "workflow" | "image2" | "explainer" | "dream";
 
 export type JobOutput = {
   id: string;

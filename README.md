@@ -4,11 +4,23 @@ Local Higgsfield-style **marketing wrappers** (GPT Image-2 style) and **Explaine
 
 ## What you get
 
-1. **Image-2 wrapper gallery** — masonry of mini-app containers (streetwear drop, editorial catalog, event poster, ecommerce banner, virtual try-on, sports lockup). Each wrapper is a customized dashboard: fixed inputs, presets, compose → outputs.
-2. **Explainer** — left-rail topic + aspect/duration/voice/subtitles, preset grid (editorial motion, stickman, watercolor, fairy tale, paper diorama, pastel flat), then script → beats → VO → optional MP4.
-3. **Marketing desk** — classic product / ads / UGC / motion / marketplace / poster workflows.
-4. **Dream style + framing** — prompt suffixes ported from Local Dream Studio (photo, cinematic, noir, macro, etc.).
-5. **Adapters** — Local Studio controller (`/v1/images/generations`), ComfyUI, Ollama, Piper/OpenAI-TTS, FFmpeg. **Mock mode** always works with no GPU.
+1. **Create workbench** (`/create`) — the Local Dream Studio surface, merged in: prompt-first editor, **AI prompt improvement** (Local Ollama or your own API key), deterministic prompt assist with live preview, preset ribbon, framing, ratios, batch count, seed/steps/CFG, live job strip, and results with Reuse / Vary.
+2. **Image-2 wrapper gallery** — masonry of mini-app containers (streetwear drop, editorial catalog, event poster, ecommerce banner, virtual try-on, sports lockup). Each wrapper is a customized dashboard: fixed inputs, presets, compose → outputs.
+3. **Explainer** — left-rail topic + aspect/duration/voice/subtitles, preset grid (editorial motion, stickman, watercolor, fairy tale, paper diorama, pastel flat), then script → beats → VO → optional MP4.
+4. **Marketing desk** — classic product / ads / UGC / motion / marketplace / poster workflows.
+5. **Dream style + framing** — prompt suffixes ported from Local Dream Studio (photo, cinematic, noir, macro, etc.), available on every generate form.
+6. **Adapters** — Local Studio controller (`/v1/images/generations`), ComfyUI, Ollama, Piper/OpenAI-TTS, FFmpeg. **Mock mode** always works with no GPU.
+
+The UI follows Dream Studio's Midnight workbench hallmark: dark canvas with static violet/magenta blooms, narrow left rail, single accent family — and **no horizontal scrollbars** at any width.
+
+## Prompt improvement
+
+The Create workbench **Improve prompt** button rewrites your idea into a full generation prompt:
+
+- **Local** — uses the Ollama server configured in Adapters (any model you pulled, e.g. `llama3.2`). Nothing leaves your mesh.
+- **API key** — uses any OpenAI-compatible chat endpoint (`API base URL` + `API key` + `API model` in Adapters → Prompt improvement).
+
+Pick the provider per-click on the workbench, or set the default in Adapters. Env overrides: `IMPROVE_API_BASE`, `IMPROVE_API_KEY`, `IMPROVE_API_MODEL`.
 
 ## Run locally
 

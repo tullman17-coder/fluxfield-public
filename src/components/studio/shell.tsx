@@ -6,12 +6,13 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/", label: "Image-2" },
-  { href: "/explainer", label: "Explainer" },
-  { href: "/workflows", label: "Marketing" },
-  { href: "/gallery", label: "Gallery" },
-  { href: "/settings", label: "Adapters" },
-];
+  { href: "/create", label: "Create", icon: "create" },
+  { href: "/", label: "Wrappers", icon: "grid" },
+  { href: "/explainer", label: "Explainer", icon: "play" },
+  { href: "/workflows", label: "Marketing", icon: "megaphone" },
+  { href: "/gallery", label: "Gallery", icon: "image" },
+  { href: "/settings", label: "Adapters", icon: "gear" },
+] as const;
 
 type Health = {
   health: {
@@ -19,9 +20,68 @@ type Health = {
     ollama: boolean;
     tts: boolean;
     ffmpeg: boolean;
+    studio: boolean;
     effectiveMode: string;
   };
 };
+
+function RailIcon({ name }: { name: string }) {
+  const common = {
+    className: "size-5",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.6,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    "aria-hidden": true,
+  } as const;
+  switch (name) {
+    case "create":
+      return (
+        <svg {...common}>
+          <path d="M12 3v18M3 12h18" />
+        </svg>
+      );
+    case "grid":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      );
+    case "play":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="m10 8.5 5 3.5-5 3.5z" />
+        </svg>
+      );
+    case "megaphone":
+      return (
+        <svg {...common}>
+          <path d="m3 11 14-5v12L3 13v-2z" />
+          <path d="M11.5 16.5a4.5 4.5 0 0 1-4.5 4.5" />
+        </svg>
+      );
+    case "image":
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="m7 16 3-3 2 2 3-4 3 5" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+        </svg>
+      );
+  }
+}
 
 export function StudioShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -44,63 +104,70 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const anyUp =
+    !!health &&
+    (health.studio || health.comfy || health.ollama || health.tts);
+
   return (
-    <div className="min-h-screen bg-[#0b0b0b] text-zinc-100">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b0b0b]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center gap-6 px-4 py-3 md:px-6">
-          <Link href="/" className="shrink-0 font-[family-name:var(--font-display)] text-lg tracking-tight text-[#c8f135]">
-            Fieldbench
-          </Link>
-          <nav className="flex flex-1 items-center gap-1 overflow-x-auto text-sm">
-            {NAV.map((item) => {
-              const active =
-                item.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 transition-colors",
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-zinc-400 hover:text-white",
-                  )}
-                >
+    <div className="grid min-h-dvh w-full grid-cols-[3.5rem_minmax(0,1fr)] bg-[#09080c] text-[#f5eff6] sm:grid-cols-[5.75rem_minmax(0,1fr)]">
+      <aside className="sticky top-0 z-40 flex h-dvh min-w-0 flex-col items-stretch border-r border-[#332a38] bg-[#100e14] p-2 sm:p-3">
+        <Link
+          href="/create"
+          aria-label="Fieldbench home"
+          className="grid min-h-11 w-full place-items-center rounded-[10px] border border-[#504156] bg-[#2c162f] text-sm font-extrabold tracking-[0.12em] text-[#e77ae6]"
+        >
+          FB
+        </Link>
+
+        <nav aria-label="Primary" className="mt-5 grid gap-2">
+          {NAV.map((item) => {
+            const active =
+              item.href === "/"
+                ? pathname === "/" || pathname.startsWith("/image-2")
+                : pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "grid min-h-[3.25rem] w-full min-w-0 place-items-center gap-1 rounded-[10px] border border-transparent p-1 text-[11px] leading-tight transition-colors",
+                  active
+                    ? "border-[#504156] bg-[#2c162f] text-[#e77ae6]"
+                    : "text-[#8d838f] hover:bg-[#211a25] hover:text-[#f5eff6]",
+                )}
+              >
+                <RailIcon name={item.icon} />
+                <span className="whitespace-nowrap max-sm:sr-only">
                   {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="hidden items-center gap-2 text-[11px] uppercase tracking-wider text-zinc-500 sm:flex">
-            <StatusDot ok={!!health?.comfy} label="Comfy" />
-            <StatusDot ok={!!health?.ollama} label="Ollama" />
-            <StatusDot ok={!!health?.tts} label="TTS" />
-            <StatusDot ok={!!health?.ffmpeg} label="FFmpeg" />
-            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[#c8f135]">
-              {health?.effectiveMode || "…"}
-            </span>
-          </div>
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div
+          className="mt-auto grid justify-items-center gap-1 py-2 text-[11px] text-[#8d838f]"
+          title={`Effective mode: ${health?.effectiveMode || "…"}`}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "size-2 rounded-full",
+              anyUp
+                ? "bg-[#d565d6] shadow-[0_0_0_4px_#2c162f]"
+                : "bg-[#8d838f]",
+            )}
+          />
+          <span className="max-sm:sr-only">
+            {health?.effectiveMode || "…"}
+          </span>
         </div>
-      </header>
-      <main className="mx-auto max-w-[1400px] px-4 py-6 md:px-6 md:py-8">
-        {children}
+      </aside>
+
+      <main className="w-full min-w-0 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto w-full min-w-0 max-w-[100rem]">{children}</div>
       </main>
     </div>
-  );
-}
-
-function StatusDot({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        className={cn(
-          "size-1.5 rounded-full",
-          ok ? "bg-emerald-400" : "bg-zinc-600",
-        )}
-      />
-      {label}
-    </span>
   );
 }

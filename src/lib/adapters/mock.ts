@@ -36,7 +36,7 @@ async function writePlainSvg(
   aspect: string,
   title: string,
   subtitle: string,
-  accent = "#c8f135",
+  accent = "#e77ae6",
 ): Promise<JobOutput> {
   const { w, h } = aspectSize(aspect);
   const id = nanoid(8);

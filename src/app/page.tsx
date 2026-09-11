@@ -5,44 +5,54 @@ import { cn, surfaceTextClasses } from "@/lib/utils";
 
 export default function HomePage() {
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(ellipse_at_top_left,#1a2a0a,transparent_45%),linear-gradient(160deg,#121212,#0b0b0b)] px-6 py-10 md:px-10 md:py-14">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(circle_at_1px_1px,#fff_1px,transparent_0)] [background-size:18px_18px]" />
-        <p className="relative text-xs uppercase tracking-[0.25em] text-[#c8f135]">
+    <div className="w-full min-w-0 space-y-8">
+      <section className="relative overflow-hidden rounded-[14px] border border-[#332a38] bg-[#100e14] px-5 py-8 sm:px-8 sm:py-12">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-40 right-[-6rem] h-80 w-80 rounded-full bg-[radial-gradient(circle,rgb(138_73_190/22%),transparent_70%)]"
+        />
+        <p className="relative text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
           GPT Image-2 workflows
         </p>
-        <h1 className="relative mt-3 max-w-3xl font-[family-name:var(--font-display)] text-4xl leading-[1.05] tracking-tight text-white md:text-6xl">
+        <h1 className="relative mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-[#f5eff6] md:text-6xl">
           Fieldbench
         </h1>
-        <p className="relative mt-4 max-w-2xl text-base text-zinc-400 md:text-lg">
+        <p className="relative mt-4 max-w-2xl text-base text-[#b8aebb] md:text-lg">
           Marketing wrappers as little web-app containers — streetwear drops,
           editorial catalog pages, event posters, shop banners, try-on UIs —
-          routed to your offline model box.
+          routed to your offline model box over Netbird.
         </p>
-        <div className="relative mt-6 flex flex-wrap gap-3">
+        <div className="relative mt-6 flex min-w-0 flex-wrap gap-3">
+          <Link
+            href="/create"
+            className="grid min-h-11 place-items-center rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-5 text-sm font-bold text-[#170b18] transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6]"
+          >
+            Open Create workbench
+          </Link>
           <Link
             href="/explainer"
-            className="rounded-full bg-[#c8f135] px-5 py-2.5 text-sm font-semibold text-black"
+            className="grid min-h-11 place-items-center rounded-[10px] border border-[#504156] bg-[#2c162f] px-5 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6]"
           >
             Open Explainer
           </Link>
           <Link
             href="/settings"
-            className="rounded-full border border-white/15 px-5 py-2.5 text-sm text-zinc-200"
+            className="grid min-h-11 place-items-center rounded-[10px] px-5 text-sm font-bold text-[#b8aebb] transition-colors hover:text-[#f5eff6]"
           >
             Connect adapters
           </Link>
         </div>
       </section>
 
-      <section>
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="font-[family-name:var(--font-display)] text-2xl text-white">
+      <section className="min-w-0">
+        <div className="mb-4 flex min-w-0 flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-2xl font-semibold text-[#f5eff6]">
               Wrapper gallery
             </h2>
-            <p className="text-sm text-zinc-500">
-              Each tile is a composed mini-app — layout chrome + generation + copy.
+            <p className="text-sm text-[#8d838f]">
+              Each tile is a composed mini-app — layout chrome + generation +
+              copy.
             </p>
           </div>
         </div>
@@ -55,7 +65,7 @@ export default function HomePage() {
                 key={w.slug}
                 href={`/image-2/${w.slug}`}
                 className={cn(
-                  "mb-4 block break-inside-avoid overflow-hidden rounded-2xl border transition",
+                  "mb-4 block break-inside-avoid overflow-hidden rounded-[14px] border transition",
                   ink.border,
                 )}
                 style={{ background: w.surface }}
@@ -70,7 +80,7 @@ export default function HomePage() {
                   }
                 >
                   <div className="flex h-full flex-col justify-between p-5">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
                       <span
                         className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black"
                         style={{ background: w.accent }}
@@ -86,9 +96,9 @@ export default function HomePage() {
                         Image-2
                       </span>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div
-                        className="font-[family-name:var(--font-display)] text-3xl font-bold leading-none"
+                        className="text-3xl font-bold leading-none"
                         style={{ color: w.accent }}
                       >
                         {w.brandSample}
@@ -97,7 +107,7 @@ export default function HomePage() {
                         {w.name}
                       </div>
                       <p className={cn("mt-1 text-sm", ink.body)}>{w.tagline}</p>
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="mt-4 flex min-w-0 flex-wrap gap-2">
                         {w.copyHints.slice(0, 3).map((hint) => (
                           <span
                             key={hint}

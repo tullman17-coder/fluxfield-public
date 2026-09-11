@@ -26,11 +26,11 @@ export default function GalleryPage() {
       {!jobs.length ? (
         <p className="text-sm text-zinc-500">
           No jobs yet. Open an{" "}
-          <Link href="/" className="text-[#c8f135]">
+          <Link href="/" className="text-[#e77ae6]">
             Image-2 wrapper
           </Link>{" "}
           or the{" "}
-          <Link href="/explainer" className="text-[#c8f135]">
+          <Link href="/explainer" className="text-[#e77ae6]">
             Explainer
           </Link>
           .

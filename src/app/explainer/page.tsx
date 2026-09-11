@@ -66,7 +66,7 @@ export default function ExplainerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-[0.25em] text-[#c8f135]">
+        <p className="text-xs uppercase tracking-[0.25em] text-[#e77ae6]">
           Explainer
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-5xl">
@@ -90,7 +90,7 @@ export default function ExplainerPage() {
               onClick={() => setPresetId(p.id)}
               className="relative overflow-hidden rounded-2xl border text-left transition"
               style={{
-                borderColor: active ? "#c8f135" : "rgba(255,255,255,0.1)",
+                borderColor: active ? "#e77ae6" : "rgba(255,255,255,0.1)",
               }}
             >
               <div
@@ -100,7 +100,7 @@ export default function ExplainerPage() {
                 }}
               >
                 {active ? (
-                  <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-[#c8f135] text-xs font-bold text-black">
+                  <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-[#e77ae6] text-xs font-bold text-black">
                     ✓
                   </span>
                 ) : null}
@@ -145,7 +145,7 @@ export default function ExplainerPage() {
               description: preset.blurb,
             },
           ]}
-          accent="#c8f135"
+          accent="#e77ae6"
           submitLabel="Generate explainer"
         />
       </div>
