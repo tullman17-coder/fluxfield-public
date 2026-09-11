@@ -17,6 +17,8 @@ export async function PUT(request: Request) {
     ttsUrl: string;
     ttsVoice: string;
     ffmpegEnabled: boolean;
+    studioUrl: string;
+    studioApiKey: string;
   }>;
 
   const settings = await writeSettings({
@@ -37,6 +39,12 @@ export async function PUT(request: Request) {
     ...(body.ttsVoice !== undefined ? { ttsVoice: body.ttsVoice.trim() } : {}),
     ...(body.ffmpegEnabled !== undefined
       ? { ffmpegEnabled: body.ffmpegEnabled }
+      : {}),
+    ...(body.studioUrl !== undefined
+      ? { studioUrl: body.studioUrl.trim() }
+      : {}),
+    ...(body.studioApiKey !== undefined
+      ? { studioApiKey: body.studioApiKey.trim() }
       : {}),
   });
 

@@ -1,4 +1,4 @@
-export type GenerationMode = "auto" | "mock" | "comfyui";
+export type GenerationMode = "auto" | "mock" | "comfyui" | "local-studio";
 
 export type StudioSettings = {
   comfyUrl: string;
@@ -10,6 +10,13 @@ export type StudioSettings = {
   ttsUrl: string;
   ttsVoice: string;
   ffmpegEnabled: boolean;
+  /**
+   * Local Dream Studio / Local Studio controller.
+   * Prefer Netbird peer DNS — avoid leftover Tailscale 100.x hosts.
+   */
+  studioUrl: string;
+  /** Bearer token for /v1/images/generations (never logged). */
+  studioApiKey: string;
 };
 
 export type JobStatus = "queued" | "running" | "completed" | "failed";
@@ -22,6 +29,8 @@ export type JobOutput = {
   url?: string;
   text?: string;
 };
+
+export type ModeUsed = "mock" | "comfyui" | "local-studio";
 
 export type StudioJob = {
   id: string;
@@ -36,7 +45,7 @@ export type StudioJob = {
   negativePrompt: string;
   aspect: string;
   inputs: Record<string, string>;
-  modeUsed: "mock" | "comfyui";
+  modeUsed: ModeUsed;
   remotePromptId?: string;
   error?: string;
   outputs: JobOutput[];

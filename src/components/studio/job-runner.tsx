@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { StudioJob } from "@/lib/adapters/types";
 import type { JobTool } from "@/lib/adapters/types";
+import { DREAM_PRESETS, FRAMINGS } from "@/lib/dream/presets";
 
 type Field = {
   id: string;
@@ -36,7 +37,10 @@ export function JobRunner({
   submitLabel = "Generate",
 }: Props) {
   const [presetId, setPresetId] = useState(presets[0]?.id || "");
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>({
+    dreamStyle: "photo",
+    framing: "auto",
+  });
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +161,46 @@ export function JobRunner({
               ) : null}
             </div>
           ))}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="dreamStyle">Dream style</Label>
+            <select
+              id="dreamStyle"
+              className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm"
+              value={values.dreamStyle || "photo"}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, dreamStyle: e.target.value }))
+              }
+            >
+              {DREAM_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-zinc-500">
+              Prompt suffix from Local Dream Studio
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="framing">Framing</Label>
+            <select
+              id="framing"
+              className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm"
+              value={values.framing || "auto"}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, framing: e.target.value }))
+              }
+            >
+              {FRAMINGS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {fileField ? (
           <div className="space-y-2">

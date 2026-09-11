@@ -11,6 +11,10 @@ import {
 import { readSettings } from "@/lib/settings";
 import { newJobId, saveJob, updateJob, getJob } from "@/lib/jobs/store";
 import { checkComfyHealth, runComfyAdapter } from "@/lib/adapters/comfyui";
+import {
+  checkLocalStudioHealth,
+  runLocalStudioAdapter,
+} from "@/lib/adapters/local-studio";
 import { runMockAdapter } from "@/lib/adapters/mock";
 import {
   fallbackExplainerScript,
@@ -21,7 +25,8 @@ import {
 import { synthesizeSpeech } from "@/lib/adapters/tts";
 import { assembleExplainerVideo } from "@/lib/adapters/ffmpeg";
 import { composeWrapperSvg } from "@/lib/compose/wrapper-svg";
-import type { JobTool, StudioJob } from "@/lib/adapters/types";
+import { applyDreamPreset, applyFraming } from "@/lib/dream/presets";
+import type { JobTool, ModeUsed, StudioJob } from "@/lib/adapters/types";
 import { nanoid } from "nanoid";
 
 export type CreateJobInput = {
@@ -57,6 +62,11 @@ export async function createAndRunJob(
       preset.label,
     );
     negativePrompt = wrapper.negativePrompt;
+    ({ prompt, negativePrompt } = enrichWithDreamControls(
+      prompt,
+      negativePrompt,
+      input.inputs,
+    ));
   } else if (input.tool === "explainer") {
     const preset = getExplainerPreset(input.presetId);
     const topic = input.inputs.topic?.trim() || "Untitled topic";
@@ -67,6 +77,11 @@ export async function createAndRunJob(
     input.inputs.beats = String(beats);
     prompt = `${preset.stylePrompt}. Explainer keyframe about: ${topic}`;
     negativePrompt = preset.negativePrompt;
+    ({ prompt, negativePrompt } = enrichWithDreamControls(
+      prompt,
+      negativePrompt,
+      input.inputs,
+    ));
   } else {
     const workflow = getWorkflow(input.workflowSlug);
     if (!workflow) throw new Error("Unknown workflow");
@@ -78,6 +93,11 @@ export async function createAndRunJob(
     aspect = input.inputs.aspect || workflow.aspectDefault;
     prompt = fillPrompt(workflow.promptTemplate, input.inputs, preset.label);
     negativePrompt = workflow.negativePrompt;
+    ({ prompt, negativePrompt } = enrichWithDreamControls(
+      prompt,
+      negativePrompt,
+      input.inputs,
+    ));
   }
 
   const job: StudioJob = {
@@ -157,17 +177,35 @@ async function processJob(jobId: string, referenceImagePath?: string) {
 
     await updateJob(jobId, { script, progress: 30 });
 
+    const wantStudio = settings.generationMode !== "mock";
+    const studioUp =
+      wantStudio &&
+      Boolean(settings.studioUrl && settings.studioApiKey) &&
+      (await checkLocalStudioHealth(settings));
     const comfyUp =
       settings.generationMode !== "mock" &&
+      settings.generationMode !== "local-studio" &&
       (await checkComfyHealth(settings.comfyUrl));
-    const useComfy =
-      settings.generationMode === "comfyui" ||
-      (settings.generationMode === "auto" && comfyUp);
 
-    if (settings.generationMode === "comfyui" && !comfyUp) {
-      throw new Error(
-        `ComfyUI not reachable at ${settings.comfyUrl}. Start it on your model machine or switch mode to auto/mock.`,
-      );
+    let modeUsed: ModeUsed = "mock";
+    if (settings.generationMode === "local-studio") {
+      if (!studioUp) {
+        throw new Error(
+          `Local Studio not reachable at ${settings.studioUrl}. Check Netbird peer DNS / API key, or switch mode to auto/mock.`,
+        );
+      }
+      modeUsed = "local-studio";
+    } else if (settings.generationMode === "comfyui") {
+      if (!comfyUp) {
+        throw new Error(
+          `ComfyUI not reachable at ${settings.comfyUrl}. Start it on your model machine or switch mode to auto/mock.`,
+        );
+      }
+      modeUsed = "comfyui";
+    } else if (settings.generationMode === "auto") {
+      if (studioUp) modeUsed = "local-studio";
+      else if (comfyUp) modeUsed = "comfyui";
+      else modeUsed = "mock";
     }
 
     const refreshed = (await getJob(jobId))!;
@@ -180,7 +218,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
     };
 
     await updateJob(jobId, {
-      modeUsed: useComfy ? "comfyui" : "mock",
+      modeUsed,
       progress: 50,
     });
 
@@ -199,12 +237,18 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       packCount = Number(current.inputs.beats || 6);
     }
 
-    let result = useComfy
-      ? await runComfyAdapter(ctx)
-      : await runMockAdapter(ctx, packCount);
+    let result =
+      modeUsed === "local-studio"
+        ? await runLocalStudioAdapter(ctx, packCount)
+        : modeUsed === "comfyui"
+          ? await runComfyAdapter(ctx)
+          : await runMockAdapter(ctx, packCount);
 
-    // Image-2: if Comfy produced raw frames, wrap them in marketing chrome via SVG compositor (mock chrome overlay note in script)
-    if (current.tool === "image2" && useComfy) {
+    // Image-2: if remote adapter produced raw frames, wrap them in marketing chrome via SVG compositor
+    if (
+      current.tool === "image2" &&
+      (modeUsed === "comfyui" || modeUsed === "local-studio")
+    ) {
       const wrapper = getImage2Wrapper(current.workflowSlug);
       if (wrapper) {
         const composed = await composeWrapperSvg({
@@ -213,7 +257,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
           presetLabel: current.presetLabel,
           aspect: current.aspect,
           jobId: current.id,
-          subjectHint: "ComfyUI subject — chrome composited locally",
+              subjectHint: `${modeUsed} subject — chrome composited locally`,
         });
         result = {
           ...result,
@@ -252,7 +296,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
 
       const imageUrls = result.outputs
         .filter((o) => o.kind === "image" && o.url)
-        .map((o) => o.url!) ;
+        .map((o) => o.url!);
 
       let video;
       if (settings.ffmpegEnabled) {
@@ -273,14 +317,14 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       };
     }
 
-    if (!useComfy) await new Promise((r) => setTimeout(r, 400));
+    if (modeUsed === "mock") await new Promise((r) => setTimeout(r, 400));
 
     await updateJob(jobId, {
       status: "completed",
       progress: 100,
       outputs: result.outputs,
       remotePromptId: result.remotePromptId,
-      modeUsed: useComfy ? "comfyui" : "mock",
+      modeUsed,
       script,
     });
   } catch (error) {
@@ -290,4 +334,17 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       error: error instanceof Error ? error.message : "Generation failed",
     });
   }
+}
+
+function enrichWithDreamControls(
+  prompt: string,
+  negativePrompt: string,
+  inputs: Record<string, string>,
+): { prompt: string; negativePrompt: string } {
+  let next = applyDreamPreset(prompt, inputs.dreamStyle);
+  const framed = applyFraming(next, inputs.framing);
+  const negative = [negativePrompt, framed.negativeExtra]
+    .filter(Boolean)
+    .join(", ");
+  return { prompt: framed.prompt, negativePrompt: negative };
 }

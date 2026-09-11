@@ -11,7 +11,9 @@ type Health = {
   ollama: boolean;
   tts: boolean;
   ffmpeg: boolean;
+  studio: boolean;
   effectiveMode: string;
+  netbirdHint: string | null;
 };
 
 export default function SettingsPage() {
@@ -67,11 +69,17 @@ export default function SettingsPage() {
         </h1>
         <p className="mt-2 text-zinc-400">
           Wrappers and Explainer stay on this app. Heavy generation can live on
-          another LAN box — ComfyUI, Ollama, Piper/OpenAI-TTS, FFmpeg.
+          another mesh peer — Local Studio controller, ComfyUI, Ollama,
+          Piper/OpenAI-TTS, FFmpeg.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
+        <HealthCard
+          label="Local Studio"
+          ok={!!health?.studio}
+          detail={settings.studioUrl}
+        />
         <HealthCard label="ComfyUI" ok={!!health?.comfy} detail={settings.comfyUrl} />
         <HealthCard label="Ollama" ok={!!health?.ollama} detail={settings.ollamaUrl} />
         <HealthCard label="TTS" ok={!!health?.tts} detail={settings.ttsUrl} />
@@ -85,6 +93,11 @@ export default function SettingsPage() {
         Effective mode:{" "}
         <span className="text-[#c8f135]">{health?.effectiveMode || "…"}</span>
       </p>
+      {health?.netbirdHint ? (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          {health.netbirdHint}
+        </p>
+      ) : null}
 
       <div className="space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
         <Field label="Generation mode">
@@ -98,10 +111,37 @@ export default function SettingsPage() {
               })
             }
           >
-            <option value="auto">auto</option>
+            <option value="auto">auto (Local Studio → Comfy → mock)</option>
+            <option value="local-studio">local-studio</option>
             <option value="comfyui">comfyui</option>
             <option value="mock">mock</option>
           </select>
+        </Field>
+        <Field
+          label="Local Studio URL"
+          hint="Prefer Netbird peer DNS, e.g. http://studio.netbird.selfhosted:18088 — avoid leftover Tailscale 100.x hosts"
+        >
+          <Input
+            value={settings.studioUrl}
+            onChange={(e) =>
+              setSettings({ ...settings, studioUrl: e.target.value })
+            }
+            className="border-white/10 bg-black/40"
+          />
+        </Field>
+        <Field
+          label="Local Studio API key"
+          hint="Bearer for POST /v1/images/generations (same key Local Dream Studio uses)"
+        >
+          <Input
+            type="password"
+            value={settings.studioApiKey}
+            onChange={(e) =>
+              setSettings({ ...settings, studioApiKey: e.target.value })
+            }
+            className="border-white/10 bg-black/40"
+            autoComplete="off"
+          />
         </Field>
         <Field label="ComfyUI URL" hint="http://GPU-BOX:8188">
           <Input
@@ -188,24 +228,36 @@ export default function SettingsPage() {
         <h2 className="mb-2 text-white">Recommended self-host stack</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            <strong className="text-zinc-200">ComfyUI</strong> — Image-2 subjects +
-            explainer beats
+            <strong className="text-zinc-200">Local Studio controller</strong>{" "}
+            — Image generations via{" "}
+            <code className="text-[#c8f135]">/v1/images/generations</code>{" "}
+            (same contract as Local Dream Studio)
+          </li>
+          <li>
+            <strong className="text-zinc-200">ComfyUI</strong> — fallback
+            subjects when Local Studio is down
           </li>
           <li>
             <strong className="text-zinc-200">Ollama</strong> — wrapper copy +
             explainer scripts
           </li>
           <li>
-            <strong className="text-zinc-200">Piper TTS</strong> (or OpenAI-compatible
-            speech) — explainer VO
+            <strong className="text-zinc-200">Piper TTS</strong> (or
+            OpenAI-compatible speech) — explainer VO
           </li>
           <li>
-            <strong className="text-zinc-200">FFmpeg</strong> — slideshow / VO mux
+            <strong className="text-zinc-200">FFmpeg</strong> — slideshow / VO
+            mux
           </li>
         </ul>
         <p className="mt-3">
-          See <code className="text-[#c8f135]">docker-compose.yml</code>. Mock mode
-          always works without a GPU.
+          Mesh: use <strong className="text-zinc-200">Netbird</strong> peer DNS
+          or current peer IP. Dream Studio&apos;s old Tailscale{" "}
+          <code className="text-[#c8f135]">100.x</code> defaults are not assumed.
+        </p>
+        <p className="mt-3">
+          See <code className="text-[#c8f135]">docker-compose.yml</code>. Mock
+          mode always works without a GPU.
         </p>
       </div>
     </div>

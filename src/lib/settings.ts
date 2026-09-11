@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import type { StudioSettings } from "@/lib/adapters/types";
+import { defaultStudioUrlFromEnv } from "@/lib/netbird";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const SETTINGS_PATH = path.join(DATA_DIR, "settings.json");
@@ -14,6 +15,8 @@ export const DEFAULT_SETTINGS: StudioSettings = {
   ttsUrl: "http://127.0.0.1:5500",
   ttsVoice: "en_US-lessac-medium",
   ffmpegEnabled: true,
+  studioUrl: defaultStudioUrlFromEnv(),
+  studioApiKey: process.env.LOCAL_STUDIO_API_KEY || "",
 };
 
 async function ensureDataDir() {
@@ -27,7 +30,16 @@ export async function readSettings(): Promise<StudioSettings> {
   await ensureDataDir();
   try {
     const raw = await fs.readFile(SETTINGS_PATH, "utf8");
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<StudioSettings>;
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      // env key wins when file key empty
+      studioApiKey:
+        parsed.studioApiKey ||
+        process.env.LOCAL_STUDIO_API_KEY ||
+        DEFAULT_SETTINGS.studioApiKey,
+    };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
