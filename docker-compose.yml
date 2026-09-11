@@ -1,0 +1,30 @@
+# Optional LAN helpers for Fieldbench adapters.
+# The Next app itself runs with `npm run dev` on your workstation.
+# Point Settings → Adapters at these services (or at ComfyUI on a GPU box).
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  # OpenAI-compatible TTS via Piper (community image; swap if you prefer).
+  piper:
+    image: lscr.io/linuxserver/piper:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - PIPER_VOICE=en_US-lessac-medium
+    ports:
+      - "5500:10200"
+    volumes:
+      - piper_data:/config
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  piper_data:

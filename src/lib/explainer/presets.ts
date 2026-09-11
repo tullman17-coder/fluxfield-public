@@ -1,0 +1,102 @@
+export type ExplainerPreset = {
+  id: string;
+  name: string;
+  blurb: string;
+  /** Visual prompt fragment injected into every beat */
+  stylePrompt: string;
+  negativePrompt: string;
+  accent: string;
+  /** Preview gradient for the preset card */
+  preview: [string, string, string];
+  overlayHint: string;
+};
+
+export const EXPLAINER_PRESETS: ExplainerPreset[] = [
+  {
+    id: "editorial-motion",
+    name: "Editorial Motion Graphics",
+    blurb: "Panel frames, soft 3D characters, magazine pacing.",
+    stylePrompt:
+      "editorial motion graphics still, framed panel composition, soft stylized 3D character, clean graphic design, tasteful type space",
+    negativePrompt: "messy collage, low contrast, watermark",
+    accent: "#c8f135",
+    preview: ["#1f2937", "#334155", "#c8f135"],
+    overlayHint: "PANEL AROUND",
+  },
+  {
+    id: "stickman-cartoon",
+    name: "Stickman Cartoon",
+    blurb: "Hand-drawn gag pacing with caption energy.",
+    stylePrompt:
+      "stickman cartoon explainer frame, bold ink outlines, flat color fills, humorous educational illustration",
+    negativePrompt: "photoreal, oily paint, watermark",
+    accent: "#86efac",
+    preview: ["#14532d", "#166534", "#bbf7d0"],
+    overlayHint: "a witch turned his crew",
+  },
+  {
+    id: "watercolor-chronicle",
+    name: "Watercolor Chronicle",
+    blurb: "Painterly documentary beats.",
+    stylePrompt:
+      "watercolor chronicle illustration, wet-on-wet pigment, documentary explainer keyframe, paper tooth visible",
+    negativePrompt: "vector flat, neon UI, watermark",
+    accent: "#93c5fd",
+    preview: ["#1e3a5f", "#64748b", "#e2e8f0"],
+    overlayHint: "soft documentary wash",
+  },
+  {
+    id: "fairy-tale-myth",
+    name: "Fairy Tale & Myth",
+    blurb: "Storybook vistas and mythic scale.",
+    stylePrompt:
+      "fairy tale mythic explainer frame, storybook lighting, epic landscape, illustrated fable energy",
+    negativePrompt: "modern office, UI chrome, watermark",
+    accent: "#fcd34d",
+    preview: ["#3b2f1c", "#78716c", "#fde68a"],
+    overlayHint: "But wings bend airflow",
+  },
+  {
+    id: "paper-diorama",
+    name: "Paper Diorama",
+    blurb: "Cut-paper stages and cardboard depth.",
+    stylePrompt:
+      "paper diorama explainer scene, layered cardboard depth, craft lighting, miniature stage set",
+    negativePrompt: "photoreal skin, glossy CGI, watermark",
+    accent: "#fdba74",
+    preview: ["#44403c", "#a8a29e", "#ffedd5"],
+    overlayHint: "COMMANDER",
+  },
+  {
+    id: "pastel-flat-2d",
+    name: "Pastel Flat 2D",
+    blurb: "Architectural flat color and calm geometry.",
+    stylePrompt:
+      "pastel flat 2d explainer illustration, architectural geometry, soft pastel palette, clean vector shading",
+    negativePrompt: "gritty texture, horror, watermark",
+    accent: "#e9d5ff",
+    preview: ["#4c1d95", "#a78bfa", "#f5f3ff"],
+    overlayHint: "FALLING IRON IS",
+  },
+];
+
+export const EXPLAINER_VOICES = [
+  { id: "cillian", label: "Cillian" },
+  { id: "narrator-f", label: "Narrator F" },
+  { id: "narrator-m", label: "Narrator M" },
+  { id: "bright", label: "Bright" },
+];
+
+export const EXPLAINER_DURATIONS = [
+  { id: "30s", label: "30s", beats: 4 },
+  { id: "1m", label: "1m", beats: 6 },
+  { id: "2m", label: "2m", beats: 10 },
+];
+
+export function getExplainerPreset(id: string) {
+  return EXPLAINER_PRESETS.find((p) => p.id === id) ?? EXPLAINER_PRESETS[0];
+}
+
+export function getDurationBeats(id: string) {
+  return EXPLAINER_DURATIONS.find((d) => d.id === id)?.beats ?? 6;
+}

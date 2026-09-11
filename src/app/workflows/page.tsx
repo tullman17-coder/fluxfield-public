@@ -1,0 +1,39 @@
+import Link from "next/link";
+import { WORKFLOWS } from "@/lib/workflows";
+
+export default function WorkflowsPage() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl text-white">
+          Marketing desk
+        </h1>
+        <p className="text-zinc-400">
+          Classic studio tools — product shots, ad packs, UGC, motion briefs.
+          For composed campaign wrappers, use{" "}
+          <Link href="/" className="text-[#c8f135]">
+            Image-2
+          </Link>
+          .
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {WORKFLOWS.map((w) => (
+          <Link
+            key={w.slug}
+            href={`/workflows/${w.slug}`}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/25"
+          >
+            <div
+              className="mb-3 size-2.5 rounded-full"
+              style={{ background: w.accent }}
+            />
+            <div className="text-lg text-white">{w.name}</div>
+            <p className="mt-1 text-sm text-zinc-500">{w.tagline}</p>
+            <p className="mt-3 text-xs text-zinc-600">{w.durationHint}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
