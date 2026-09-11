@@ -21,7 +21,7 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
     negativePrompt: "messy collage, low contrast, watermark",
     accent: "#e77ae6",
     preview: ["#1f2937", "#334155", "#e77ae6"],
-    overlayHint: "PANEL AROUND",
+    overlayHint: "Panel frame",
   },
   {
     id: "stickman-cartoon",
@@ -32,7 +32,7 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
     negativePrompt: "photoreal, oily paint, watermark",
     accent: "#86efac",
     preview: ["#14532d", "#166534", "#bbf7d0"],
-    overlayHint: "a witch turned his crew",
+    overlayHint: "Gag caption",
   },
   {
     id: "watercolor-chronicle",
@@ -43,7 +43,7 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
     negativePrompt: "vector flat, neon UI, watermark",
     accent: "#93c5fd",
     preview: ["#1e3a5f", "#64748b", "#e2e8f0"],
-    overlayHint: "soft documentary wash",
+    overlayHint: "Documentary wash",
   },
   {
     id: "fairy-tale-myth",
@@ -54,7 +54,7 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
     negativePrompt: "modern office, UI chrome, watermark",
     accent: "#fcd34d",
     preview: ["#3b2f1c", "#78716c", "#fde68a"],
-    overlayHint: "But wings bend airflow",
+    overlayHint: "Storybook beat",
   },
   {
     id: "paper-diorama",
@@ -65,7 +65,7 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
     negativePrompt: "photoreal skin, glossy CGI, watermark",
     accent: "#fdba74",
     preview: ["#44403c", "#a8a29e", "#ffedd5"],
-    overlayHint: "COMMANDER",
+    overlayHint: "Stage card",
   },
   {
     id: "pastel-flat-2d",
@@ -76,12 +76,12 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
     negativePrompt: "gritty texture, horror, watermark",
     accent: "#e9d5ff",
     preview: ["#4c1d95", "#a78bfa", "#f5f3ff"],
-    overlayHint: "FALLING IRON IS",
+    overlayHint: "Flat geometry",
   },
 ];
 
 export const EXPLAINER_VOICES = [
-  { id: "cillian", label: "Cillian" },
+  { id: "narrator-warm", label: "Warm Narrator" },
   { id: "narrator-f", label: "Narrator F" },
   { id: "narrator-m", label: "Narrator M" },
   { id: "bright", label: "Bright" },

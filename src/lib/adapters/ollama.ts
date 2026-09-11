@@ -96,7 +96,7 @@ export function fallbackMarketingCopy(args: {
 }) {
   return `HEADLINE: ${args.brandName} — ${args.productName}
 SUBHEAD: ${args.presetLabel} treatment for ${args.wrapperName}
-CTA: Shop now →
+CTA: Shop now
 BEATS:
 1) Hook with product hero
 2) Benefit close-up

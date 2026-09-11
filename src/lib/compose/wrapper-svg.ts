@@ -49,7 +49,7 @@ export async function composeWrapperSvg(args: {
       args.wrapper.tagline
     ).slice(0, 280),
   );
-  const cta = esc(args.values.cta || "Shop now →");
+  const cta = esc(args.values.cta || "Shop now");
   const price = esc(args.values.price || "");
   const preset = esc(args.presetLabel);
   const accent = args.wrapper.accent;
@@ -61,7 +61,7 @@ export async function composeWrapperSvg(args: {
       chrome = `
         <rect x="0" y="0" width="${w}" height="${h}" fill="${surface}"/>
         <circle cx="${w * 0.82}" cy="${h * 0.18}" r="${Math.min(w, h) * 0.16}" fill="${accent}" opacity="0.95"/>
-        <text x="${w * 0.72}" y="${h * 0.2}" fill="#111" font-family="Impact, sans-serif" font-size="${Math.round(w * 0.045)}" transform="rotate(-12 ${w * 0.82} ${h * 0.18})">NEW DROP</text>
+        <text x="${w * 0.72}" y="${h * 0.2}" fill="#111" font-family="Impact, sans-serif" font-size="${Math.round(w * 0.045)}" transform="rotate(-12 ${w * 0.82} ${h * 0.18})">NEW</text>
         <rect x="${w * 0.08}" y="${h * 0.12}" width="${w * 0.55}" height="${h * 0.08}" rx="8" fill="#00000055"/>
         <text x="${w * 0.11}" y="${h * 0.175}" fill="#fff" font-family="ui-sans-serif,system-ui" font-size="${Math.round(w * 0.055)}" font-weight="700">${brand}</text>
         <rect x="${w * 0.08}" y="${h * 0.78}" width="${w * 0.84}" height="${h * 0.14}" rx="18" fill="#0b0b0bcc"/>

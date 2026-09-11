@@ -71,15 +71,31 @@ export default function HomePage() {
                 style={{ background: w.surface }}
               >
                 <div
-                  className={
+                  className={cn(
+                    "relative",
                     w.span === "tall"
                       ? "min-h-[420px]"
                       : w.span === "wide"
                         ? "min-h-[220px]"
-                        : "min-h-[280px]"
-                  }
+                        : "min-h-[280px]",
+                  )}
                 >
-                  <div className="flex h-full flex-col justify-between p-5">
+                  {/* Generated card art — real adapter output, cached per wrapper */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/card-bg/${w.slug}`}
+                    alt=""
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0"
+                    style={{
+                      background: `linear-gradient(180deg, ${w.surface}cc 0%, ${w.surface}33 45%, ${w.surface}e6 100%)`,
+                    }}
+                  />
+                  <div className="relative flex h-full min-h-[inherit] flex-col justify-between p-5">
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <span
                         className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black"
