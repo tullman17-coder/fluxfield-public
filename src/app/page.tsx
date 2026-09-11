@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { IMAGE2_WRAPPERS } from "@/lib/wrappers/catalog";
-// masonry launcher uses IMAGE2_WRAPPERS
+import { cn, surfaceTextClasses } from "@/lib/utils";
+// IMAGE2_WRAPPERS drives the masonry launcher
 
 export default function HomePage() {
   return (
@@ -47,60 +48,74 @@ export default function HomePage() {
         </div>
 
         <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
-          {IMAGE2_WRAPPERS.map((w) => (
-            <Link
-              key={w.slug}
-              href={`/image-2/${w.slug}`}
-              className="mb-4 block break-inside-avoid overflow-hidden rounded-2xl border border-white/10 transition hover:border-white/25"
-              style={{ background: w.surface }}
-            >
-              <div
-                className={
-                  w.span === "tall"
-                    ? "min-h-[420px]"
-                    : w.span === "wide"
-                      ? "min-h-[220px]"
-                      : "min-h-[280px]"
-                }
+          {IMAGE2_WRAPPERS.map((w) => {
+            const ink = surfaceTextClasses(w.surface);
+            return (
+              <Link
+                key={w.slug}
+                href={`/image-2/${w.slug}`}
+                className={cn(
+                  "mb-4 block break-inside-avoid overflow-hidden rounded-2xl border transition",
+                  ink.border,
+                )}
+                style={{ background: w.surface }}
               >
-                <div className="flex h-full flex-col justify-between p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <span
-                      className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black"
-                      style={{ background: w.accent }}
-                    >
-                      {w.category}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wider text-white/50">
-                      Image-2
-                    </span>
-                  </div>
-                  <div>
-                    <div
-                      className="font-[family-name:var(--font-display)] text-3xl font-bold leading-none"
-                      style={{ color: w.accent }}
-                    >
-                      {w.brandSample}
+                <div
+                  className={
+                    w.span === "tall"
+                      ? "min-h-[420px]"
+                      : w.span === "wide"
+                        ? "min-h-[220px]"
+                        : "min-h-[280px]"
+                  }
+                >
+                  <div className="flex h-full flex-col justify-between p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <span
+                        className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black"
+                        style={{ background: w.accent }}
+                      >
+                        {w.category}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] uppercase tracking-wider",
+                          ink.muted,
+                        )}
+                      >
+                        Image-2
+                      </span>
                     </div>
-                    <div className="mt-3 text-lg font-medium text-white">
-                      {w.name}
-                    </div>
-                    <p className="mt-1 text-sm text-white/65">{w.tagline}</p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {w.copyHints.slice(0, 3).map((hint) => (
-                        <span
-                          key={hint}
-                          className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] text-white/70"
-                        >
-                          {hint}
-                        </span>
-                      ))}
+                    <div>
+                      <div
+                        className="font-[family-name:var(--font-display)] text-3xl font-bold leading-none"
+                        style={{ color: w.accent }}
+                      >
+                        {w.brandSample}
+                      </div>
+                      <div className={cn("mt-3 text-lg font-medium", ink.title)}>
+                        {w.name}
+                      </div>
+                      <p className={cn("mt-1 text-sm", ink.body)}>{w.tagline}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {w.copyHints.slice(0, 3).map((hint) => (
+                          <span
+                            key={hint}
+                            className={cn(
+                              "rounded-full border px-2 py-0.5 text-[11px]",
+                              ink.chip,
+                            )}
+                          >
+                            {hint}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </section>
     </div>
