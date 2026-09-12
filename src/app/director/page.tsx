@@ -322,7 +322,7 @@ export default function DirectorPage() {
           ) : (
             <p className="mt-4 text-sm text-[#8d838f]">
               Anything over two minutes gets split into windows, so a long piece
-              renders a stretch at a time instead of all at once.
+              comes together a stretch at a time instead of all at once.
             </p>
           )}
 
@@ -380,8 +380,8 @@ export default function DirectorPage() {
                   : "Frames for the key moments show up here."}
               </p>
               <span className="mt-1 block text-sm text-[#8d838f]">
-                One per section first, so you can read the piece before it is
-                fully rendered.
+                One from each stretch of the piece, so you can read the whole
+                thing before every shot is drawn.
               </span>
             </div>
           )}

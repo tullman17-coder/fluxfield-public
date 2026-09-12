@@ -95,7 +95,6 @@ export async function runMusicAdapter(
   const outputs: JobOutput[] = [];
 
   let audio: Buffer | null = null;
-  let source = "Built-in composer";
 
   if (ctx.settings.musicUrl) {
     audio = await generateOnServer(
@@ -104,8 +103,8 @@ export async function runMusicAdapter(
       `${inputs.brief || ctx.job.prompt}. ${inputs.genre || ""} ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
       targetSec,
     );
-    if (audio) source = ctx.settings.musicModel || "Local music model";
   }
+  const usedServer = Boolean(audio);
 
   if (!audio) {
     const rendered = renderArrangement(
@@ -121,7 +120,7 @@ export async function runMusicAdapter(
   outputs.push({
     id: nanoid(8),
     kind: "audio",
-    label: `${inputs.trackName || "Track"} · ${source}`,
+    label: `${inputs.trackName || "Untitled"} · ${arrangement.bpm} BPM ${keyLabel(arrangement)} · ${timecode(arrangement.durationSec)}`,
     url: `/api/outputs/${filename}`,
   });
 
@@ -132,5 +131,5 @@ export async function runMusicAdapter(
     text: arrangementSummary(arrangement),
   });
 
-  return { outputs, arrangement, usedServer: source !== "Built-in composer" };
+  return { outputs, arrangement, usedServer };
 }
