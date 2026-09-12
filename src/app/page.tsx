@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { IMAGE2_WRAPPERS } from "@/lib/wrappers/catalog";
-// IMAGE2_WRAPPERS drives the masonry launcher
+
+const CATEGORY_LABEL: Record<string, string> = {
+  streetwear: "Streetwear",
+  editorial: "Editorial",
+  event: "Event",
+  ecommerce: "Shop",
+  tryon: "Try-on",
+  sports: "Sports",
+};
 
 export default function HomePage() {
   return (
@@ -90,7 +98,7 @@ export default function HomePage() {
                       className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm"
                       style={{ background: w.accent }}
                     >
-                      {w.category}
+                      {CATEGORY_LABEL[w.category] ?? w.category}
                     </span>
                     <span className="rounded-full bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/60 backdrop-blur-sm">
                       Layout
