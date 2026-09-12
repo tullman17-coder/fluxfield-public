@@ -56,8 +56,8 @@ export type Shot = {
   move: string;
   /** What is in frame — this becomes the image prompt. */
   action: string;
-  /** Spoken line or lyric cue, when there is one. */
-  line?: string;
+  /** Direction note, set on the shot that opens a section or act. */
+  note?: string;
   energy: number;
 };
 
@@ -127,28 +127,145 @@ function hash(text: string) {
   return h >>> 0;
 }
 
+/**
+ * Articles and prepositions almost always sit in front of the thing being
+ * described, so the words after them are the ones worth putting on screen.
+ */
+const NOUN_CUES = new Set([
+  "a", "an", "the", "in", "on", "at", "of", "across", "through", "into",
+  "over", "under", "inside", "outside", "beside", "toward", "towards",
+  "against", "around", "behind", "between", "near", "with",
+]);
+
+const CUE_STOP = new Set([
+  "and", "but", "who", "she", "her", "his", "him", "its", "it", "they",
+  "them", "that", "this", "very", "only", "just", "some", "same",
+]);
+
+/** Take the one or two content words after each cue as a subject phrase. */
+function phrasesFrom(brief: string): string[] {
+  const words = brief
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  const out: string[] = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    if (!NOUN_CUES.has(words[i])) continue;
+    const parts: string[] = [];
+    for (let j = i + 1; j < Math.min(words.length, i + 3); j++) {
+      const w = words[j];
+      if (w.length < 3 || CUE_STOP.has(w) || NOUN_CUES.has(w)) break;
+      parts.push(w);
+    }
+    if (!parts.length) continue;
+    const phrase = parts.join(" ");
+    if (!out.includes(phrase)) out.push(phrase);
+  }
+  return out;
+}
+
 /** Pull recurring nouns out of the brief so shots stay about the same subject. */
-function subjectsFrom(brief: string): string[] {
+function looseSubjectsFrom(brief: string): string[] {
   const stop = new Set([
-    "the", "and", "with", "that", "this", "from", "into", "over", "then",
-    "they", "them", "their", "about", "while", "where", "when", "which",
-    "video", "film", "music", "shot", "scene", "make", "want", "something",
+    "the", "and", "with", "that", "this", "from", "into", "onto", "over",
+    "then", "they", "them", "their", "there", "here", "about", "while",
+    "where", "when", "which", "what", "your", "mine", "ours", "been", "have",
+    "has", "had", "does", "done", "goes", "gone", "works", "working", "makes",
+    "made", "take", "takes", "taken", "come", "comes", "keep", "keeps",
+    "through", "until", "after", "before", "during", "between", "against",
+    "video", "film", "music", "shot", "shots", "scene", "scenes", "clip",
+    "make", "want", "wants", "something", "anything", "really", "very",
+    "just", "like", "much", "more", "most", "some", "only", "also", "still",
+    "finished", "final", "ending", "starts", "start", "ends",
   ]);
   const words = brief
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter((w) => w.length > 3 && !stop.has(w));
+    .filter((w) => w.length > 3 && !stop.has(w) && !w.endsWith("ly"));
   const seen: string[] = [];
   for (const w of words) if (!seen.includes(w)) seen.push(w);
-  return seen.length ? seen.slice(0, 8) : ["the subject"];
+  return seen;
+}
+
+function subjectsFrom(brief: string): string[] {
+  const phrases = phrasesFrom(brief);
+  if (phrases.length >= 3) return phrases.slice(0, 8);
+  const loose = looseSubjectsFrom(brief).filter(
+    (w) => !phrases.some((p) => p.includes(w)),
+  );
+  const merged = [...phrases, ...loose].slice(0, 8);
+  return merged.length ? merged : ["the subject"];
+}
+
+/**
+ * Shot descriptions by energy band. Repeating one sentence across forty shots
+ * reads like a template, so each band carries several phrasings.
+ */
+const ACTIONS = {
+  calm: [
+    "%s held still, %o soft behind it",
+    "%s barely moving, light falling across %o",
+    "%s at rest, %o drifting at the edge of frame",
+    "quiet on %s, %o just out of focus",
+    "%s alone in the frame, %o implied off-screen",
+  ],
+  build: [
+    "%s moving through the space, %o passing behind",
+    "%s turning into the light, %o catching the edge",
+    "%s crossing frame, %o holding the far side",
+    "%s in motion, %o sliding past",
+    "the camera finds %s, %o opening up around it",
+  ],
+  peak: [
+    "%s at full tilt, %o breaking the frame",
+    "%s driving hard, %o smearing past",
+    "%s slammed against %o",
+    "%s filling the frame, %o torn away behind",
+    "everything on %s, %o gone to blur",
+  ],
+} as const;
+
+function actionFor(energy: number, subject: string, other: string, pick: number) {
+  const band = energy > 0.78 ? ACTIONS.peak : energy > 0.48 ? ACTIONS.build : ACTIONS.calm;
+  return band[pick % band.length].replace("%s", subject).replace("%o", other);
 }
 
 function titleFrom(brief: string, mode: DirectorMode) {
   const subs = subjectsFrom(brief);
-  const pick = subs.slice(0, 2).join(" ");
+  const pick = subs.join(" ").split(" ").slice(0, 3).join(" ");
   const title = pick.replace(/\b\w/g, (c) => c.toUpperCase());
   return title || (mode === "film" ? "Untitled Film" : "Untitled Video");
+}
+
+/** One line of intent at the top of every section, so the list reads as a plan. */
+function sectionNote(section: string, energy: number) {
+  if (section.startsWith("Act")) {
+    return energy > 0.8
+      ? "Everything pays off here — hold nothing back."
+      : energy > 0.55
+        ? "Raise the pressure. Cut sooner than feels comfortable."
+        : "Establish the world before anything happens to it.";
+  }
+  switch (section) {
+    case "Intro":
+      return "Set the place. Let the first image sit longer than the rest.";
+    case "Verse":
+      return "Carry the story. Keep the camera patient.";
+    case "Pre":
+      return "Tighten. Every cut should feel closer than the last.";
+    case "Chorus":
+      return "The hook. Widest range of framing, hardest cuts.";
+    case "Break":
+      return "Pull the floor out. One held image, almost nothing moving.";
+    case "Bridge":
+      return "Change the light. This should not look like the rest.";
+    case "Outro":
+      return "Let it go. Open the frame back up and leave.";
+    default:
+      return "Keep it on the subject.";
+  }
 }
 
 export function planProduction(args: {
@@ -186,8 +303,10 @@ export function planProduction(args: {
     energy: number,
   ) => {
     const i = shots.length;
-    const subject = subjects[i % subjects.length];
-    const other = subjects[(i + 3) % subjects.length];
+    const n = subjects.length;
+    const subject = subjects[i % n];
+    // Offset never lands back on the subject, however few subjects there are.
+    const other = n > 1 ? subjects[(i + 1 + (i % (n - 1))) % n] : subject;
     // Higher energy favours tighter framing and more aggressive camera.
     const sizeIdx = Math.min(
       SIZES.length - 1,
@@ -203,12 +322,11 @@ export function planProduction(args: {
       section,
       size: SIZES[sizeIdx],
       move: MOVES[Math.min(MOVES.length - 1, moveIdx)],
-      action:
-        energy > 0.8
-          ? `${subject} at full tilt, ${other} breaking the frame`
-          : energy > 0.5
-            ? `${subject} moving through the space, ${other} in the background`
-            : `${subject} still, held on ${other}`,
+      action: actionFor(energy, subject, other, i + Math.floor(rand() * 3)),
+      note:
+        shots.length === 0 || shots[shots.length - 1].section !== section
+          ? sectionNote(section, energy)
+          : undefined,
       energy,
     });
   };
@@ -291,9 +409,14 @@ export function shotListText(p: Production) {
       : `${p.pacing} pacing`,
     "",
   ];
-  const rows = p.shots.map(
-    (s) =>
-      `${s.timecode.padStart(6)}  ${String(s.index + 1).padStart(3)}. ${s.section.padEnd(18)} ${s.size.padEnd(13)} ${s.move.padEnd(14)} ${s.action}`,
-  );
+  const rows: string[] = [];
+  for (const s of p.shots) {
+    if (s.note) {
+      rows.push("", `— ${s.section.toUpperCase()} — ${s.note}`);
+    }
+    rows.push(
+      `${s.timecode.padStart(6)}  ${String(s.index + 1).padStart(3)}. ${s.size.padEnd(13)} ${s.move.padEnd(14)} ${s.action}`,
+    );
+  }
   return [...head, ...rows].join("\n");
 }

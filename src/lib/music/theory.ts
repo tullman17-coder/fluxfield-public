@@ -122,7 +122,9 @@ function sectionPlan(barBudget: number, hasDrums: boolean): SectionName[] {
 
   const middle: SectionName[] = [];
   let i = 0;
-  while (remaining >= 4 && middle.length < 48) {
+  // Long-form pieces need hundreds of sections, so the ceiling is a guard
+  // against a runaway loop rather than a musical limit.
+  while (remaining >= 4 && middle.length < 512) {
     const next = cycle[i % cycle.length];
     if (SECTION_BARS[next] > remaining) {
       // Not enough room for the next block; a Chorus close beats padding.

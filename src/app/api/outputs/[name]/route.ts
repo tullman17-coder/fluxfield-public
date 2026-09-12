@@ -28,7 +28,9 @@ export async function GET(
                 ? "audio/mpeg"
                 : ext === ".mp4"
                   ? "video/mp4"
-                  : "image/png";
+                  : ext === ".txt"
+                    ? "text/plain; charset=utf-8"
+                    : "image/png";
     return new NextResponse(data, {
       headers: {
         "Content-Type": type,

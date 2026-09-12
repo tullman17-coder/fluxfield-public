@@ -99,7 +99,8 @@ export default function DirectorPage() {
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const shotList = job?.outputs.find((o) => o.kind === "storyboard");
-  const windows = job?.outputs.find((o) => o.kind === "text");
+  const windows = job?.outputs.find((o) => o.kind === "text" && o.text);
+  const listFile = job?.outputs.find((o) => o.kind === "text" && o.url);
   const soundtrack = job?.outputs.find((o) => o.kind === "audio");
   const frames = job?.outputs.filter((o) => o.kind === "image" && o.url) ?? [];
   const activeMode = MODES.find((m) => m.id === mode)!;
@@ -388,6 +389,15 @@ export default function DirectorPage() {
               <pre className="mt-4 max-h-[32rem] min-w-0 overflow-auto whitespace-pre font-mono text-xs leading-relaxed tabular-nums text-[#b8aebb]">
                 {shotList.text}
               </pre>
+              {listFile?.url ? (
+                <a
+                  href={listFile.url}
+                  download
+                  className="mt-4 inline-grid min-h-11 place-items-center rounded-[10px] border border-white/15 px-4 text-sm font-bold text-[#b8aebb] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6]"
+                >
+                  Download the full list
+                </a>
+              ) : null}
             </details>
           ) : null}
         </section>

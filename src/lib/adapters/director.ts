@@ -9,6 +9,7 @@ import {
   type Production,
   type Shot,
 } from "@/lib/director/plan";
+import { planArrangement } from "@/lib/music/theory";
 import { renderArt } from "@/lib/art/render";
 import { renderArrangement } from "@/lib/music/synth";
 import { encodeWav } from "@/lib/music/wav";
@@ -18,6 +19,9 @@ const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
 /** Frames are expensive, so only key shots get art on the first pass. */
 const MAX_FRAMES = 12;
+
+/** How much of a long shot list is worth showing before the download. */
+const PREVIEW_LINES = 220;
 
 function pickKeyShots(p: Production): Shot[] {
   if (p.shots.length <= MAX_FRAMES) return p.shots;
@@ -65,29 +69,56 @@ export async function runDirectorAdapter(
   const outputs: JobOutput[] = [];
 
   // Shot list first — it is the deliverable even before any frame exists.
+  const fullList = shotListText(production);
+  const listName = `${ctx.job.id}-shot-list.txt`;
+  await fs.writeFile(path.join(OUT_DIR, listName), fullList);
+
+  // An hour of frantic cutting is thousands of lines. Keep a readable slice on
+  // screen and hand over the whole thing as a file.
+  const lines = fullList.split("\n");
+  const preview =
+    lines.length > PREVIEW_LINES
+      ? [
+          ...lines.slice(0, PREVIEW_LINES),
+          "",
+          `${lines.length - PREVIEW_LINES} more lines in the full shot list.`,
+        ].join("\n")
+      : fullList;
+
   outputs.push({
     id: nanoid(8),
     kind: "storyboard",
     label: `Shot list · ${production.shots.length} shots`,
-    text: shotListText(production),
+    text: preview,
   });
 
-  // Soundtrack for music videos, so the cuts have something to sit against.
-  if (production.arrangement) {
-    const rendered = renderArrangement(
-      production.arrangement,
-      `${ctx.job.id}:${production.title}`,
-    );
-    const wav = encodeWav(rendered.left, rendered.right, rendered.sampleRate);
-    const name = `${ctx.job.id}-${nanoid(8)}.wav`;
-    await fs.writeFile(path.join(OUT_DIR, name), wav);
-    outputs.push({
-      id: nanoid(8),
-      kind: "audio",
-      label: `Soundtrack · ${production.arrangement.bpm} BPM ${keyLabel(production.arrangement)}`,
-      url: `/api/outputs/${name}`,
+  // A track for music videos so the cuts have something to sit against, and a
+  // score bed for films so the acts have a floor under them.
+  const score =
+    production.arrangement ??
+    planArrangement({
+      genre: "cinematic",
+      mood: inputs.mood || "neutral",
+      targetSec: Math.min(production.runtimeSec, 240),
+      seedText: `${ctx.job.id}:score`,
     });
-  }
+  const rendered = renderArrangement(score, `${ctx.job.id}:${production.title}`);
+  const wav = encodeWav(rendered.left, rendered.right, rendered.sampleRate);
+  const wavName = `${ctx.job.id}-${nanoid(8)}.wav`;
+  await fs.writeFile(path.join(OUT_DIR, wavName), wav);
+  const partial = rendered.seconds < score.durationSec - 2;
+  outputs.push({
+    id: nanoid(8),
+    kind: "audio",
+    label: [
+      production.arrangement ? "Soundtrack" : "Score bed",
+      `${score.bpm} BPM ${keyLabel(score)}`,
+      partial ? `first ${timecode(rendered.seconds)}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    url: `/api/outputs/${wavName}`,
+  });
 
   // Key frames.
   const size = ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];
@@ -126,6 +157,13 @@ export async function runDirectorAdapter(
       "",
       ...windowLines,
     ].join("\n"),
+  });
+
+  outputs.push({
+    id: nanoid(8),
+    kind: "text",
+    label: "Full shot list",
+    url: `/api/outputs/${listName}`,
   });
 
   return { outputs, production };
