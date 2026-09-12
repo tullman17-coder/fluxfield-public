@@ -19,6 +19,13 @@ type Field = {
   help?: string;
 };
 
+const RUN_LABEL: Record<string, string> = {
+  queued: "Starting",
+  running: "Making",
+  completed: "Done",
+  failed: "Stopped",
+};
+
 type Props = {
   tool: JobTool;
   workflowSlug: string;
@@ -164,7 +171,7 @@ export function JobRunner({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="dreamStyle">Dream style</Label>
+            <Label htmlFor="dreamStyle">Look</Label>
             <select
               id="dreamStyle"
               className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm"
@@ -180,7 +187,7 @@ export function JobRunner({
               ))}
             </select>
             <p className="text-xs text-[#8d838f]">
-              Prompt suffix from Local Dream Studio
+              Sets the overall finish of the art.
             </p>
           </div>
           <div className="space-y-2">
@@ -223,14 +230,14 @@ export function JobRunner({
           className="w-full font-semibold text-black"
           style={{ backgroundColor: accent }}
         >
-          {busy ? "Queuing…" : submitLabel}
+          {busy ? "Starting…" : submitLabel}
         </Button>
       </form>
 
       <div className="space-y-4">
         {!job ? (
           <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-[#8d838f]">
-            Outputs land here after you generate.
+            Your finished pieces show up here.
           </div>
         ) : (
           <>
@@ -240,16 +247,21 @@ export function JobRunner({
                   {job.workflowName} · {job.presetLabel}
                 </span>
                 <span style={{ color: accent }}>
-                  {job.status} · {job.progress}% · {job.modeUsed}
+                  {RUN_LABEL[job.status] ?? job.status} · {job.progress}%
                 </span>
               </div>
               {job.error ? (
                 <p className="mt-2 text-sm text-red-400">{job.error}</p>
               ) : null}
               {job.script ? (
-                <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-white/10 p-3 text-xs text-[#b8aebb]">
-                  {job.script}
-                </pre>
+                <details className="mt-3">
+                  <summary className="cursor-pointer list-none text-xs text-[#8d838f] [&::-webkit-details-marker]:hidden">
+                    Settings used
+                  </summary>
+                  <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-white/10 p-3 text-xs text-[#b8aebb]">
+                    {job.script}
+                  </pre>
+                </details>
               ) : null}
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

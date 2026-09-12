@@ -14,9 +14,9 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fieldbench — local dream workbench + Image-2 wrappers",
+  title: "Fieldbench",
   description:
-    "Dream Studio workbench, marketing wrappers, and explainer studio for offline Local Studio / ComfyUI / Ollama / TTS machines.",
+    "Make key art, campaign layouts, and short explainer videos from a single brief.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

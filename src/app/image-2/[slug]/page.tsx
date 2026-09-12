@@ -20,7 +20,7 @@ export default async function Image2WrapperPage({
             href="/"
             className="text-xs uppercase tracking-wider text-[#8d838f] hover:text-[#b8aebb]"
           >
-            ← Image-2 gallery
+            ← All layouts
           </Link>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-4xl">
             {wrapper.name}
@@ -41,7 +41,7 @@ export default async function Image2WrapperPage({
         fields={wrapper.inputs}
         presets={wrapper.presets}
         accent={wrapper.accent}
-        submitLabel="Compose wrapper"
+        submitLabel="Make it"
       />
     </div>
   );

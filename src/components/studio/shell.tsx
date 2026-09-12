@@ -12,8 +12,14 @@ const NAV = [
   { href: "/explainer", label: "Explainer", icon: "play" },
   { href: "/workflows", label: "Marketing", icon: "megaphone" },
   { href: "/gallery", label: "Gallery", icon: "image" },
-  { href: "/settings", label: "Adapters", icon: "gear" },
+  { href: "/settings", label: "Settings", icon: "gear" },
 ] as const;
+
+const ENGINE_LABEL: Record<string, string> = {
+  "local-studio": "Studio",
+  comfyui: "Comfy",
+  mock: "Preview",
+};
 
 type Health = {
   health: {
@@ -163,7 +169,11 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
 
         <div
           className="mt-auto grid justify-items-center gap-1 py-2 text-[11px] text-[#8d838f]"
-          title={`Effective mode: ${health?.effectiveMode || "…"}`}
+          title={
+            health
+              ? `Making images with ${ENGINE_LABEL[health.effectiveMode] ?? health.effectiveMode}`
+              : "Checking connections"
+          }
         >
           <span
             aria-hidden="true"
@@ -175,7 +185,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
             )}
           />
           <span className="max-sm:sr-only">
-            {health?.effectiveMode || "…"}
+            {health ? (ENGINE_LABEL[health.effectiveMode] ?? health.effectiveMode) : "…"}
           </span>
         </div>
       </aside>

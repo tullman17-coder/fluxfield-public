@@ -6,6 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { GenerationMode, StudioSettings } from "@/lib/adapters/types";
 
+function load() {
+  return Promise.all([
+    fetch("/api/settings").then((r) => r.json()),
+    fetch("/api/health").then((r) => r.json()),
+    fetch("/api/ollama-models")
+      .then((r) => r.json())
+      .catch(() => null),
+  ]);
+}
+
+const ENGINE_LABEL: Record<string, string> = {
+  "local-studio": "Studio",
+  comfyui: "Comfy",
+  mock: "Preview art",
+};
+
 type Health = {
   comfy: boolean;
   ollama: boolean;
@@ -24,18 +40,23 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   async function refresh() {
-    const [s, h, m] = await Promise.all([
-      fetch("/api/settings").then((r) => r.json()),
-      fetch("/api/health").then((r) => r.json()),
-      fetch("/api/ollama-models").then((r) => r.json()).catch(() => null),
-    ]);
+    const [s, h, m] = await load();
     setSettings(s.settings);
     setHealth(h.health);
     setOllamaModels(m?.models || []);
   }
 
   useEffect(() => {
-    void refresh();
+    let alive = true;
+    load().then(([s, h, m]) => {
+      if (!alive) return;
+      setSettings(s.settings);
+      setHealth(h.health);
+      setOllamaModels(m?.models || []);
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   async function save() {
@@ -49,52 +70,54 @@ export default function SettingsPage() {
         body: JSON.stringify(settings),
       });
       await refresh();
-      setMessage("Saved. Health re-probed.");
+      setMessage("Saved.");
     } catch {
-      setMessage("Save failed");
+      setMessage("Could not save. Try again.");
     } finally {
       setSaving(false);
     }
   }
 
   if (!settings) {
-    return <p className="text-[#8d838f]">Loading adapters…</p>;
+    return <p className="text-[#8d838f]">Loading…</p>;
   }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
         <p className="text-xs uppercase tracking-[0.25em] text-[#e77ae6]">
-          Self-host adapters
+          Connections
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-4xl">
-          Point Fieldbench at your model machine
+          Where your work gets made
         </h1>
         <p className="mt-2 text-[#b8aebb]">
-          Wrappers and Explainer stay on this app. Heavy generation can live on
-          another mesh peer — Local Studio controller, ComfyUI, Ollama,
-          Piper/OpenAI-TTS, FFmpeg.
+          Fieldbench hands image, writing, and voice work to the machines you
+          point it at here. Fill in what you have running and leave the rest
+          blank.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <HealthCard
-          label="Local Studio"
+          label="Studio"
           ok={!!health?.studio}
           detail={settings.studioUrl}
         />
-        <HealthCard label="ComfyUI" ok={!!health?.comfy} detail={settings.comfyUrl} />
+        <HealthCard label="Comfy" ok={!!health?.comfy} detail={settings.comfyUrl} />
         <HealthCard label="Ollama" ok={!!health?.ollama} detail={settings.ollamaUrl} />
-        <HealthCard label="TTS" ok={!!health?.tts} detail={settings.ttsUrl} />
+        <HealthCard label="Voice" ok={!!health?.tts} detail={settings.ttsUrl} />
         <HealthCard
           label="FFmpeg"
           ok={!!health?.ffmpeg}
-          detail={settings.ffmpegEnabled ? "enabled" : "disabled"}
+          detail={settings.ffmpegEnabled ? "On" : "Off"}
         />
       </div>
       <p className="text-sm text-[#8d838f]">
-        Effective mode:{" "}
-        <span className="text-[#e77ae6]">{health?.effectiveMode || "…"}</span>
+        Making images with{" "}
+        <span className="text-[#e77ae6]">
+          {health ? (ENGINE_LABEL[health.effectiveMode] ?? health.effectiveMode) : "…"}
+        </span>
       </p>
       {health?.netbirdHint ? (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
@@ -103,7 +126,7 @@ export default function SettingsPage() {
       ) : null}
 
       <div className="space-y-5 rounded-2xl border border-white/10 glass p-5">
-        <Field label="Generation mode">
+        <Field label="Image source">
           <select
             className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3 text-sm"
             value={settings.generationMode}
@@ -114,15 +137,15 @@ export default function SettingsPage() {
               })
             }
           >
-            <option value="auto">auto (Local Studio → Comfy → mock)</option>
-            <option value="local-studio">local-studio</option>
-            <option value="comfyui">comfyui</option>
-            <option value="mock">mock</option>
+            <option value="auto">Automatic — use whatever is reachable</option>
+            <option value="local-studio">Studio only</option>
+            <option value="comfyui">Comfy only</option>
+            <option value="mock">Preview art — no graphics card needed</option>
           </select>
         </Field>
         <Field
-          label="Local Studio URL"
-          hint="Prefer Netbird peer DNS, e.g. http://studio.netbird.selfhosted:18088 — avoid leftover Tailscale 100.x hosts"
+          label="Studio address"
+          hint="Use the Netbird name for that machine, like http://studio.netbird.selfhosted:18088. Old 100.x addresses will not reach it."
         >
           <Input
             value={settings.studioUrl}
@@ -133,8 +156,8 @@ export default function SettingsPage() {
           />
         </Field>
         <Field
-          label="Local Studio API key"
-          hint="Bearer for POST /v1/images/generations (same key Local Dream Studio uses)"
+          label="Studio key"
+          hint="The same key your Studio app uses."
         >
           <Input
             type="password"
@@ -146,7 +169,7 @@ export default function SettingsPage() {
             autoComplete="off"
           />
         </Field>
-        <Field label="ComfyUI URL" hint="http://GPU-BOX:8188">
+        <Field label="Comfy address" hint="For example http://gpu-box:8188">
           <Input
             value={settings.comfyUrl}
             onChange={(e) =>
@@ -155,7 +178,7 @@ export default function SettingsPage() {
             className="border-white/10 bg-white/10"
           />
         </Field>
-        <Field label="Comfy checkpoint (optional)">
+        <Field label="Comfy model (optional)">
           <Input
             value={settings.comfyCheckpoint}
             onChange={(e) =>
@@ -165,7 +188,7 @@ export default function SettingsPage() {
             className="border-white/10 bg-white/10"
           />
         </Field>
-        <Field label="Ollama URL">
+        <Field label="Ollama address">
           <Input
             value={settings.ollamaUrl}
             onChange={(e) =>
@@ -175,8 +198,8 @@ export default function SettingsPage() {
           />
         </Field>
         <Field
-          label="Ollama model"
-          hint="Your openweight / uncensored model — pick from what is pulled, or type any tag"
+          label="Writing model"
+          hint="Pick one you have already pulled, or type any name."
         >
           <Input
             value={settings.ollamaModel}
@@ -194,11 +217,11 @@ export default function SettingsPage() {
           </datalist>
           {ollamaModels.length ? (
             <p className="text-xs text-[#8d838f]">
-              {ollamaModels.length} local model{ollamaModels.length === 1 ? "" : "s"} detected
+              {ollamaModels.length} model{ollamaModels.length === 1 ? "" : "s"} ready
             </p>
           ) : null}
         </Field>
-        <Field label="TTS URL" hint="Piper HTTP or OpenAI-compatible speech">
+        <Field label="Voice address" hint="Piper, or any OpenAI-style speech service">
           <Input
             value={settings.ttsUrl}
             onChange={(e) =>
@@ -207,7 +230,7 @@ export default function SettingsPage() {
             className="border-white/10 bg-white/10"
           />
         </Field>
-        <Field label="TTS voice">
+        <Field label="Voice">
           <Input
             value={settings.ttsVoice}
             onChange={(e) =>
@@ -218,9 +241,10 @@ export default function SettingsPage() {
         </Field>
         <label className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-3 text-sm">
           <span>
-            FFmpeg assemble
+            Stitch videos
             <span className="mt-1 block text-xs text-[#8d838f]">
-              Stitch explainer beats + VO when ffmpeg is on PATH
+              Joins explainer scenes and narration into one file. Needs FFmpeg
+              installed.
             </span>
           </span>
           <input
@@ -237,21 +261,20 @@ export default function SettingsPage() {
           disabled={saving}
           className="bg-[#d565d6] font-semibold text-black hover:bg-[#e77ae6]"
         >
-          {saving ? "Saving…" : "Save adapters"}
+          {saving ? "Saving…" : "Save"}
         </Button>
         {message ? <p className="text-sm text-[#b8aebb]">{message}</p> : null}
       </div>
 
       <div className="space-y-5 rounded-2xl border border-white/10 glass p-5">
         <div>
-          <h2 className="text-[#f5eff6]">Prompt improvement</h2>
+          <h2 className="text-[#f5eff6]">Rewriting prompts</h2>
           <p className="mt-1 text-sm text-[#b8aebb]">
-            Powers the <strong>Improve prompt</strong> button on the Create
-            workbench. Pick Local to use the Ollama server above — or API key
-            to use any OpenAI-compatible chat endpoint.
+            Sets what happens when you tap <strong>Rewrite</strong>. Use the
+            model on your own machine, or a cloud key.
           </p>
         </div>
-        <Field label="Improvement provider">
+        <Field label="Rewrite with">
           <select
             className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3 text-sm"
             value={settings.improveProvider}
@@ -262,13 +285,13 @@ export default function SettingsPage() {
               })
             }
           >
-            <option value="local">Local openweight model (Ollama)</option>
-            <option value="api">API key (OpenAI-compatible)</option>
+            <option value="local">My model</option>
+            <option value="api">Cloud</option>
           </select>
         </Field>
         <Field
-          label="API base URL"
-          hint="OpenAI-compatible, e.g. https://api.openai.com/v1"
+          label="Cloud address"
+          hint="For example https://api.openai.com/v1"
         >
           <Input
             value={settings.improveApiBase}
@@ -278,7 +301,7 @@ export default function SettingsPage() {
             className="border-white/10 bg-white/10"
           />
         </Field>
-        <Field label="API key" hint="Only used when provider is API key">
+        <Field label="Cloud key" hint="Only used when you pick Cloud above.">
           <Input
             type="password"
             value={settings.improveApiKey}
@@ -289,7 +312,7 @@ export default function SettingsPage() {
             autoComplete="off"
           />
         </Field>
-        <Field label="API model">
+        <Field label="Cloud model">
           <Input
             value={settings.improveApiModel}
             onChange={(e) =>
@@ -301,39 +324,32 @@ export default function SettingsPage() {
       </div>
 
       <div className="rounded-2xl border border-white/10 p-5 text-sm text-[#b8aebb]">
-        <h2 className="mb-2 text-[#f5eff6]">Recommended self-host stack</h2>
+        <h2 className="mb-2 text-[#f5eff6]">What each one does</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            <strong className="text-zinc-200">Local Studio controller</strong>{" "}
-            — Image generations via{" "}
-            <code className="text-[#e77ae6]">/v1/images/generations</code>{" "}
-            (same contract as Local Dream Studio)
+            <strong className="text-zinc-200">Studio</strong> — makes your
+            images. This is the one worth setting up first.
           </li>
           <li>
-            <strong className="text-zinc-200">ComfyUI</strong> — fallback
-            subjects when Local Studio is down
+            <strong className="text-zinc-200">Comfy</strong> — picks up image
+            work when Studio is offline.
           </li>
           <li>
-            <strong className="text-zinc-200">Ollama</strong> — wrapper copy +
-            explainer scripts
+            <strong className="text-zinc-200">Ollama</strong> — writes campaign
+            copy and explainer scripts.
           </li>
           <li>
-            <strong className="text-zinc-200">Piper TTS</strong> (or
-            OpenAI-compatible speech) — explainer VO
+            <strong className="text-zinc-200">Voice</strong> — reads explainer
+            scripts out loud.
           </li>
           <li>
-            <strong className="text-zinc-200">FFmpeg</strong> — slideshow / VO
-            mux
+            <strong className="text-zinc-200">FFmpeg</strong> — turns explainer
+            scenes and narration into a single video.
           </li>
         </ul>
         <p className="mt-3">
-          Mesh: use <strong className="text-zinc-200">Netbird</strong> peer DNS
-          or current peer IP. Dream Studio&apos;s old Tailscale{" "}
-          <code className="text-[#e77ae6]">100.x</code> defaults are not assumed.
-        </p>
-        <p className="mt-3">
-          See <code className="text-[#e77ae6]">docker-compose.yml</code>. Mock
-          mode always works without a GPU.
+          Address each machine by its Netbird name. Nothing here is required —
+          with none of it set up you still get preview art to lay out against.
         </p>
       </div>
     </div>
@@ -372,7 +388,7 @@ function HealthCard({
       <div className="flex items-center justify-between">
         <span className="text-sm text-[#f5eff6]">{label}</span>
         <span className={ok ? "text-emerald-400" : "text-[#8d838f]"}>
-          {ok ? "up" : "down"}
+          {ok ? "Connected" : "Not found"}
         </span>
       </div>
       <p className="mt-2 truncate text-xs text-[#8d838f]">{detail}</p>

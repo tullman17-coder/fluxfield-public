@@ -91,7 +91,7 @@ export async function assembleExplainerVideo(args: {
     return {
       id,
       kind: "video",
-      label: "Explainer MP4",
+      label: "Explainer video",
       url: `/api/outputs/${filename}`,
     };
   } catch {

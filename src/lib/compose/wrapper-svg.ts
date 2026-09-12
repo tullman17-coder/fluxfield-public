@@ -155,7 +155,7 @@ export async function composeWrapperSvg(args: {
       : `<rect x="${w * 0.18}" y="${h * 0.22}" width="${w * 0.64}" height="${h * 0.4}" rx="28" fill="url(#subject)" opacity="0.85"/>
   <text x="${w * 0.22}" y="${h * 0.44}" fill="#ffffffcc" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.028)}">${subject.slice(0, 64)}</text>`
   }
-  <text x="${w * 0.06}" y="${h * 0.985}" fill="#ffffff66" font-family="ui-monospace,monospace" font-size="14">fieldbench · ${esc(args.wrapper.name)} · ${preset}</text>
+  <text x="${w * 0.06}" y="${h * 0.985}" fill="#ffffff66" font-family="ui-monospace,monospace" font-size="14">${esc(args.wrapper.name)} · ${preset}</text>
 </svg>`;
 
   const id = nanoid(8);

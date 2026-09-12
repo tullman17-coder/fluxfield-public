@@ -15,15 +15,15 @@ export default function HomePage() {
           }}
         />
         <p className="relative text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-          GPT Image-2 workflows
+          Campaign layouts
         </p>
         <h1 className="relative mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[#f5eff6] md:text-6xl">
           Fieldbench
         </h1>
         <p className="relative mt-4 max-w-2xl text-base text-pretty text-[#b8aebb] md:text-lg">
-          Marketing wrappers as little web-app containers — streetwear drops,
-          editorial catalog pages, event posters, shop banners, try-on UIs —
-          routed to your offline model box over Netbird.
+          Drop posters, catalog spreads, event bills, shop banners, fitting-room
+          screens. Pick a layout, describe the product, and get finished art with
+          the words already set.
         </p>
         <div className="relative mt-6 flex min-w-0 flex-wrap gap-3">
           <Link
@@ -36,13 +36,13 @@ export default function HomePage() {
             href="/create"
             className="grid min-h-11 place-items-center rounded-[10px] border border-white/15 bg-[#2c162f] px-5 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6]"
           >
-            Open Create workbench
+            Make an image
           </Link>
           <Link
             href="/settings"
             className="grid min-h-11 place-items-center rounded-[10px] px-5 text-sm font-bold text-[#b8aebb] transition-colors hover:text-[#f5eff6]"
           >
-            Connect adapters
+            Settings
           </Link>
         </div>
       </section>
@@ -51,11 +51,10 @@ export default function HomePage() {
         <div className="mb-4 flex min-w-0 flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <h2 className="text-2xl font-semibold text-balance text-[#f5eff6]">
-              Wrapper gallery
+              Layouts
             </h2>
             <p className="text-sm text-[#8d838f]">
-              Each tile is a composed mini-app — layout chrome + generation +
-              copy.
+              Your art and your words drop straight into the design.
             </p>
           </div>
         </div>
@@ -77,7 +76,7 @@ export default function HomePage() {
                       : "relative min-h-[280px]"
                 }
               >
-                {/* Generated card art — real adapter output, cached per wrapper */}
+                {/* real generated art, cached per layout */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/api/card-bg/${w.slug}`}
@@ -94,7 +93,7 @@ export default function HomePage() {
                       {w.category}
                     </span>
                     <span className="rounded-full bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/60 backdrop-blur-sm">
-                      Image-2
+                      Layout
                     </span>
                   </div>
                   <div className="min-w-0 rounded-[12px] bg-[#100e14]/55 p-4 backdrop-blur-md">

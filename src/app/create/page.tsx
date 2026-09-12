@@ -91,11 +91,11 @@ export default function CreatePage() {
         body: JSON.stringify({ prompt, provider: improveProvider }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Improvement failed");
+      if (!res.ok) throw new Error(data.error || "Could not rewrite that");
       setImproved(data as ImproveResult);
     } catch (err) {
       setImproveError(
-        err instanceof Error ? err.message : "Prompt improvement failed",
+        err instanceof Error ? err.message : "Could not rewrite that",
       );
     } finally {
       setImproving(false);
@@ -105,7 +105,7 @@ export default function CreatePage() {
   const generate = useCallback(
     async (seedOverride?: string) => {
       if (!prompt.trim()) {
-        setSubmitError("Describe the image you want to create.");
+        setSubmitError("Describe the image you want first.");
         promptRef.current?.focus();
         return;
       }
@@ -194,14 +194,13 @@ export default function CreatePage() {
     <div className="w-full min-w-0">
       <header className="mb-8 grid gap-3 border-b border-white/10 pb-6">
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-          Local image workbench
+          Images
         </p>
         <h1 className="text-4xl font-semibold tracking-tight text-[#f5eff6] md:text-5xl">
           Create
         </h1>
         <p className="max-w-xl text-[#b8aebb]">
-          Shape the prompt. Keep every useful setting. Generate on your own
-          controller — nothing leaves your mesh.
+          Describe what you want to see. Adjust as much or as little as you like.
         </p>
       </header>
 
@@ -240,24 +239,23 @@ export default function CreatePage() {
           </div>
 
           <section
-            aria-label="Prompt improvement"
+            aria-label="Rewrite your prompt"
             className="mb-4 grid gap-3 rounded-[10px] border border-white/10 glass p-4"
           >
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <strong className="text-sm text-[#f5eff6]">
-                  AI prompt improvement
+                  Rewrite my prompt
                 </strong>
                 <p className="mt-1 text-xs text-[#8d838f]">
-                  Local uses your openweight Ollama model
-                  {localModel ? ` (${localModel})` : ""}. API uses the key set
-                  in Adapters.
+                  Turns a short line into a fully described scene
+                  {localModel ? `, using ${localModel}` : ""}.
                 </p>
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <div
                   role="group"
-                  aria-label="Improvement provider"
+                  aria-label="Rewrite with"
                   className="flex overflow-hidden rounded-[10px] border border-white/10"
                 >
                   {(["local", "api"] as const).map((p) => (
@@ -273,7 +271,7 @@ export default function CreatePage() {
                           : "text-[#8d838f] hover:text-[#f5eff6]",
                       )}
                     >
-                      {p === "local" ? "Local openweight" : "API key"}
+                      {p === "local" ? "My model" : "Cloud"}
                     </button>
                   ))}
                 </div>
@@ -283,14 +281,14 @@ export default function CreatePage() {
                   disabled={improving || !prompt.trim()}
                   className="min-h-11 rounded-[10px] border border-white/15 bg-[#2c162f] px-4 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
                 >
-                  {improving ? "Improving…" : "Improve prompt"}
+                  {improving ? "Rewriting…" : "Rewrite"}
                 </button>
               </div>
             </div>
             {improveProvider === "api" && !hasApiKey ? (
               <p className="text-xs text-[#ff8ea0]">
-                No API key saved yet — add one under Adapters → Prompt
-                improvement, or switch to Local.
+                No cloud key saved yet. Add one in Settings, or switch to My
+                model.
               </p>
             ) : null}
             {improveError ? (
@@ -301,9 +299,7 @@ export default function CreatePage() {
             {improved ? (
               <div className="grid gap-3 border-t border-white/10 pt-3">
                 <p className="text-sm leading-normal text-[#b8aebb]">
-                  <strong className="text-[#f5eff6]">
-                    Improved ({improved.provider} · {improved.model}):
-                  </strong>{" "}
+                  <strong className="text-[#f5eff6]">Rewritten:</strong>{" "}
                   {improved.prompt}
                 </p>
                 <div>
@@ -316,7 +312,7 @@ export default function CreatePage() {
                     }}
                     className="min-h-11 rounded-[10px] border border-white/15 px-4 text-sm font-bold text-[#b8aebb] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6]"
                   >
-                    Use improved prompt
+                    Use this
                   </button>
                 </div>
               </div>
@@ -324,7 +320,7 @@ export default function CreatePage() {
           </section>
 
           <section
-            aria-label="Prompt assist"
+            aria-label="Fill in the details"
             className="mb-2 grid gap-3 rounded-[10px] border border-white/10 glass p-4"
           >
             <label className="flex min-w-0 cursor-pointer items-start gap-3">
@@ -336,17 +332,17 @@ export default function CreatePage() {
               />
               <span className="min-w-0">
                 <strong className="block text-sm text-[#f5eff6]">
-                  Prompt assist
+                  Fill in the details
                 </strong>
                 <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
-                  Deterministic pass that fills missing composition,
-                  environment, light, and structural detail.
+                  Adds composition, setting, light, and material when you leave
+                  them out.
                 </small>
               </span>
             </label>
             {assistedPrompt ? (
               <p className="max-h-32 overflow-y-auto border-t border-white/10 pt-3 text-sm leading-normal text-[#b8aebb]">
-                <strong className="text-[#f5eff6]">Generation prompt:</strong>{" "}
+                <strong className="text-[#f5eff6]">What gets made:</strong>{" "}
                 {assistedPrompt}
               </p>
             ) : null}
@@ -375,7 +371,7 @@ export default function CreatePage() {
               ))}
             </div>
             <p className="mt-3 text-sm text-[#8d838f]">
-              Adds to your prompt: {activePreset.suffix}
+              Adds: {activePreset.suffix}
             </p>
           </fieldset>
 
@@ -424,7 +420,7 @@ export default function CreatePage() {
                 ))}
               </select>
               <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
-                Auto reads framing words like wide angle, full body, macro.
+                Auto picks up words like wide angle, full body, or macro.
               </small>
             </div>
 
@@ -451,7 +447,7 @@ export default function CreatePage() {
             <summary className="grid min-h-11 cursor-pointer list-none content-center gap-1 py-3 font-medium text-[#f5eff6] [&::-webkit-details-marker]:hidden">
               <span>Advanced settings</span>
               <span className="text-xs font-normal text-[#8d838f]">
-                Flux2 distilled defaults · 4 steps · CFG 1
+                Seed, steps, and how closely to follow the prompt
               </span>
             </summary>
             <div className="grid min-w-0 gap-4 pb-5 sm:grid-cols-2">
@@ -487,7 +483,7 @@ export default function CreatePage() {
                 />
               </label>
               <label className="min-w-0">
-                <span className={labelClass}>CFG scale</span>
+                <span className={labelClass}>Prompt strength</span>
                 <input
                   type="number"
                   min={0}
@@ -508,11 +504,11 @@ export default function CreatePage() {
             >
               <div className="min-w-0">
                 <p className="mb-1 font-bold text-[#ff8ea0]">
-                  Generation needs attention
+                  That did not finish
                 </p>
                 <p className="text-sm text-[#f5eff6]">{job.error}</p>
                 <p className="mt-1 text-sm text-[#b8aebb]">
-                  Retry, or open Adapters to verify the controller.
+                  Try again, or check your connections in Settings.
                 </p>
               </div>
               <div className="flex min-w-0 flex-wrap gap-2">
@@ -521,29 +517,25 @@ export default function CreatePage() {
                   onClick={() => void generate()}
                   className="min-h-11 rounded-[10px] border border-white/15 bg-[#2c162f] px-4 text-sm font-bold text-[#e77ae6] hover:border-[#d565d6]"
                 >
-                  Retry generation
+                  Try again
                 </button>
                 <a
                   href="/settings"
                   className="grid min-h-11 place-items-center rounded-[10px] px-4 text-sm font-bold text-[#b8aebb] hover:text-[#f5eff6]"
                 >
-                  Open Adapters
+                  Open Settings
                 </a>
               </div>
             </div>
           ) : null}
 
-          <div className="grid items-center gap-3 pt-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,12rem)]">
-            <p className="text-xs text-[#8d838f]">
-              Generation runs locally. No prompt or credential leaves your
-              controller.
-            </p>
+          <div className="grid pt-5 sm:justify-items-end">
             <button
               type="submit"
               disabled={running}
-              className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
+              className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570] sm:w-48"
             >
-              {running ? "Generating" : "Generate"}
+              {running ? "Making it" : "Make it"}
             </button>
           </div>
         </form>
@@ -555,10 +547,10 @@ export default function CreatePage() {
           <div className="flex min-w-0 items-end justify-between gap-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-                Live task
+                Now
               </p>
               <h2 id="job-heading" className="mt-1 text-lg text-[#f5eff6]">
-                Current job
+                In progress
               </h2>
             </div>
             <span
@@ -581,18 +573,18 @@ export default function CreatePage() {
             {!job
               ? "Ready for a prompt"
               : job.status === "queued"
-                ? "Sending"
+                ? "Starting"
                 : job.status === "running"
-                  ? "Queued / generating"
+                  ? "Making it"
                   : job.status === "completed"
-                    ? `Complete — ${images.length} ${images.length === 1 ? "image" : "images"} saved locally`
-                    : "Generation stopped"}
+                    ? `Done — ${images.length} ${images.length === 1 ? "image" : "images"}`
+                    : "Stopped"}
           </p>
-          <ol aria-label="Generation stages" className="mt-5 grid gap-3">
+          <ol aria-label="Progress" className="mt-5 grid gap-3">
             {[
-              ["queued", "Sending"],
-              ["running", "Generate"],
-              ["completed", "Save locally"],
+              ["queued", "Starting"],
+              ["running", "Making"],
+              ["completed", "Saving"],
             ].map(([stage, label]) => {
               const order = { queued: 0, running: 1, completed: 2 };
               const current = !job
@@ -654,7 +646,7 @@ export default function CreatePage() {
           {job?.script ? (
             <details className="mt-4 border-t border-white/10 pt-3">
               <summary className="min-h-11 cursor-pointer list-none content-center text-sm font-medium text-[#b8aebb] [&::-webkit-details-marker]:hidden">
-                Reproducibility
+                Settings used
               </summary>
               <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-[10px] bg-white/10 p-3 text-xs text-[#b8aebb]">
                 {job.script}
@@ -662,7 +654,7 @@ export default function CreatePage() {
             </details>
           ) : null}
           <p className="mt-4 text-xs text-[#8d838f]">
-            Saved to Fieldbench library (.data/outputs)
+            Saved to your library
           </p>
         </aside>
 
@@ -673,7 +665,7 @@ export default function CreatePage() {
           <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-                Generated work
+                Finished
               </p>
               <h2 id="results-heading" className="mt-1 text-lg text-[#f5eff6]">
                 Results
@@ -681,7 +673,7 @@ export default function CreatePage() {
             </div>
             {images.length ? (
               <span className="rounded-full border border-white/15 glass px-3 py-1 text-xs text-[#b8aebb]">
-                {images.length} local
+                {images.length} new
               </span>
             ) : null}
           </div>
@@ -701,7 +693,7 @@ export default function CreatePage() {
                         className="h-full w-full object-cover"
                       />
                       <span className="absolute right-2 bottom-2 rounded-full border border-white/15 glass px-2 py-1 text-xs text-[#b8aebb]">
-                        Saved locally
+                        Saved
                       </span>
                     </div>
                     <figcaption className="min-w-0 py-3">
@@ -743,9 +735,9 @@ export default function CreatePage() {
             </ul>
           ) : (
             <div className="mt-4 border-y border-white/10 px-4 py-8 text-center text-[#b8aebb]">
-              <p>Your generated images will settle here.</p>
+              <p>Your images will settle here.</p>
               <span className="mt-1 block text-sm text-[#8d838f]">
-                They are downloaded locally with reproducibility metadata.
+                Each one keeps its settings so you can make it again.
               </span>
             </div>
           )}

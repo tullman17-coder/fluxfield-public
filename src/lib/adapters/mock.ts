@@ -118,7 +118,7 @@ export async function runMockAdapter(
     outputs.unshift({
       id: nanoid(8),
       kind: "storyboard",
-      label: "Storyboard index",
+      label: "Scene list",
       text: board.join("\n"),
     });
     return { outputs };

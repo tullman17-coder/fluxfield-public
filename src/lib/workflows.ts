@@ -34,7 +34,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     category: "product",
     kind: "image",
     accent: "#e85d04",
-    durationHint: "~8–40s on a local GPU",
+    durationHint: "Usually under a minute",
     inputs: [
       {
         id: "productName",
@@ -54,7 +54,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
         id: "referenceImage",
         label: "Product photo (optional)",
         type: "file",
-        help: "Used for img2img when ComfyUI is connected.",
+        help: "Optional. The result will follow this image.",
       },
       {
         id: "aspect",
@@ -163,7 +163,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     category: "ugc",
     kind: "video",
     accent: "#0f7a5f",
-    durationHint: "Script + keyframe stills (video when Comfy supports it)",
+    durationHint: "Script plus key frames",
     inputs: [
       {
         id: "productName",

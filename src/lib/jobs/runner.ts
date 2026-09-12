@@ -314,7 +314,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
           presetLabel: current.presetLabel,
           aspect: current.aspect,
           jobId: current.id,
-          subjectHint: `${modeUsed} subject — chrome composited locally`,
+          subjectHint: current.inputs.productDescription || current.prompt,
           subjectImageDataUri,
         });
         result = {
@@ -324,7 +324,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
             {
               id: nanoid(8),
               kind: "image",
-              label: `${wrapper.name} wrapper chrome`,
+              label: `${wrapper.name} layout`,
               url: composed.url,
             },
           ],
@@ -349,7 +349,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
         settings,
         text: voText,
         jobId,
-        label: `VO · ${current.inputs.voice || "default"}`,
+        label: `Narration · ${current.inputs.voice || "default voice"}`,
       });
 
       const imageUrls = result.outputs
@@ -399,7 +399,7 @@ function enrichWithDreamControls(
   negativePrompt: string,
   inputs: Record<string, string>,
 ): { prompt: string; negativePrompt: string } {
-  let next = applyDreamPreset(prompt, inputs.dreamStyle);
+  const next = applyDreamPreset(prompt, inputs.dreamStyle);
   const framed = applyFraming(next, inputs.framing);
   const negative = [negativePrompt, framed.negativeExtra]
     .filter(Boolean)

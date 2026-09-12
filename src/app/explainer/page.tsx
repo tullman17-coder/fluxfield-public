@@ -20,7 +20,7 @@ export default function ExplainerPage() {
         label: "What should the video explain?",
         type: "textarea" as const,
         required: true,
-        placeholder: "Type a topic, or describe the story you want told.",
+        placeholder: "A topic, or the story you want told.",
       },
       {
         id: "aspect",
@@ -70,13 +70,11 @@ export default function ExplainerPage() {
           Explainer
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-5xl">
-          Style presets → script → beats → VO
+          Explain anything in a short video
         </h1>
         <p className="mt-2 max-w-2xl text-[#b8aebb]">
-          Higgsfield-style explainer container. Pick a visual language, describe
-          the topic, then Fieldbench routes script (Ollama), frames (Comfy/mock),
-          voice (Piper / OpenAI-compatible TTS), and optional FFmpeg assemble to
-          your offline box.
+          Pick a look, say what the video should cover, and get a script, scene
+          art, and narration back in one pass.
         </p>
       </div>
 
@@ -121,7 +119,7 @@ export default function ExplainerPage() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-wider text-[#8d838f]">
-              Active style
+              Look
             </div>
             <div className="text-lg text-[#f5eff6]">{preset.name}</div>
           </div>
@@ -146,7 +144,7 @@ export default function ExplainerPage() {
             },
           ]}
           accent="#e77ae6"
-          submitLabel="Generate explainer"
+          submitLabel="Make the video"
         />
       </div>
     </div>

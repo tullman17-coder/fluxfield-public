@@ -9,10 +9,10 @@ export default function WorkflowsPage() {
           Marketing desk
         </h1>
         <p className="text-[#b8aebb]">
-          Classic studio tools — product shots, ad packs, UGC, motion briefs.
-          For composed campaign wrappers, use{" "}
+          Product shots, ad packs, creator-style spots, and motion briefs. For a
+          full campaign layout, start from a{" "}
           <Link href="/" className="text-[#e77ae6]">
-            Image-2
+            layout
           </Link>
           .
         </p>

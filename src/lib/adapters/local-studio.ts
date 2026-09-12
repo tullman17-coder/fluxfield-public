@@ -139,7 +139,7 @@ export async function runLocalStudioAdapter(
     outputs.push({
       id,
       kind: "image",
-      label: `Local Studio ${index + 1}`,
+      label: `Image ${index + 1}`,
       url: `/api/outputs/${filename}`,
     });
   }

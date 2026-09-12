@@ -24,9 +24,9 @@ const selectClass =
 const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
 const STAGES: { id: "improve" | "generate" | "copy"; label: string }[] = [
-  { id: "improve", label: "Improve brief" },
-  { id: "generate", label: "Generate key art" },
-  { id: "copy", label: "Write campaign copy" },
+  { id: "improve", label: "Sharpen the brief" },
+  { id: "generate", label: "Make the key art" },
+  { id: "copy", label: "Write the copy" },
 ];
 
 function stageState(
@@ -72,7 +72,7 @@ export default function SupercomputerPage() {
   const run = useCallback(async () => {
     const text = brief.trim();
     if (!text) {
-      setError("Drop in a brief first — product, mood, campaign goal.");
+      setError("Write a brief first — product, mood, what it should do.");
       briefRef.current?.focus();
       return;
     }
@@ -118,7 +118,7 @@ export default function SupercomputerPage() {
             steps: "4",
             cfg: "1",
             assist: "on",
-            productName: brand.trim() || "superComputer run",
+            productName: brand.trim() || "Key art",
           },
         }),
       });
@@ -127,7 +127,7 @@ export default function SupercomputerPage() {
       job = data.job as StudioJob;
     } catch (err) {
       setStage("error");
-      setError(err instanceof Error ? err.message : "Generation failed");
+      setError(err instanceof Error ? err.message : "Could not make the art");
       return;
     }
 
@@ -144,13 +144,13 @@ export default function SupercomputerPage() {
       }
       if (data.job.status === "failed") {
         setStage("error");
-        setError(data.job.error || "Generation failed");
+        setError(data.job.error || "Could not make the art");
         return;
       }
     }
     if (!done) {
       setStage("error");
-      setError("Generation timed out — check Adapters.");
+      setError("This is taking too long. Check your connections in Settings.");
       return;
     }
 
@@ -204,15 +204,14 @@ export default function SupercomputerPage() {
             ZB
           </span>
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-            Zermobrands · Dream Studio variant
+            Zermobrands
           </p>
         </div>
         <h1 className="text-4xl font-semibold tracking-tight text-balance text-[#f5eff6] md:text-5xl">
           superComputer
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
-          One brief in — improved prompt, generated key art, and campaign copy
-          out. Runs the whole chain on your own adapters.
+          One brief in. Finished key art and campaign copy out.
         </p>
       </header>
 
@@ -261,10 +260,10 @@ export default function SupercomputerPage() {
               />
             </div>
             <div className="min-w-0">
-              <span className={labelClass}>Improve with</span>
+              <span className={labelClass}>Sharpen with</span>
               <div
                 role="group"
-                aria-label="Improvement provider"
+                aria-label="Sharpen with"
                 className="flex overflow-hidden rounded-[10px] border border-white/10"
               >
                 {(["local", "api"] as const).map((p) => (
@@ -280,7 +279,7 @@ export default function SupercomputerPage() {
                         : "text-[#8d838f] hover:text-[#f5eff6]",
                     )}
                   >
-                    {p === "local" ? "Local openweight" : "API key"}
+                    {p === "local" ? "My model" : "Cloud"}
                   </button>
                 ))}
               </div>
@@ -330,17 +329,13 @@ export default function SupercomputerPage() {
             </p>
           ) : null}
 
-          <div className="grid items-center gap-3 pt-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,12rem)]">
-            <p className="text-xs text-[#8d838f]">
-              Everything runs on your mesh — no brief or key leaves your
-              adapters.
-            </p>
+          <div className="grid pt-5 sm:justify-items-end">
             <button
               type="submit"
               disabled={running}
-              className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/5 disabled:text-[#6e6570]"
+              className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/5 disabled:text-[#6e6570] sm:w-56"
             >
-              {running ? "Computing" : "Run superComputer"}
+              {running ? "Working" : "Run superComputer"}
             </button>
           </div>
         </form>
@@ -352,10 +347,10 @@ export default function SupercomputerPage() {
           <div className="flex min-w-0 items-end justify-between gap-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-                Pipeline
+                Progress
               </p>
               <h2 id="pipeline-heading" className="mt-1 text-lg text-[#f5eff6]">
-                Run state
+                Status
               </h2>
             </div>
             <span
@@ -378,12 +373,12 @@ export default function SupercomputerPage() {
             {stage === "idle"
               ? "Ready for a brief"
               : stage === "done"
-                ? "Run complete"
+                ? "Done"
                 : stage === "error"
-                  ? "Run stopped"
-                  : "Computing"}
+                  ? "Stopped"
+                  : "Working"}
           </p>
-          <ol aria-label="Pipeline stages" className="mt-5 grid gap-3">
+          <ol aria-label="Steps" className="mt-5 grid gap-3">
             {STAGES.map((s) => {
               const state = stageState(stage, s.id);
               return (
@@ -420,16 +415,16 @@ export default function SupercomputerPage() {
               </dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-xs text-[#8d838f]">Improve</dt>
+              <dt className="text-xs text-[#8d838f]">Sharpen</dt>
               <dd className="mt-1 text-sm text-[#b8aebb]">
-                {provider === "local" ? "Local openweight" : "API key"}
+                {provider === "local" ? "My model" : "Cloud"}
               </dd>
             </div>
           </dl>
           {result?.script ? (
             <details className="mt-4 border-t border-white/10 pt-3">
               <summary className="min-h-11 cursor-pointer list-none content-center text-sm font-medium text-[#b8aebb] [&::-webkit-details-marker]:hidden">
-                Reproducibility
+                Settings used
               </summary>
               <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-[10px] bg-white/10 p-3 font-mono text-xs text-[#b8aebb]">
                 {result.script}
@@ -445,10 +440,10 @@ export default function SupercomputerPage() {
           <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-                Output
+                Finished
               </p>
               <h2 id="run-results-heading" className="mt-1 text-lg text-[#f5eff6]">
-                Run results
+                Results
               </h2>
             </div>
           </div>
@@ -463,9 +458,7 @@ export default function SupercomputerPage() {
                     className="w-full object-cover"
                   />
                   <figcaption className="p-4">
-                    <p className="text-sm font-bold text-[#f5eff6]">
-                      Key art · {result.improveProvider} improved
-                    </p>
+                    <p className="text-sm font-bold text-[#f5eff6]">Key art</p>
                     <p className="mt-1 text-sm text-pretty text-[#b8aebb]">
                       {result.improvedPrompt}
                     </p>
@@ -480,9 +473,9 @@ export default function SupercomputerPage() {
             </div>
           ) : (
             <div className="glass mt-4 rounded-[14px] px-4 py-8 text-center text-[#b8aebb]">
-              <p>Run output lands here.</p>
+              <p>Your key art and copy show up here.</p>
               <span className="mt-1 block text-sm text-[#8d838f]">
-                Key art, improved prompt, and campaign copy.
+                One brief becomes a finished piece.
               </span>
             </div>
           )}
