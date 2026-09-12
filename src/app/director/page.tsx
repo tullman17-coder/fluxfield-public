@@ -330,7 +330,12 @@ export default function DirectorPage() {
             <div className="mt-6 border-t border-white/10 pt-5">
               <h3 className="text-sm font-bold text-[#f5eff6]">Score</h3>
               <p className="mt-1 text-sm text-[#8d838f]">{soundtrack.label}</p>
-              <audio src={soundtrack.url} controls className="mt-3 w-full" />
+              <audio
+                src={soundtrack.url}
+                controls
+                preload="none"
+                className="mt-3 w-full"
+              />
             </div>
           ) : null}
         </aside>

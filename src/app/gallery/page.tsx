@@ -88,7 +88,14 @@ export default function GalleryPage() {
                 .map((o) => (
                   <div key={o.id} className="mt-3">
                     <p className="mb-2 text-sm text-[#b8aebb]">{o.label}</p>
-                    <audio src={o.url} controls className="w-full" />
+                    {/* Tracks are uncompressed and can run to tens of
+                        megabytes, so nothing loads until it is played. */}
+                    <audio
+                      src={o.url}
+                      controls
+                      preload="none"
+                      className="w-full"
+                    />
                   </div>
                 ))}
             </article>

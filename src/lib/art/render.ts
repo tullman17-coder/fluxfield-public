@@ -57,6 +57,14 @@ function hslToRgb(h: number, s: number, l: number): Rgb {
   return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
 }
 
+/** Hex for a hue, so callers can hold one palette across a set of frames. */
+export function hueToHex(hue: number, sat = 0.62, light = 0.55) {
+  const [r, g, b] = hslToRgb(hue, sat, light);
+  return `#${[r, g, b]
+    .map((v) => Math.round(v).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
 function hexToHsl(hex: string): [number, number, number] | null {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return null;

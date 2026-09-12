@@ -264,7 +264,7 @@ export default function MusicPage() {
               <figcaption className="mb-3 text-sm font-bold text-[#f5eff6]">
                 {track.label}
               </figcaption>
-              <audio src={track.url} controls className="w-full" />
+              <audio src={track.url} controls preload="none" className="w-full" />
               <a
                 href={track.url}
                 download

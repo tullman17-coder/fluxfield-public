@@ -10,7 +10,7 @@ import {
   type Shot,
 } from "@/lib/director/plan";
 import { planArrangement } from "@/lib/music/theory";
-import { renderArt } from "@/lib/art/render";
+import { hueToHex, renderArt } from "@/lib/art/render";
 import { renderArrangement } from "@/lib/music/synth";
 import { encodeWav } from "@/lib/music/wav";
 import { keyLabel, timecode } from "@/lib/music/theory";
@@ -22,6 +22,15 @@ const MAX_FRAMES = 12;
 
 /** How much of a long shot list is worth showing before the download. */
 const PREVIEW_LINES = 220;
+
+function hash32(text: string) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
 
 function pickKeyShots(p: Production): Shot[] {
   if (p.shots.length <= MAX_FRAMES) return p.shots;
@@ -126,12 +135,24 @@ export async function runDirectorAdapter(
   // Key frames.
   const size = ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];
   const keyShots = pickKeyShots(production);
+  // One palette for the whole piece. Without this each frame picks its own hue
+  // from its own prompt and a storyboard reads like twelve unrelated films.
+  const baseHue = hash32(`${production.title}:${production.look}`) % 360;
   for (const shot of keyShots) {
+    // The light turns once over the runtime rather than jumping shot to shot,
+    // so the set holds together and still moves.
+    const progress = production.runtimeSec
+      ? shot.startSec / production.runtimeSec
+      : 0;
+    const drift = Math.sin(progress * Math.PI * 2) * 20 + (shot.index % 3) * 5;
     const png = renderArt({
       width: size.w,
       height: size.h,
       prompt: `${production.title} ${shot.section} ${shot.size} ${shot.move} ${shot.action}`,
       style: production.look,
+      accent: hueToHex(baseHue + drift, 0.5 + shot.energy * 0.25),
+      // Composition varies by position even when two shots read alike.
+      seed: hash32(`${production.title}:${shot.index}:${shot.move}`),
     });
     const name = `${ctx.job.id}-${nanoid(8)}.png`;
     await fs.writeFile(path.join(OUT_DIR, name), png);
