@@ -7,16 +7,9 @@ import type {
   JobOutput,
 } from "@/lib/adapters/types";
 import { composeWrapperSvg } from "@/lib/compose/wrapper-svg";
+import { renderArt } from "@/lib/art/render";
 import { getImage2Wrapper } from "@/lib/wrappers/catalog";
 import { getExplainerPreset } from "@/lib/explainer/presets";
-
-function escapeXml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 function aspectSize(aspect: string): { w: number; h: number } {
   const map: Record<string, { w: number; h: number }> = {
@@ -31,42 +24,42 @@ function aspectSize(aspect: string): { w: number; h: number } {
   return map[aspect] ?? { w: 1024, h: 1024 };
 }
 
-async function writePlainSvg(
-  jobId: string,
-  aspect: string,
-  title: string,
-  subtitle: string,
-  accent = "#e77ae6",
+function fit(w: number, h: number, maxDim: number) {
+  const longest = Math.max(w, h);
+  if (longest <= maxDim) return { w, h };
+  const k = maxDim / longest;
+  return { w: Math.round(w * k), h: Math.round(h * k) };
+}
+
+/** Paints a real frame and writes it as PNG. */
+async function writeArtFrame(
+  ctx: AdapterContext,
+  label: string,
+  opts: { aspect?: string; accent?: string; style?: string; seedSalt?: string } = {},
 ): Promise<JobOutput> {
-  const { w, h } = aspectSize(aspect);
+  const base = aspectSize(opts.aspect ?? ctx.job.aspect);
+  const maxDim = Number(ctx.job.inputs.maxDim || 0) || 1024;
+  const { w, h } = fit(base.w, base.h, maxDim);
   const id = nanoid(8);
-  const filename = `${jobId}-${id}.svg`;
+  const filename = `${ctx.job.id}-${id}.png`;
   const outDir = path.join(process.cwd(), ".data", "outputs");
   await fs.mkdir(outDir, { recursive: true });
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#100e14"/>
-      <stop offset="55%" stop-color="#2c162f"/>
-      <stop offset="100%" stop-color="${accent}"/>
-    </linearGradient>
-    <radialGradient id="swirl" cx="0.7" cy="0.25" r="0.9">
-      <stop offset="0%" stop-color="#e77ae6" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#e77ae6" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="${w}" height="${h}" fill="url(#g)"/>
-  <rect width="${w}" height="${h}" fill="url(#swirl)"/>
-  <rect x="${w * 0.08}" y="${h * 0.7}" width="${w * 0.84}" height="${h * 0.2}" rx="16" fill="#f5eff624"/>
-  <text x="${w * 0.12}" y="${h * 0.8}" fill="#f5eff6" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.045)}">${escapeXml(title)}</text>
-  <text x="${w * 0.12}" y="${h * 0.86}" fill="${accent}" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.028)}">${escapeXml(subtitle)}</text>
-</svg>`;
-  await fs.writeFile(path.join(outDir, filename), svg);
+
+  const seedInput = ctx.job.inputs.seed?.trim();
+  const png = renderArt({
+    width: w,
+    height: h,
+    prompt: `${ctx.job.prompt} ${opts.seedSalt || ""}`,
+    accent: opts.accent,
+    style: opts.style || ctx.job.presetId,
+    seed: seedInput ? Number(seedInput) || undefined : undefined,
+  });
+
+  await fs.writeFile(path.join(outDir, filename), png);
   return {
     id,
     kind: "image",
-    label: title,
+    label,
     url: `/api/outputs/${filename}`,
   };
 }
@@ -81,13 +74,33 @@ export async function runMockAdapter(
     const wrapper = getImage2Wrapper(ctx.job.workflowSlug);
     if (wrapper) {
       for (let i = 0; i < Math.max(1, count); i++) {
+        // Paint a real subject first, then set it inside the layout chrome so
+        // the wrapper shows actual art rather than an empty placeholder block.
+        const frame = await writeArtFrame(ctx, `${wrapper.name} subject`, {
+          accent: wrapper.accent,
+          seedSalt: `v${i}`,
+        });
+        const file = path.join(
+          process.cwd(),
+          ".data",
+          "outputs",
+          frame.url!.split("/").pop()!,
+        );
+        let subjectImageDataUri: string | undefined;
+        try {
+          const buf = await fs.readFile(file);
+          subjectImageDataUri = `data:image/png;base64,${buf.toString("base64")}`;
+        } catch {
+          // fall back to chrome-only if the frame cannot be read back
+        }
         const composed = await composeWrapperSvg({
           wrapper,
           values: ctx.job.inputs,
           presetLabel: ctx.job.presetLabel,
           aspect: ctx.job.aspect,
           jobId: ctx.job.id,
-          subjectHint: ctx.job.prompt.slice(0, 80),
+          subjectHint: ctx.job.inputs.productDescription || ctx.job.prompt,
+          subjectImageDataUri,
         });
         outputs.push({
           id: nanoid(8),
@@ -105,13 +118,11 @@ export async function runMockAdapter(
     const beatCount = Number(ctx.job.inputs.beats || 6);
     const board: string[] = [];
     for (let i = 0; i < beatCount; i++) {
-      const frame = await writePlainSvg(
-        ctx.job.id,
-        ctx.job.aspect || "16:9",
-        `Beat ${i + 1}`,
-        `${preset.name} · ${ctx.job.inputs.topic || "topic"}`,
-        preset.accent,
-      );
+      const frame = await writeArtFrame(ctx, `Scene ${i + 1}`, {
+        aspect: ctx.job.aspect || "16:9",
+        accent: preset.accent,
+        seedSalt: `beat${i}`,
+      });
       outputs.push(frame);
       board.push(`${i + 1}. ${frame.label} → ${frame.url}`);
     }
@@ -126,11 +137,10 @@ export async function runMockAdapter(
 
   for (let i = 0; i < count; i++) {
     outputs.push(
-      await writePlainSvg(
-        ctx.job.id,
-        ctx.job.aspect,
+      await writeArtFrame(
+        ctx,
         ctx.job.inputs.productName || ctx.job.workflowName,
-        `${ctx.job.presetLabel} · mock · ${ctx.job.workflowName}`,
+        { seedSalt: `v${i}` },
       ),
     );
   }

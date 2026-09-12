@@ -80,6 +80,8 @@ export async function GET(
       cfg: "1",
       assist: "on",
       productName: wrapper.name,
+      // Cards render around 600px wide; full-size art would be megabytes each.
+      maxDim: "600",
     },
   });
 
