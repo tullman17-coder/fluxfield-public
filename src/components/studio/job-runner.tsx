@@ -276,11 +276,24 @@ export function JobRunner({
                     className="overflow-hidden rounded-2xl border border-white/10 bg-white/10"
                   >
                     {o.kind === "video" ? (
-                      <video src={o.url} controls className="w-full" />
+                      // playsInline keeps iPhones from yanking playback into
+                      // their own fullscreen player the moment you press play.
+                      <video
+                        src={o.url}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full"
+                      />
                     ) : o.kind === "audio" ? (
                       <div className="p-4">
                         <div className="mb-2 text-sm">{o.label}</div>
-                        <audio src={o.url} controls className="w-full" />
+                        <audio
+                          src={o.url}
+                          controls
+                          preload="none"
+                          className="w-full"
+                        />
                       </div>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element

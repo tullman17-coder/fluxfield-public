@@ -124,9 +124,57 @@
     max-width: 100%;
   }
 
+  /* Rubber-band scrolling past the top of a page exposes the browser's own
+     white backdrop behind a dark app. */
+  html {
+    background: var(--background);
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
   ::selection {
     background: var(--milk-accent-soft);
     color: var(--milk-accent-hover);
+  }
+
+  /* Shell chrome. Phones cut corners off the screen and park a home indicator
+     across the bottom, so the rail and the page both hold back from the edges
+     by whatever the device says it needs — and never by less than the padding
+     the layout already wanted. */
+  .shell-rail {
+    padding: max(0.5rem, env(safe-area-inset-top)) 0.5rem
+      max(0.5rem, env(safe-area-inset-bottom))
+      max(0.5rem, env(safe-area-inset-left));
+    scrollbar-width: none;
+  }
+
+  .shell-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shell-main {
+    padding: 1.5rem max(0.75rem, env(safe-area-inset-right))
+      max(1.5rem, env(safe-area-inset-bottom)) 0.75rem;
+  }
+
+  @media (min-width: 640px) {
+    .shell-rail {
+      padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem
+        max(0.75rem, env(safe-area-inset-bottom))
+        max(0.75rem, env(safe-area-inset-left));
+    }
+
+    .shell-main {
+      padding: 2rem max(1.5rem, env(safe-area-inset-right))
+        max(2rem, env(safe-area-inset-bottom)) 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .shell-main {
+      padding: 2rem max(2rem, env(safe-area-inset-right))
+        max(2rem, env(safe-area-inset-bottom)) 2rem;
+    }
   }
 
   /* Milky glass on dark purple — static blur, never animated */
@@ -228,5 +276,60 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
     }
+  }
+}
+
+/* ---------------------------------------------------------------- handsets
+
+   Deliberately outside @layer, because these have to beat the sizing utilities
+   Tailwind puts on individual elements. A field carrying `text-sm` still has to
+   render at 16px on a phone, or Safari zooms the page in the moment you tap it.
+*/
+
+@media (pointer: coarse), (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+}
+
+@media (pointer: coarse) {
+  /* A fingertip covers about 44px. Anything built to be pressed gets at least
+     that much, without disturbing how the same page looks under a mouse. */
+  button,
+  [role="button"],
+  [data-slot="button"],
+  select,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  summary {
+    min-height: 2.75rem;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* The default grey flash on tap looks like a rendering fault against glass. */
+  a,
+  button,
+  [role="button"],
+  label {
+    -webkit-tap-highlight-color: rgb(213 101 214 / 18%);
+  }
+
+  /* Three blurred gradients turning forever is a lot to ask of a phone for
+     something you only see out of the corner of your eye. The colour stays,
+     the movement stops, and the blur comes down to something a handset can
+     hold without warming up in your hand. */
+  .swirl-blob {
+    animation: none;
+    filter: blur(48px);
+  }
+
+  .swirl-blob--c {
+    display: none;
   }
 }

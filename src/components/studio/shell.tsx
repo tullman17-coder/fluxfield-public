@@ -141,7 +141,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
     (health.studio || health.comfy || health.ollama || health.tts);
 
   return (
-    <div className="grid min-h-dvh w-full grid-cols-[3.5rem_minmax(0,1fr)] text-[#f5eff6] sm:grid-cols-[5.75rem_minmax(0,1fr)]">
+    <div className="grid min-h-dvh w-full grid-cols-[4rem_minmax(0,1fr)] text-[#f5eff6] sm:grid-cols-[5.75rem_minmax(0,1fr)]">
       {/* Iridescent swirl backdrop */}
       <div className="swirl-layer" aria-hidden="true">
         <div className="swirl-blob swirl-blob--a" />
@@ -149,7 +149,9 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
         <div className="swirl-blob swirl-blob--c" />
       </div>
 
-      <aside className="glass-strong sticky top-0 z-40 flex h-dvh min-w-0 flex-col items-stretch border-y-0 border-l-0 p-2 sm:p-3">
+      {/* The rail is taller than a phone held sideways, so it scrolls on its
+          own. Padding keeps it clear of the notch and the home indicator. */}
+      <aside className="shell-rail glass-strong sticky top-0 z-40 flex h-dvh min-w-0 flex-col items-stretch overflow-y-auto overscroll-contain border-y-0 border-l-0">
         <Link
           href="/supercomputer"
           aria-label="Fieldbench home"
@@ -158,7 +160,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
           FB
         </Link>
 
-        <nav aria-label="Primary" className="mt-5 grid gap-2">
+        <nav aria-label="Primary" className="mt-4 grid shrink-0 gap-1.5">
           {NAV.map((item) => {
             const active =
               item.href === "/"
@@ -177,7 +179,9 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <RailIcon name={item.icon} />
-                <span className="whitespace-nowrap max-sm:sr-only">
+                {/* A column of unlabelled icons is a guessing game on a phone,
+                    where there is no hover to fall back on. */}
+                <span className="whitespace-nowrap text-[9px] sm:text-[11px]">
                   {item.label}
                 </span>
               </Link>
@@ -186,7 +190,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div
-          className="mt-auto grid justify-items-center gap-1 py-2 text-[11px] text-[#8d838f]"
+          className="mt-auto grid shrink-0 justify-items-center gap-1 pt-3 text-[11px] text-[#8d838f]"
           title={
             health
               ? `Making images with ${ENGINE_LABEL[health.effectiveMode] ?? health.effectiveMode}`
@@ -202,13 +206,13 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
                 : "bg-[#8d838f]",
             )}
           />
-          <span className="max-sm:sr-only">
+          <span className="text-[9px] sm:text-[11px]">
             {health ? (ENGINE_LABEL[health.effectiveMode] ?? health.effectiveMode) : "…"}
           </span>
         </div>
       </aside>
 
-      <main className="w-full min-w-0 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <main className="shell-main w-full min-w-0">
         <div className="mx-auto w-full min-w-0 max-w-[100rem]">{children}</div>
       </main>
     </div>

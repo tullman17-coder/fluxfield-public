@@ -18,11 +18,11 @@ export default async function Image2WrapperPage({
         <div>
           <Link
             href="/"
-            className="text-xs uppercase tracking-wider text-[#8d838f] hover:text-[#b8aebb]"
+            className="-ml-2 inline-flex min-h-11 items-center rounded-[10px] px-2 text-xs uppercase tracking-wider text-[#8d838f] transition-colors hover:text-[#b8aebb]"
           >
             ← All layouts
           </Link>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-4xl">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl text-white md:text-4xl">
             {wrapper.name}
           </h1>
           <p className="mt-1 max-w-2xl text-[#b8aebb]">{wrapper.tagline}</p>
