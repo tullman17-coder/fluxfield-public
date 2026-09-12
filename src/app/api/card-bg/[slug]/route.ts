@@ -54,7 +54,8 @@ export async function GET(
   }
 
   const cached = await findCached(slug);
-  if (cached) {
+  const refresh = _request.url.includes("refresh=1");
+  if (cached && !refresh) {
     return new NextResponse(new Uint8Array(cached.data), {
       headers: {
         "Content-Type": contentType(cached.ext),

@@ -117,7 +117,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
     (health.studio || health.comfy || health.ollama || health.tts);
 
   return (
-    <div className="grid min-h-dvh w-full grid-cols-[3.5rem_minmax(0,1fr)] text-[#2e2833] sm:grid-cols-[5.75rem_minmax(0,1fr)]">
+    <div className="grid min-h-dvh w-full grid-cols-[3.5rem_minmax(0,1fr)] text-[#f5eff6] sm:grid-cols-[5.75rem_minmax(0,1fr)]">
       {/* Iridescent swirl backdrop */}
       <div className="swirl-layer" aria-hidden="true">
         <div className="swirl-blob swirl-blob--a" />
@@ -129,7 +129,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
         <Link
           href="/supercomputer"
           aria-label="Fieldbench home"
-          className="grid min-h-11 w-full place-items-center rounded-[10px] border border-[#d5c8da] bg-[#f3e4f4] text-sm font-extrabold tracking-[0.12em] text-[#a845b0]"
+          className="grid min-h-11 w-full place-items-center rounded-[10px] border border-white/15 bg-[#2c162f] text-sm font-extrabold tracking-[0.12em] text-[#e77ae6]"
         >
           FB
         </Link>
@@ -148,8 +148,8 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "grid min-h-[3.25rem] w-full min-w-0 place-items-center gap-1 rounded-[10px] border border-transparent p-1 text-[11px] leading-tight transition-colors",
                   active
-                    ? "border-[#d5c8da] bg-[#f3e4f4] text-[#a845b0]"
-                    : "text-[#8d8296] hover:bg-white/70 hover:text-[#2e2833]",
+                    ? "border-white/15 bg-[#2c162f] text-[#e77ae6]"
+                    : "text-[#8d838f] hover:bg-white/15 hover:text-[#f5eff6]",
                 )}
               >
                 <RailIcon name={item.icon} />
@@ -162,7 +162,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div
-          className="mt-auto grid justify-items-center gap-1 py-2 text-[11px] text-[#8d8296]"
+          className="mt-auto grid justify-items-center gap-1 py-2 text-[11px] text-[#8d838f]"
           title={`Effective mode: ${health?.effectiveMode || "…"}`}
         >
           <span
@@ -170,8 +170,8 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
             className={cn(
               "size-2 rounded-full",
               anyUp
-                ? "bg-[#a845b0] shadow-[0_0_0_4px_#f3e4f4]"
-                : "bg-[#8d8296]",
+                ? "bg-[#d565d6] shadow-[0_0_0_4px_#2c162f]"
+                : "bg-[#8d838f]",
             )}
           />
           <span className="max-sm:sr-only">

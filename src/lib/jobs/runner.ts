@@ -1,4 +1,5 @@
 import path from "path";
+import { promises as fs } from "fs";
 import { fillPrompt, getWorkflow } from "@/lib/workflows";
 import {
   fillWrapperPrompt,
@@ -285,13 +286,36 @@ async function processJob(jobId: string, referenceImagePath?: string) {
     ) {
       const wrapper = getImage2Wrapper(current.workflowSlug);
       if (wrapper) {
+        // Embed the true generated image into the chrome (data URI keeps the SVG self-contained)
+        let subjectImageDataUri: string | undefined;
+        const firstImage = result.outputs.find(
+          (o) => o.kind === "image" && o.url,
+        );
+        if (firstImage?.url) {
+          try {
+            const name = firstImage.url.split("/").pop()!;
+            const file = path.join(process.cwd(), ".data", "outputs", name);
+            const buf = await fs.readFile(file);
+            if (buf.byteLength < 8 * 1024 * 1024) {
+              const mime = name.endsWith(".webp")
+                ? "image/webp"
+                : name.endsWith(".jpg") || name.endsWith(".jpeg")
+                  ? "image/jpeg"
+                  : "image/png";
+              subjectImageDataUri = `data:${mime};base64,${buf.toString("base64")}`;
+            }
+          } catch {
+            // keep chrome-only output if the frame cannot be read
+          }
+        }
         const composed = await composeWrapperSvg({
           wrapper,
           values: current.inputs,
           presetLabel: current.presetLabel,
           aspect: current.aspect,
           jobId: current.id,
-              subjectHint: `${modeUsed} subject — chrome composited locally`,
+          subjectHint: `${modeUsed} subject — chrome composited locally`,
+          subjectImageDataUri,
         });
         result = {
           ...result,

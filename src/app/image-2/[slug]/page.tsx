@@ -18,14 +18,14 @@ export default async function Image2WrapperPage({
         <div>
           <Link
             href="/"
-            className="text-xs uppercase tracking-wider text-[#8d8296] hover:text-[#6f6577]"
+            className="text-xs uppercase tracking-wider text-[#8d838f] hover:text-[#b8aebb]"
           >
             ← Image-2 gallery
           </Link>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-4xl">
             {wrapper.name}
           </h1>
-          <p className="mt-1 max-w-2xl text-[#6f6577]">{wrapper.tagline}</p>
+          <p className="mt-1 max-w-2xl text-[#b8aebb]">{wrapper.tagline}</p>
         </div>
         <div
           className="rounded-2xl px-4 py-3 text-sm font-semibold text-black"

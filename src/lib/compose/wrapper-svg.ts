@@ -31,6 +31,8 @@ export async function composeWrapperSvg(args: {
   aspect: string;
   jobId: string;
   subjectHint?: string;
+  /** data: URI of the real generated image — embedded into the chrome when present */
+  subjectImageDataUri?: string;
 }): Promise<{ filename: string; url: string }> {
   const { w, h } = sizeForAspect(args.aspect);
   const brand = esc(args.values.brandName || args.wrapper.brandSample);
@@ -55,11 +57,22 @@ export async function composeWrapperSvg(args: {
   const accent = args.wrapper.accent;
   const surface = args.wrapper.surface;
 
+  // True generated subject, clipped into each layout's image zone
+  const clipId = `subj-${args.jobId}`;
+  const img = args.subjectImageDataUri;
+  const subjectImage = (x: number, y: number, sw: number, sh: number, rx = 18) =>
+    img
+      ? `<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${sw}" height="${sh}" rx="${rx}"/></clipPath>
+         <image href="${img}" x="${x}" y="${y}" width="${sw}" height="${sh}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>
+         <rect x="${x}" y="${y}" width="${sw}" height="${sh}" rx="${rx}" fill="none" stroke="#ffffff22"/>`
+      : "";
+
   let chrome = "";
   switch (args.wrapper.layout) {
     case "poster-cta":
       chrome = `
         <rect x="0" y="0" width="${w}" height="${h}" fill="${surface}"/>
+        ${subjectImage(w * 0.08, h * 0.24, w * 0.84, h * 0.5, 24)}
         <circle cx="${w * 0.82}" cy="${h * 0.18}" r="${Math.min(w, h) * 0.16}" fill="${accent}" opacity="0.95"/>
         <text x="${w * 0.72}" y="${h * 0.2}" fill="#111" font-family="Impact, sans-serif" font-size="${Math.round(w * 0.045)}" transform="rotate(-12 ${w * 0.82} ${h * 0.18})">NEW</text>
         <rect x="${w * 0.08}" y="${h * 0.12}" width="${w * 0.55}" height="${h * 0.08}" rx="8" fill="#00000055"/>
@@ -73,7 +86,7 @@ export async function composeWrapperSvg(args: {
       chrome = `
         <rect width="${w}" height="${h}" fill="${surface}"/>
         <text x="${w * 0.08}" y="${h * 0.08}" fill="#111" font-family="Georgia, serif" font-size="${Math.round(w * 0.035)}" letter-spacing="4">${brand}</text>
-        <rect x="${w * 0.08}" y="${h * 0.12}" width="${w * 0.84}" height="${h * 0.48}" rx="4" fill="#dbe4ee"/>
+        ${img ? subjectImage(w * 0.08, h * 0.12, w * 0.84, h * 0.48, 4) : `<rect x="${w * 0.08}" y="${h * 0.12}" width="${w * 0.84}" height="${h * 0.48}" rx="4" fill="#dbe4ee"/>`}
         <text x="${w * 0.08}" y="${h * 0.7}" fill="#111" font-family="Georgia, serif" font-size="${Math.round(w * 0.055)}" font-weight="700">${headline}</text>
         <foreignObject x="${w * 0.08}" y="${h * 0.74}" width="${w * 0.84}" height="${h * 0.2}">
           <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Georgia, serif; font-size: ${Math.round(w * 0.028)}px; color:#333; line-height:1.45">${body}</div>
@@ -83,7 +96,7 @@ export async function composeWrapperSvg(args: {
     case "event-stack":
       chrome = `
         <rect width="${w}" height="${h}" fill="${surface}"/>
-        <rect x="${w * 0.06}" y="${h * 0.08}" width="${w * 0.88}" height="${h * 0.55}" fill="#222"/>
+        ${img ? subjectImage(w * 0.06, h * 0.08, w * 0.88, h * 0.55, 0) : `<rect x="${w * 0.06}" y="${h * 0.08}" width="${w * 0.88}" height="${h * 0.55}" fill="#222"/>`}
         <text x="${w * 0.08}" y="${h * 0.72}" fill="${accent}" font-family="Impact, sans-serif" font-size="${Math.round(w * 0.07)}">${brand}</text>
         <text x="${w * 0.08}" y="${h * 0.78}" fill="#fff" font-family="ui-sans-serif,system-ui" font-size="${Math.round(w * 0.035)}">${product}</text>
         <text x="${w * 0.08}" y="${h * 0.86}" fill="#ccc" font-family="ui-monospace,monospace" font-size="${Math.round(w * 0.028)}">${body}</text>
@@ -92,18 +105,20 @@ export async function composeWrapperSvg(args: {
     case "shop-banner":
       chrome = `
         <rect width="${w}" height="${h}" fill="${surface}"/>
+        ${subjectImage(w * 0.55, h * 0.1, w * 0.4, h * 0.8, 20)}
         <text x="${w * 0.06}" y="${h * 0.22}" fill="#111" font-family="ui-sans-serif,system-ui" font-size="${Math.round(h * 0.12)}" font-weight="700">${brand}</text>
         <text x="${w * 0.06}" y="${h * 0.4}" fill="#444" font-family="ui-sans-serif,system-ui" font-size="${Math.round(h * 0.06)}">${product}</text>
         ${price ? `<rect x="${w * 0.06}" y="${h * 0.48}" width="${w * 0.22}" height="${h * 0.14}" rx="999" fill="#111"/><text x="${w * 0.09}" y="${h * 0.575}" fill="#fff" font-size="${Math.round(h * 0.055)}" font-family="ui-sans-serif,system-ui">${price}</text>` : ""}
         <rect x="${w * 0.06}" y="${h * 0.72}" width="${w * 0.32}" height="${h * 0.16}" rx="12" fill="#111"/>
         <text x="${w * 0.1}" y="${h * 0.825}" fill="#fff" font-family="ui-sans-serif,system-ui" font-size="${Math.round(h * 0.055)}">${cta}</text>
-        <circle cx="${w * 0.72}" cy="${h * 0.5}" r="${Math.min(w, h) * 0.22}" fill="${accent}55"/>
+        ${img ? "" : `<circle cx="${w * 0.72}" cy="${h * 0.5}" r="${Math.min(w, h) * 0.22}" fill="${accent}55"/>`}
       `;
       break;
     case "tryon-ui":
       chrome = `
         <rect width="${w}" height="${h}" fill="${surface}"/>
         <rect x="${w * 0.04}" y="${h * 0.08}" width="${w * 0.42}" height="${h * 0.84}" rx="24" fill="#1e293b"/>
+        ${subjectImage(w * 0.06, h * 0.24, w * 0.38, h * 0.5, 16)}
         <text x="${w * 0.08}" y="${h * 0.18}" fill="#fff" font-family="ui-sans-serif,system-ui" font-size="${Math.round(w * 0.035)}" font-weight="700">${product}</text>
         <rect x="${w * 0.08}" y="${h * 0.78}" width="${w * 0.34}" height="${h * 0.08}" rx="12" fill="${accent}"/>
         <text x="${w * 0.12}" y="${h * 0.835}" fill="#052e16" font-family="ui-sans-serif,system-ui" font-size="${Math.round(w * 0.028)}" font-weight="700">${cta}</text>
@@ -118,6 +133,7 @@ export async function composeWrapperSvg(args: {
     default:
       chrome = `
         <rect width="${w}" height="${h}" fill="${surface}"/>
+        ${subjectImage(w * 0.15, h * 0.2, w * 0.7, h * 0.5, 24)}
         <text x="${w * 0.08}" y="${h * 0.14}" fill="${accent}" font-family="Impact, sans-serif" font-size="${Math.round(w * 0.09)}">${brand}</text>
         <text x="${w * 0.08}" y="${h * 0.9}" fill="#fff" font-family="ui-sans-serif,system-ui" font-size="${Math.round(w * 0.04)}">${product} · ${preset}</text>
       `;
@@ -133,8 +149,12 @@ export async function composeWrapperSvg(args: {
     </linearGradient>
   </defs>
   ${chrome}
-  <rect x="${w * 0.18}" y="${h * 0.22}" width="${w * 0.64}" height="${h * 0.4}" rx="28" fill="url(#subject)" opacity="0.85"/>
-  <text x="${w * 0.22}" y="${h * 0.44}" fill="#ffffffcc" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.028)}">${subject.slice(0, 64)}</text>
+  ${
+    img
+      ? ""
+      : `<rect x="${w * 0.18}" y="${h * 0.22}" width="${w * 0.64}" height="${h * 0.4}" rx="28" fill="url(#subject)" opacity="0.85"/>
+  <text x="${w * 0.22}" y="${h * 0.44}" fill="#ffffffcc" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.028)}">${subject.slice(0, 64)}</text>`
+  }
   <text x="${w * 0.06}" y="${h * 0.985}" fill="#ffffff66" font-family="ui-monospace,monospace" font-size="14">fieldbench · ${esc(args.wrapper.name)} · ${preset}</text>
 </svg>`;
 

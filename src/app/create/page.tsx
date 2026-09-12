@@ -18,9 +18,9 @@ type ImproveResult = {
 };
 
 const selectClass =
-  "h-11 w-full min-w-0 rounded-[10px] border border-[#e7dfe8] glass px-3 text-sm text-[#2e2833] transition-colors hover:border-[#d5c8da] focus-visible:outline-2 focus-visible:outline-[#d98ce0]";
+  "h-11 w-full min-w-0 rounded-[10px] border border-white/10 glass px-3 text-sm text-[#f5eff6] transition-colors hover:border-white/15 focus-visible:outline-2 focus-visible:outline-[#f2a1ed]";
 const inputClass = selectClass;
-const labelClass = "mb-2 block text-sm font-medium text-[#6f6577]";
+const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
 export default function CreatePage() {
   const [prompt, setPrompt] = useState("");
@@ -192,14 +192,14 @@ export default function CreatePage() {
 
   return (
     <div className="w-full min-w-0">
-      <header className="mb-8 grid gap-3 border-b border-[#e7dfe8] pb-6">
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#a845b0]">
+      <header className="mb-8 grid gap-3 border-b border-white/10 pb-6">
+        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
           Local image workbench
         </p>
-        <h1 className="text-4xl font-semibold tracking-tight text-[#2e2833] md:text-5xl">
+        <h1 className="text-4xl font-semibold tracking-tight text-[#f5eff6] md:text-5xl">
           Create
         </h1>
-        <p className="max-w-xl text-[#6f6577]">
+        <p className="max-w-xl text-[#b8aebb]">
           Shape the prompt. Keep every useful setting. Generate on your own
           controller — nothing leaves your mesh.
         </p>
@@ -218,11 +218,11 @@ export default function CreatePage() {
             <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
               <label
                 htmlFor="prompt"
-                className="text-lg font-bold text-[#2e2833]"
+                className="text-lg font-bold text-[#f5eff6]"
               >
                 Prompt
               </label>
-              <span className="text-sm text-[#6f6577]">What should exist?</span>
+              <span className="text-sm text-[#b8aebb]">What should exist?</span>
             </div>
             <textarea
               id="prompt"
@@ -230,10 +230,10 @@ export default function CreatePage() {
               value={prompt}
               onChange={(e) => setPrompt(e.currentTarget.value)}
               placeholder="A moonlit observatory above a quiet violet sea…"
-              className="min-h-32 w-full min-w-0 resize-y rounded-[10px] border border-[#d5c8da] glass p-3 text-base leading-normal text-[#2e2833] shadow-[0_1.25rem_3.75rem_rgb(90_70_110/14%)] placeholder:text-[#8d8296] focus-visible:outline-2 focus-visible:outline-[#d98ce0]"
+              className="min-h-32 w-full min-w-0 resize-y rounded-[10px] border border-white/15 glass p-3 text-base leading-normal text-[#f5eff6] shadow-[0_1.25rem_3.75rem_rgb(0_0_0/44%)] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
             {submitError ? (
-              <p role="alert" className="text-sm text-[#d6455b]">
+              <p role="alert" className="text-sm text-[#ff8ea0]">
                 {submitError}
               </p>
             ) : null}
@@ -241,15 +241,15 @@ export default function CreatePage() {
 
           <section
             aria-label="Prompt improvement"
-            className="mb-4 grid gap-3 rounded-[10px] border border-[#e7dfe8] glass p-4"
+            className="mb-4 grid gap-3 rounded-[10px] border border-white/10 glass p-4"
           >
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <strong className="text-sm text-[#2e2833]">
+                <strong className="text-sm text-[#f5eff6]">
                   AI prompt improvement
                 </strong>
-                <p className="mt-1 text-xs text-[#8d8296]">
-                  Local uses your Ollama server
+                <p className="mt-1 text-xs text-[#8d838f]">
+                  Local uses your openweight Ollama model
                   {localModel ? ` (${localModel})` : ""}. API uses the key set
                   in Adapters.
                 </p>
@@ -258,7 +258,7 @@ export default function CreatePage() {
                 <div
                   role="group"
                   aria-label="Improvement provider"
-                  className="flex overflow-hidden rounded-[10px] border border-[#e7dfe8]"
+                  className="flex overflow-hidden rounded-[10px] border border-white/10"
                 >
                   {(["local", "api"] as const).map((p) => (
                     <button
@@ -269,11 +269,11 @@ export default function CreatePage() {
                       className={cn(
                         "min-h-11 px-3 text-xs font-semibold transition-colors",
                         improveProvider === p
-                          ? "bg-[#f3e4f4] text-[#a845b0]"
-                          : "text-[#8d8296] hover:text-[#2e2833]",
+                          ? "bg-[#2c162f] text-[#e77ae6]"
+                          : "text-[#8d838f] hover:text-[#f5eff6]",
                       )}
                     >
-                      {p === "local" ? "Local" : "API key"}
+                      {p === "local" ? "Local openweight" : "API key"}
                     </button>
                   ))}
                 </div>
@@ -281,27 +281,27 @@ export default function CreatePage() {
                   type="button"
                   onClick={() => void improve()}
                   disabled={improving || !prompt.trim()}
-                  className="min-h-11 rounded-[10px] border border-[#d5c8da] bg-[#f3e4f4] px-4 text-sm font-bold text-[#a845b0] transition-colors hover:border-[#a845b0] hover:text-[#2e2833] disabled:border-[#e7dfe8] disabled:bg-white/50 disabled:text-[#a79fad]"
+                  className="min-h-11 rounded-[10px] border border-white/15 bg-[#2c162f] px-4 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
                 >
                   {improving ? "Improving…" : "Improve prompt"}
                 </button>
               </div>
             </div>
             {improveProvider === "api" && !hasApiKey ? (
-              <p className="text-xs text-[#d6455b]">
+              <p className="text-xs text-[#ff8ea0]">
                 No API key saved yet — add one under Adapters → Prompt
                 improvement, or switch to Local.
               </p>
             ) : null}
             {improveError ? (
-              <p role="alert" className="text-sm text-[#d6455b]">
+              <p role="alert" className="text-sm text-[#ff8ea0]">
                 {improveError}
               </p>
             ) : null}
             {improved ? (
-              <div className="grid gap-3 border-t border-[#e7dfe8] pt-3">
-                <p className="text-sm leading-normal text-[#6f6577]">
-                  <strong className="text-[#2e2833]">
+              <div className="grid gap-3 border-t border-white/10 pt-3">
+                <p className="text-sm leading-normal text-[#b8aebb]">
+                  <strong className="text-[#f5eff6]">
                     Improved ({improved.provider} · {improved.model}):
                   </strong>{" "}
                   {improved.prompt}
@@ -314,7 +314,7 @@ export default function CreatePage() {
                       setImproved(null);
                       promptRef.current?.focus();
                     }}
-                    className="min-h-11 rounded-[10px] border border-[#d5c8da] px-4 text-sm font-bold text-[#6f6577] transition-colors hover:border-[#a845b0] hover:text-[#2e2833]"
+                    className="min-h-11 rounded-[10px] border border-white/15 px-4 text-sm font-bold text-[#b8aebb] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6]"
                   >
                     Use improved prompt
                   </button>
@@ -325,35 +325,35 @@ export default function CreatePage() {
 
           <section
             aria-label="Prompt assist"
-            className="mb-2 grid gap-3 rounded-[10px] border border-[#e7dfe8] glass p-4"
+            className="mb-2 grid gap-3 rounded-[10px] border border-white/10 glass p-4"
           >
             <label className="flex min-w-0 cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
                 checked={assist}
                 onChange={(e) => setAssist(e.currentTarget.checked)}
-                className="mt-1 size-4 accent-[#a845b0]"
+                className="mt-1 size-4 accent-[#d565d6]"
               />
               <span className="min-w-0">
-                <strong className="block text-sm text-[#2e2833]">
+                <strong className="block text-sm text-[#f5eff6]">
                   Prompt assist
                 </strong>
-                <small className="mt-1 block text-xs leading-normal text-[#8d8296]">
+                <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
                   Deterministic pass that fills missing composition,
                   environment, light, and structural detail.
                 </small>
               </span>
             </label>
             {assistedPrompt ? (
-              <p className="max-h-32 overflow-y-auto border-t border-[#e7dfe8] pt-3 text-sm leading-normal text-[#6f6577]">
-                <strong className="text-[#2e2833]">Generation prompt:</strong>{" "}
+              <p className="max-h-32 overflow-y-auto border-t border-white/10 pt-3 text-sm leading-normal text-[#b8aebb]">
+                <strong className="text-[#f5eff6]">Generation prompt:</strong>{" "}
                 {assistedPrompt}
               </p>
             ) : null}
           </section>
 
-          <fieldset className="min-w-0 border-y border-[#e7dfe8] py-5">
-            <legend className="text-sm font-medium text-[#6f6577]">
+          <fieldset className="min-w-0 border-y border-white/10 py-5">
+            <legend className="text-sm font-medium text-[#b8aebb]">
               Preset
             </legend>
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 2xl:grid-cols-8">
@@ -366,22 +366,22 @@ export default function CreatePage() {
                   className={cn(
                     "grid min-h-11 min-w-0 place-content-center rounded-[10px] border px-2 py-1 text-center text-sm whitespace-nowrap transition-colors",
                     preset === p.id
-                      ? "border-[#a845b0] bg-[#f3e4f4] text-[#a845b0]"
-                      : "border-[#e7dfe8] glass text-[#6f6577] hover:border-[#d5c8da] hover:bg-white/70 hover:text-[#2e2833]",
+                      ? "border-[#d565d6] bg-[#2c162f] text-[#e77ae6]"
+                      : "border-white/10 glass text-[#b8aebb] hover:border-white/15 hover:bg-white/15 hover:text-[#f5eff6]",
                   )}
                 >
                   {p.label}
                 </button>
               ))}
             </div>
-            <p className="mt-3 text-sm text-[#8d8296]">
+            <p className="mt-3 text-sm text-[#8d838f]">
               Adds to your prompt: {activePreset.suffix}
             </p>
           </fieldset>
 
           <div className="grid min-w-0 gap-5 py-5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.75fr)] md:items-end">
             <fieldset className="min-w-0">
-              <legend className="mb-2 text-sm font-medium text-[#6f6577]">
+              <legend className="mb-2 text-sm font-medium text-[#b8aebb]">
                 Aspect ratio
               </legend>
               <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
@@ -394,12 +394,12 @@ export default function CreatePage() {
                     className={cn(
                       "grid min-h-[4.25rem] min-w-0 place-content-center gap-1 rounded-[10px] border px-2 py-1 text-center transition-colors",
                       ratio === r.id
-                        ? "border-[#a845b0] bg-[#f3e4f4] text-[#a845b0]"
-                        : "border-[#e7dfe8] glass text-[#6f6577] hover:border-[#d5c8da] hover:bg-white/70 hover:text-[#2e2833]",
+                        ? "border-[#d565d6] bg-[#2c162f] text-[#e77ae6]"
+                        : "border-white/10 glass text-[#b8aebb] hover:border-white/15 hover:bg-white/15 hover:text-[#f5eff6]",
                     )}
                   >
                     <strong className="text-sm">{r.label}</strong>
-                    <small className="text-xs text-[#8d8296]">
+                    <small className="text-xs text-[#8d838f]">
                       {r.width} × {r.height}
                     </small>
                   </button>
@@ -423,7 +423,7 @@ export default function CreatePage() {
                   </option>
                 ))}
               </select>
-              <small className="mt-1 block text-xs leading-normal text-[#8d8296]">
+              <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
                 Auto reads framing words like wide angle, full body, macro.
               </small>
             </div>
@@ -447,10 +447,10 @@ export default function CreatePage() {
             </div>
           </div>
 
-          <details className="min-w-0 border-b border-[#e7dfe8]">
-            <summary className="grid min-h-11 cursor-pointer list-none content-center gap-1 py-3 font-medium text-[#2e2833] [&::-webkit-details-marker]:hidden">
+          <details className="min-w-0 border-b border-white/10">
+            <summary className="grid min-h-11 cursor-pointer list-none content-center gap-1 py-3 font-medium text-[#f5eff6] [&::-webkit-details-marker]:hidden">
               <span>Advanced settings</span>
-              <span className="text-xs font-normal text-[#8d8296]">
+              <span className="text-xs font-normal text-[#8d838f]">
                 Flux2 distilled defaults · 4 steps · CFG 1
               </span>
             </summary>
@@ -461,7 +461,7 @@ export default function CreatePage() {
                   value={negativePrompt}
                   onChange={(e) => setNegativePrompt(e.currentTarget.value)}
                   placeholder="Anything to avoid"
-                  className="min-h-20 w-full min-w-0 resize-y rounded-[10px] border border-[#e7dfe8] glass p-3 text-sm text-[#2e2833] placeholder:text-[#8d8296] hover:border-[#d5c8da] focus-visible:outline-2 focus-visible:outline-[#d98ce0]"
+                  className="min-h-20 w-full min-w-0 resize-y rounded-[10px] border border-white/10 glass p-3 text-sm text-[#f5eff6] placeholder:text-[#8d838f] hover:border-white/15 focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
                 />
               </label>
               <label className="min-w-0">
@@ -504,14 +504,14 @@ export default function CreatePage() {
           {job?.status === "failed" && job.error ? (
             <div
               role="alert"
-              className="mt-4 grid gap-3 rounded-[10px] border border-[#d6455b] bg-[#fbe9ec] p-4"
+              className="mt-4 grid gap-3 rounded-[10px] border border-[#ff8ea0] bg-[#35171f] p-4"
             >
               <div className="min-w-0">
-                <p className="mb-1 font-bold text-[#d6455b]">
+                <p className="mb-1 font-bold text-[#ff8ea0]">
                   Generation needs attention
                 </p>
-                <p className="text-sm text-[#2e2833]">{job.error}</p>
-                <p className="mt-1 text-sm text-[#6f6577]">
+                <p className="text-sm text-[#f5eff6]">{job.error}</p>
+                <p className="mt-1 text-sm text-[#b8aebb]">
                   Retry, or open Adapters to verify the controller.
                 </p>
               </div>
@@ -519,13 +519,13 @@ export default function CreatePage() {
                 <button
                   type="button"
                   onClick={() => void generate()}
-                  className="min-h-11 rounded-[10px] border border-[#d5c8da] bg-[#f3e4f4] px-4 text-sm font-bold text-[#a845b0] hover:border-[#a845b0]"
+                  className="min-h-11 rounded-[10px] border border-white/15 bg-[#2c162f] px-4 text-sm font-bold text-[#e77ae6] hover:border-[#d565d6]"
                 >
                   Retry generation
                 </button>
                 <a
                   href="/settings"
-                  className="grid min-h-11 place-items-center rounded-[10px] px-4 text-sm font-bold text-[#6f6577] hover:text-[#2e2833]"
+                  className="grid min-h-11 place-items-center rounded-[10px] px-4 text-sm font-bold text-[#b8aebb] hover:text-[#f5eff6]"
                 >
                   Open Adapters
                 </a>
@@ -534,14 +534,14 @@ export default function CreatePage() {
           ) : null}
 
           <div className="grid items-center gap-3 pt-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,12rem)]">
-            <p className="text-xs text-[#8d8296]">
+            <p className="text-xs text-[#8d838f]">
               Generation runs locally. No prompt or credential leaves your
               controller.
             </p>
             <button
               type="submit"
               disabled={running}
-              className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#a845b0] bg-[#a845b0] px-4 text-sm font-bold text-white transition-colors hover:border-[#c05cc9] hover:bg-[#c05cc9] disabled:border-[#e7dfe8] disabled:bg-white/50 disabled:text-[#a79fad]"
+              className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
             >
               {running ? "Generating" : "Generate"}
             </button>
@@ -550,14 +550,14 @@ export default function CreatePage() {
 
         <aside
           aria-labelledby="job-heading"
-          className="min-w-0 rounded-[14px] border border-[#e7dfe8] glass p-5 xl:col-start-2 xl:row-span-2 xl:sticky xl:top-6"
+          className="min-w-0 rounded-[14px] border border-white/10 glass p-5 xl:col-start-2 xl:row-span-2 xl:sticky xl:top-6"
         >
           <div className="flex min-w-0 items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#a845b0]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
                 Live task
               </p>
-              <h2 id="job-heading" className="mt-1 text-lg text-[#2e2833]">
+              <h2 id="job-heading" className="mt-1 text-lg text-[#f5eff6]">
                 Current job
               </h2>
             </div>
@@ -569,14 +569,14 @@ export default function CreatePage() {
                   ? "bg-[#8d838f]"
                   : job.status === "failed"
                     ? "bg-[#ff8ea0]"
-                    : "bg-[#a845b0] shadow-[0_0_0_4px_#f3e4f4]",
+                    : "bg-[#d565d6] shadow-[0_0_0_4px_#2c162f]",
               )}
             />
           </div>
           <p
             role="status"
             aria-live="polite"
-            className="mt-5 font-bold text-[#2e2833]"
+            className="mt-5 font-bold text-[#f5eff6]"
           >
             {!job
               ? "Ready for a prompt"
@@ -614,18 +614,18 @@ export default function CreatePage() {
                   className={cn(
                     "flex min-w-0 items-center gap-2 text-sm",
                     state === "current"
-                      ? "text-[#a845b0]"
+                      ? "text-[#e77ae6]"
                       : state === "done"
-                        ? "text-[#6f6577]"
-                        : "text-[#8d8296]",
+                        ? "text-[#b8aebb]"
+                        : "text-[#8d838f]",
                   )}
                 >
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "size-2 shrink-0 rounded-full border border-[#d5c8da]",
-                      state === "current" && "border-[#a845b0] bg-[#a845b0]",
-                      state === "done" && "border-[#96369e] bg-[#f3e4f4]",
+                      "size-2 shrink-0 rounded-full border border-white/15",
+                      state === "current" && "border-[#d565d6] bg-[#d565d6]",
+                      state === "done" && "border-[#b94ebc] bg-[#2c162f]",
                     )}
                   />
                   {label}
@@ -633,35 +633,35 @@ export default function CreatePage() {
               );
             })}
           </ol>
-          <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-[#e7dfe8] pt-4">
+          <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
             <div className="min-w-0">
-              <dt className="text-xs text-[#8d8296]">Output</dt>
-              <dd className="mt-1 text-sm text-[#6f6577]">
+              <dt className="text-xs text-[#8d838f]">Output</dt>
+              <dd className="mt-1 text-sm text-[#b8aebb]">
                 {activeRatio.width} × {activeRatio.height}
               </dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-xs text-[#8d8296]">Batch</dt>
-              <dd className="mt-1 text-sm text-[#6f6577]">{count}</dd>
+              <dt className="text-xs text-[#8d838f]">Batch</dt>
+              <dd className="mt-1 text-sm text-[#b8aebb]">{count}</dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-xs text-[#8d8296]">Seed</dt>
-              <dd className="mt-1 truncate text-sm text-[#6f6577]">
+              <dt className="text-xs text-[#8d838f]">Seed</dt>
+              <dd className="mt-1 truncate text-sm text-[#b8aebb]">
                 {seed.trim() || "Random"}
               </dd>
             </div>
           </dl>
           {job?.script ? (
-            <details className="mt-4 border-t border-[#e7dfe8] pt-3">
-              <summary className="min-h-11 cursor-pointer list-none content-center text-sm font-medium text-[#6f6577] [&::-webkit-details-marker]:hidden">
+            <details className="mt-4 border-t border-white/10 pt-3">
+              <summary className="min-h-11 cursor-pointer list-none content-center text-sm font-medium text-[#b8aebb] [&::-webkit-details-marker]:hidden">
                 Reproducibility
               </summary>
-              <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-[10px] bg-white/60 p-3 text-xs text-[#6f6577]">
+              <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-[10px] bg-white/10 p-3 text-xs text-[#b8aebb]">
                 {job.script}
               </pre>
             </details>
           ) : null}
-          <p className="mt-4 text-xs text-[#8d8296]">
+          <p className="mt-4 text-xs text-[#8d838f]">
             Saved to Fieldbench library (.data/outputs)
           </p>
         </aside>
@@ -672,15 +672,15 @@ export default function CreatePage() {
         >
           <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#a845b0]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
                 Generated work
               </p>
-              <h2 id="results-heading" className="mt-1 text-lg text-[#2e2833]">
+              <h2 id="results-heading" className="mt-1 text-lg text-[#f5eff6]">
                 Results
               </h2>
             </div>
             {images.length ? (
-              <span className="rounded-full border border-[#d5c8da] glass px-3 py-1 text-xs text-[#6f6577]">
+              <span className="rounded-full border border-white/15 glass px-3 py-1 text-xs text-[#b8aebb]">
                 {images.length} local
               </span>
             ) : null}
@@ -690,25 +690,25 @@ export default function CreatePage() {
               {images.map((o) => (
                 <li
                   key={o.id}
-                  className="min-w-0 border-b border-[#e7dfe8] pb-4"
+                  className="min-w-0 border-b border-white/10 pb-4"
                 >
                   <figure className="min-w-0">
-                    <div className="relative aspect-square min-w-0 overflow-hidden rounded-[14px] border border-[#e7dfe8] bg-white/50">
+                    <div className="relative aspect-square min-w-0 overflow-hidden rounded-[14px] border border-white/10 bg-white/10">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={o.url}
                         alt={o.label}
                         className="h-full w-full object-cover"
                       />
-                      <span className="absolute right-2 bottom-2 rounded-full border border-[#d5c8da] glass px-2 py-1 text-xs text-[#6f6577]">
+                      <span className="absolute right-2 bottom-2 rounded-full border border-white/15 glass px-2 py-1 text-xs text-[#b8aebb]">
                         Saved locally
                       </span>
                     </div>
                     <figcaption className="min-w-0 py-3">
-                      <p className="font-bold break-words text-[#2e2833]">
+                      <p className="font-bold break-words text-[#f5eff6]">
                         {job.inputs.prompt || job.prompt}
                       </p>
-                      <p className="mt-1 text-sm text-[#8d8296]">
+                      <p className="mt-1 text-sm text-[#8d838f]">
                         {job.presetLabel} · {job.inputs.size || job.aspect}
                       </p>
                     </figcaption>
@@ -718,14 +718,14 @@ export default function CreatePage() {
                       href={o.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="grid min-h-11 flex-1 place-items-center rounded-[10px] px-3 text-sm font-bold text-[#6f6577] transition-colors hover:text-[#2e2833]"
+                      className="grid min-h-11 flex-1 place-items-center rounded-[10px] px-3 text-sm font-bold text-[#b8aebb] transition-colors hover:text-[#f5eff6]"
                     >
                       Open
                     </a>
                     <button
                       type="button"
                       onClick={() => reuseFromJob(job)}
-                      className="min-h-11 flex-1 rounded-[10px] px-3 text-sm font-bold text-[#6f6577] transition-colors hover:text-[#2e2833]"
+                      className="min-h-11 flex-1 rounded-[10px] px-3 text-sm font-bold text-[#b8aebb] transition-colors hover:text-[#f5eff6]"
                     >
                       Reuse settings
                     </button>
@@ -733,7 +733,7 @@ export default function CreatePage() {
                       type="button"
                       disabled={running}
                       onClick={() => varyFromJob(job)}
-                      className="min-h-11 flex-1 rounded-[10px] border border-[#d5c8da] bg-[#f3e4f4] px-3 text-sm font-bold text-[#a845b0] transition-colors hover:border-[#a845b0] disabled:border-[#e7dfe8] disabled:bg-white/50 disabled:text-[#a79fad]"
+                      className="min-h-11 flex-1 rounded-[10px] border border-white/15 bg-[#2c162f] px-3 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
                     >
                       Vary
                     </button>
@@ -742,9 +742,9 @@ export default function CreatePage() {
               ))}
             </ul>
           ) : (
-            <div className="mt-4 border-y border-[#e7dfe8] px-4 py-8 text-center text-[#6f6577]">
+            <div className="mt-4 border-y border-white/10 px-4 py-8 text-center text-[#b8aebb]">
               <p>Your generated images will settle here.</p>
-              <span className="mt-1 block text-sm text-[#8d8296]">
+              <span className="mt-1 block text-sm text-[#8d838f]">
                 They are downloaded locally with reproducibility metadata.
               </span>
             </div>

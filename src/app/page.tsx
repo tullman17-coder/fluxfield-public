@@ -11,16 +11,16 @@ export default function HomePage() {
           className="pointer-events-none absolute -top-32 right-[-5rem] h-72 w-72 rounded-full opacity-60 blur-3xl"
           style={{
             background:
-              "conic-gradient(from 40deg, #f9dce8, #e8ddf7, #ddf0ea, #dbe7f7, #f9dce8)",
+              "conic-gradient(from 40deg, rgb(138 73 190 / 45%), rgb(205 64 154 / 35%), rgb(88 56 160 / 40%), rgb(138 73 190 / 45%))",
           }}
         />
-        <p className="relative text-[11px] font-bold uppercase tracking-[0.12em] text-[#a845b0]">
+        <p className="relative text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
           GPT Image-2 workflows
         </p>
-        <h1 className="relative mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[#2e2833] md:text-6xl">
+        <h1 className="relative mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[#f5eff6] md:text-6xl">
           Fieldbench
         </h1>
-        <p className="relative mt-4 max-w-2xl text-base text-pretty text-[#6f6577] md:text-lg">
+        <p className="relative mt-4 max-w-2xl text-base text-pretty text-[#b8aebb] md:text-lg">
           Marketing wrappers as little web-app containers — streetwear drops,
           editorial catalog pages, event posters, shop banners, try-on UIs —
           routed to your offline model box over Netbird.
@@ -28,19 +28,19 @@ export default function HomePage() {
         <div className="relative mt-6 flex min-w-0 flex-wrap gap-3">
           <Link
             href="/supercomputer"
-            className="grid min-h-11 place-items-center rounded-[10px] border border-[#a845b0] bg-[#a845b0] px-5 text-sm font-bold text-white transition-colors hover:border-[#c05cc9] hover:bg-[#c05cc9]"
+            className="grid min-h-11 place-items-center rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-5 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6]"
           >
             Run superComputer
           </Link>
           <Link
             href="/create"
-            className="grid min-h-11 place-items-center rounded-[10px] border border-[#d5c8da] bg-[#f3e4f4] px-5 text-sm font-bold text-[#a845b0] transition-colors hover:border-[#a845b0]"
+            className="grid min-h-11 place-items-center rounded-[10px] border border-white/15 bg-[#2c162f] px-5 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6]"
           >
             Open Create workbench
           </Link>
           <Link
             href="/settings"
-            className="grid min-h-11 place-items-center rounded-[10px] px-5 text-sm font-bold text-[#6f6577] transition-colors hover:text-[#2e2833]"
+            className="grid min-h-11 place-items-center rounded-[10px] px-5 text-sm font-bold text-[#b8aebb] transition-colors hover:text-[#f5eff6]"
           >
             Connect adapters
           </Link>
@@ -50,10 +50,10 @@ export default function HomePage() {
       <section className="min-w-0">
         <div className="mb-4 flex min-w-0 flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-2xl font-semibold text-balance text-[#2e2833]">
+            <h2 className="text-2xl font-semibold text-balance text-[#f5eff6]">
               Wrapper gallery
             </h2>
-            <p className="text-sm text-[#8d8296]">
+            <p className="text-sm text-[#8d838f]">
               Each tile is a composed mini-app — layout chrome + generation +
               copy.
             </p>
@@ -93,28 +93,28 @@ export default function HomePage() {
                     >
                       {w.category}
                     </span>
-                    <span className="rounded-full bg-white/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#6f6577] backdrop-blur-sm">
+                    <span className="rounded-full bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/60 backdrop-blur-sm">
                       Image-2
                     </span>
                   </div>
-                  <div className="min-w-0 rounded-[12px] bg-white/60 p-4 backdrop-blur-md">
+                  <div className="min-w-0 rounded-[12px] bg-[#100e14]/55 p-4 backdrop-blur-md">
                     <div
                       className="text-3xl font-bold leading-none"
                       style={{ color: w.accent }}
                     >
                       {w.brandSample}
                     </div>
-                    <div className="mt-3 text-lg font-medium text-[#2e2833]">
+                    <div className="mt-3 text-lg font-medium text-[#f5eff6]">
                       {w.name}
                     </div>
-                    <p className="mt-1 text-sm text-pretty text-[#6f6577]">
+                    <p className="mt-1 text-sm text-pretty text-[#b8aebb]">
                       {w.tagline}
                     </p>
                     <div className="mt-4 flex min-w-0 flex-wrap gap-2">
                       {w.copyHints.slice(0, 3).map((hint) => (
                         <span
                           key={hint}
-                          className="rounded-full border border-[#e7dfe8] bg-white/50 px-2 py-0.5 text-[11px] text-[#6f6577]"
+                          className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] text-white/75"
                         >
                           {hint}
                         </span>

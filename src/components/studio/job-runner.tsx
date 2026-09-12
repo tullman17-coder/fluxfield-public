@@ -88,7 +88,7 @@ export function JobRunner({
     <div className="grid gap-8 lg:grid-cols-[minmax(280px,360px)_1fr]">
       <form onSubmit={onSubmit} className="space-y-5">
         <div>
-          <Label className="mb-2 block text-xs uppercase tracking-wider text-[#8d8296]">
+          <Label className="mb-2 block text-xs uppercase tracking-wider text-[#8d838f]">
             Preset
           </Label>
           <div className="grid gap-2">
@@ -106,7 +106,7 @@ export function JobRunner({
               >
                 <div className="text-sm font-medium">{p.label}</div>
                 {p.description ? (
-                  <div className="text-xs text-[#8d8296]">{p.description}</div>
+                  <div className="text-xs text-[#8d838f]">{p.description}</div>
                 ) : null}
               </button>
             ))}
@@ -127,12 +127,12 @@ export function JobRunner({
                   onChange={(e) =>
                     setValues((v) => ({ ...v, [field.id]: e.target.value }))
                   }
-                  className="min-h-24 border-[#e7dfe8] bg-white/55"
+                  className="min-h-24 border-white/10 bg-white/10"
                 />
               ) : field.type === "select" ? (
                 <select
                   id={field.id}
-                  className="flex h-10 w-full rounded-lg border border-[#e7dfe8] bg-white/5 px-3 text-sm"
+                  className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm"
                   value={values[field.id] || field.options?.[0]?.value || ""}
                   onChange={(e) =>
                     setValues((v) => ({ ...v, [field.id]: e.target.value }))
@@ -153,11 +153,11 @@ export function JobRunner({
                   onChange={(e) =>
                     setValues((v) => ({ ...v, [field.id]: e.target.value }))
                   }
-                  className="border-[#e7dfe8] bg-white/55"
+                  className="border-white/10 bg-white/10"
                 />
               )}
               {field.help ? (
-                <p className="text-xs text-[#8d8296]">{field.help}</p>
+                <p className="text-xs text-[#8d838f]">{field.help}</p>
               ) : null}
             </div>
           ))}
@@ -167,7 +167,7 @@ export function JobRunner({
             <Label htmlFor="dreamStyle">Dream style</Label>
             <select
               id="dreamStyle"
-              className="flex h-10 w-full rounded-lg border border-[#e7dfe8] bg-white/5 px-3 text-sm"
+              className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm"
               value={values.dreamStyle || "photo"}
               onChange={(e) =>
                 setValues((v) => ({ ...v, dreamStyle: e.target.value }))
@@ -179,7 +179,7 @@ export function JobRunner({
                 </option>
               ))}
             </select>
-            <p className="text-xs text-[#8d8296]">
+            <p className="text-xs text-[#8d838f]">
               Prompt suffix from Local Dream Studio
             </p>
           </div>
@@ -187,7 +187,7 @@ export function JobRunner({
             <Label htmlFor="framing">Framing</Label>
             <select
               id="framing"
-              className="flex h-10 w-full rounded-lg border border-[#e7dfe8] bg-white/5 px-3 text-sm"
+              className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm"
               value={values.framing || "auto"}
               onChange={(e) =>
                 setValues((v) => ({ ...v, framing: e.target.value }))
@@ -209,7 +209,7 @@ export function JobRunner({
               id="ref"
               type="file"
               accept="image/*"
-              className="border-[#e7dfe8] bg-white/55"
+              className="border-white/10 bg-white/10"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
             />
           </div>
@@ -229,14 +229,14 @@ export function JobRunner({
 
       <div className="space-y-4">
         {!job ? (
-          <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-[#e7dfe8] text-sm text-[#8d8296]">
+          <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-[#8d838f]">
             Outputs land here after you generate.
           </div>
         ) : (
           <>
-            <div className="rounded-2xl border border-[#e7dfe8] glass p-4">
+            <div className="rounded-2xl border border-white/10 glass p-4">
               <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-[#6f6577]">
+                <span className="text-[#b8aebb]">
                   {job.workflowName} · {job.presetLabel}
                 </span>
                 <span style={{ color: accent }}>
@@ -247,7 +247,7 @@ export function JobRunner({
                 <p className="mt-2 text-sm text-red-400">{job.error}</p>
               ) : null}
               {job.script ? (
-                <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-white/60 p-3 text-xs text-[#6f6577]">
+                <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-white/10 p-3 text-xs text-[#b8aebb]">
                   {job.script}
                 </pre>
               ) : null}
@@ -261,7 +261,7 @@ export function JobRunner({
                     href={o.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="overflow-hidden rounded-2xl border border-[#e7dfe8] bg-white/60"
+                    className="overflow-hidden rounded-2xl border border-white/10 bg-white/10"
                   >
                     {o.kind === "video" ? (
                       <video src={o.url} controls className="w-full" />
@@ -285,7 +285,7 @@ export function JobRunner({
                 .map((o) => (
                   <pre
                     key={o.id}
-                    className="rounded-2xl border border-[#e7dfe8] bg-white/60 p-4 text-xs text-[#6f6577] whitespace-pre-wrap sm:col-span-2"
+                    className="rounded-2xl border border-white/10 bg-white/10 p-4 text-xs text-[#b8aebb] whitespace-pre-wrap sm:col-span-2"
                   >
                     {o.label}
                     {"\n"}

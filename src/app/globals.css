@@ -49,57 +49,55 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Milky swirled glass theme — requested look: creamy milk base, iridescent
-   swirl blobs, frosted glass surfaces. */
+/* Dark purple canvas + milky glass surfaces.
+   Midnight base, milk-frosted translucency on top. */
 :root,
 .dark {
-  color-scheme: light;
-  --background: #f7f4ef;
-  --foreground: #2e2833;
-  --card: #fdfbf8;
-  --card-foreground: #2e2833;
-  --popover: #fdfbf8;
-  --popover-foreground: #2e2833;
-  --primary: #a845b0;
-  --primary-foreground: #ffffff;
-  --secondary: #f3e4f4;
-  --secondary-foreground: #2e2833;
-  --muted: #f6f1ee;
-  --muted-foreground: #6f6577;
-  --accent: #f3e4f4;
-  --accent-foreground: #a845b0;
-  --destructive: #d6455b;
-  --border: #e7dfe8;
-  --input: #d5c8da;
-  --ring: #d98ce0;
-  --chart-1: #a845b0;
-  --chart-2: #8d8296;
-  --chart-3: #d5c8da;
-  --chart-4: #e7dfe8;
-  --chart-5: #f6f1ee;
+  color-scheme: dark;
+  --background: #0b0910;
+  --foreground: #f5eff6;
+  --card: #14101a;
+  --card-foreground: #f5eff6;
+  --popover: #17131f;
+  --popover-foreground: #f5eff6;
+  --primary: #d565d6;
+  --primary-foreground: #170b18;
+  --secondary: #1c1622;
+  --secondary-foreground: #f5eff6;
+  --muted: #1c1622;
+  --muted-foreground: #b8aebb;
+  --accent: #2c162f;
+  --accent-foreground: #e77ae6;
+  --destructive: #ff8ea0;
+  --border: rgb(245 239 246 / 12%);
+  --input: rgb(245 239 246 / 16%);
+  --ring: #f2a1ed;
+  --chart-1: #d565d6;
+  --chart-2: #8d838f;
+  --chart-3: #504156;
+  --chart-4: #332a38;
+  --chart-5: #211a25;
   --radius: 0.625rem;
-  --sidebar: #fdfbf8;
-  --sidebar-foreground: #2e2833;
-  --sidebar-primary: #a845b0;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f3e4f4;
-  --sidebar-accent-foreground: #a845b0;
-  --sidebar-border: #e7dfe8;
-  --sidebar-ring: #d98ce0;
+  --sidebar: #100d16;
+  --sidebar-foreground: #f5eff6;
+  --sidebar-primary: #d565d6;
+  --sidebar-primary-foreground: #170b18;
+  --sidebar-accent: #2c162f;
+  --sidebar-accent-foreground: #e77ae6;
+  --sidebar-border: rgb(245 239 246 / 12%);
+  --sidebar-ring: #f2a1ed;
 
-  /* Milk palette */
-  --milk: #f7f4ef;
-  --milk-card: #fdfbf8;
-  --milk-ink: #2e2833;
-  --milk-muted: #6f6577;
-  --milk-subtle: #8d8296;
-  --milk-border: #e7dfe8;
-  --milk-border-strong: #d5c8da;
-  --milk-accent: #a845b0;
-  --milk-accent-hover: #c05cc9;
-  --milk-accent-soft: #f3e4f4;
-  --milk-error: #d6455b;
-  --milk-error-soft: #fbe9ec;
+  /* Milk-on-purple palette */
+  --milk: #f5eff6;
+  --milk-muted: #b8aebb;
+  --milk-subtle: #8d838f;
+  --milk-disabled: #6e6570;
+  --milk-accent: #d565d6;
+  --milk-accent-hover: #e77ae6;
+  --milk-accent-soft: #2c162f;
+  --milk-on-accent: #170b18;
+  --milk-error: #ff8ea0;
+  --milk-error-soft: #35171f;
 }
 
 @layer base {
@@ -128,31 +126,31 @@
 
   ::selection {
     background: var(--milk-accent-soft);
-    color: var(--milk-accent);
+    color: var(--milk-accent-hover);
   }
 
-  /* Frosted glass surface — static blur, never animated */
+  /* Milky glass on dark purple — static blur, never animated */
   .glass {
-    background: rgb(255 255 255 / 55%);
-    backdrop-filter: blur(16px) saturate(1.5);
-    -webkit-backdrop-filter: blur(16px) saturate(1.5);
-    border: 1px solid rgb(255 255 255 / 70%);
+    background: rgb(245 239 246 / 7%);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid rgb(245 239 246 / 12%);
     box-shadow:
-      0 8px 32px rgb(90 70 110 / 10%),
-      inset 0 1px 0 rgb(255 255 255 / 85%);
+      0 8px 32px rgb(0 0 0 / 30%),
+      inset 0 1px 0 rgb(245 239 246 / 10%);
   }
 
   .glass-strong {
-    background: rgb(255 255 255 / 72%);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    border: 1px solid rgb(255 255 255 / 80%);
+    background: rgb(245 239 246 / 10%);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid rgb(245 239 246 / 16%);
     box-shadow:
-      0 12px 40px rgb(90 70 110 / 12%),
-      inset 0 1px 0 rgb(255 255 255 / 90%);
+      0 12px 40px rgb(0 0 0 / 36%),
+      inset 0 1px 0 rgb(245 239 246 / 14%);
   }
 
-  /* Iridescent swirl blobs — transform-only motion, reduced-motion safe */
+  /* Violet mist swirls — transform-only motion, reduced-motion safe */
   .swirl-layer {
     position: fixed;
     inset: 0;
@@ -164,8 +162,7 @@
   .swirl-blob {
     position: absolute;
     border-radius: 999px;
-    filter: blur(64px);
-    opacity: 0.55;
+    filter: blur(72px);
     animation: swirl-spin 46s linear infinite;
   }
 
@@ -174,13 +171,13 @@
     left: -8rem;
     width: 34rem;
     height: 34rem;
+    opacity: 0.5;
     background: conic-gradient(
       from 0deg,
-      #f9dce8,
-      #e8ddf7,
-      #ddf0ea,
-      #dbe7f7,
-      #f9dce8
+      rgb(138 73 190 / 30%),
+      rgb(205 64 154 / 22%),
+      rgb(88 56 160 / 26%),
+      rgb(138 73 190 / 30%)
     );
   }
 
@@ -189,13 +186,13 @@
     bottom: -14rem;
     width: 38rem;
     height: 38rem;
+    opacity: 0.42;
     background: conic-gradient(
       from 180deg,
-      #f3e4f4,
-      #ddeef7,
-      #fdf3e3,
-      #e5f3e8,
-      #f3e4f4
+      rgb(205 64 154 / 24%),
+      rgb(110 60 190 / 20%),
+      rgb(64 40 110 / 22%),
+      rgb(205 64 154 / 24%)
     );
     animation-duration: 62s;
     animation-direction: reverse;
@@ -206,14 +203,13 @@
     left: 46%;
     width: 26rem;
     height: 26rem;
+    opacity: 0.3;
     background: conic-gradient(
       from 90deg,
-      #fdeef3,
-      #e9e2f8,
-      #e2f2ec,
-      #fdeef3
+      rgb(168 69 176 / 20%),
+      rgb(90 60 150 / 18%),
+      rgb(168 69 176 / 20%)
     );
-    opacity: 0.45;
     animation-duration: 78s;
   }
 

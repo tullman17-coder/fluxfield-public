@@ -19,16 +19,19 @@ type Health = {
 export default function SettingsPage() {
   const [settings, setSettings] = useState<StudioSettings | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   async function refresh() {
-    const [s, h] = await Promise.all([
+    const [s, h, m] = await Promise.all([
       fetch("/api/settings").then((r) => r.json()),
       fetch("/api/health").then((r) => r.json()),
+      fetch("/api/ollama-models").then((r) => r.json()).catch(() => null),
     ]);
     setSettings(s.settings);
     setHealth(h.health);
+    setOllamaModels(m?.models || []);
   }
 
   useEffect(() => {
@@ -55,19 +58,19 @@ export default function SettingsPage() {
   }
 
   if (!settings) {
-    return <p className="text-[#8d8296]">Loading adapters…</p>;
+    return <p className="text-[#8d838f]">Loading adapters…</p>;
   }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <p className="text-xs uppercase tracking-[0.25em] text-[#a845b0]">
+        <p className="text-xs uppercase tracking-[0.25em] text-[#e77ae6]">
           Self-host adapters
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-4xl">
           Point Fieldbench at your model machine
         </h1>
-        <p className="mt-2 text-[#6f6577]">
+        <p className="mt-2 text-[#b8aebb]">
           Wrappers and Explainer stay on this app. Heavy generation can live on
           another mesh peer — Local Studio controller, ComfyUI, Ollama,
           Piper/OpenAI-TTS, FFmpeg.
@@ -89,9 +92,9 @@ export default function SettingsPage() {
           detail={settings.ffmpegEnabled ? "enabled" : "disabled"}
         />
       </div>
-      <p className="text-sm text-[#8d8296]">
+      <p className="text-sm text-[#8d838f]">
         Effective mode:{" "}
-        <span className="text-[#a845b0]">{health?.effectiveMode || "…"}</span>
+        <span className="text-[#e77ae6]">{health?.effectiveMode || "…"}</span>
       </p>
       {health?.netbirdHint ? (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
@@ -99,10 +102,10 @@ export default function SettingsPage() {
         </p>
       ) : null}
 
-      <div className="space-y-5 rounded-2xl border border-[#e7dfe8] glass p-5">
+      <div className="space-y-5 rounded-2xl border border-white/10 glass p-5">
         <Field label="Generation mode">
           <select
-            className="flex h-10 w-full rounded-lg border border-[#e7dfe8] bg-white/60 px-3 text-sm"
+            className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3 text-sm"
             value={settings.generationMode}
             onChange={(e) =>
               setSettings({
@@ -126,7 +129,7 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, studioUrl: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
           />
         </Field>
         <Field
@@ -139,7 +142,7 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, studioApiKey: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
             autoComplete="off"
           />
         </Field>
@@ -149,7 +152,7 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, comfyUrl: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
           />
         </Field>
         <Field label="Comfy checkpoint (optional)">
@@ -159,7 +162,7 @@ export default function SettingsPage() {
               setSettings({ ...settings, comfyCheckpoint: e.target.value })
             }
             placeholder="flux1-dev.safetensors"
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
           />
         </Field>
         <Field label="Ollama URL">
@@ -168,17 +171,32 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, ollamaUrl: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
           />
         </Field>
-        <Field label="Ollama model">
+        <Field
+          label="Ollama model"
+          hint="Your openweight / uncensored model — pick from what is pulled, or type any tag"
+        >
           <Input
             value={settings.ollamaModel}
             onChange={(e) =>
               setSettings({ ...settings, ollamaModel: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
+            list="ollama-models"
+            placeholder="llama3.2"
           />
+          <datalist id="ollama-models">
+            {ollamaModels.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+          {ollamaModels.length ? (
+            <p className="text-xs text-[#8d838f]">
+              {ollamaModels.length} local model{ollamaModels.length === 1 ? "" : "s"} detected
+            </p>
+          ) : null}
         </Field>
         <Field label="TTS URL" hint="Piper HTTP or OpenAI-compatible speech">
           <Input
@@ -186,7 +204,7 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, ttsUrl: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
           />
         </Field>
         <Field label="TTS voice">
@@ -195,13 +213,13 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, ttsVoice: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
           />
         </Field>
-        <label className="flex items-center justify-between rounded-xl border border-[#e7dfe8] px-3 py-3 text-sm">
+        <label className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-3 text-sm">
           <span>
             FFmpeg assemble
-            <span className="mt-1 block text-xs text-[#8d8296]">
+            <span className="mt-1 block text-xs text-[#8d838f]">
               Stitch explainer beats + VO when ffmpeg is on PATH
             </span>
           </span>
@@ -211,23 +229,23 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, ffmpegEnabled: e.target.checked })
             }
-            className="size-4 accent-[#a845b0]"
+            className="size-4 accent-[#d565d6]"
           />
         </label>
         <Button
           onClick={save}
           disabled={saving}
-          className="bg-[#a845b0] font-semibold text-black hover:bg-[#c05cc9]"
+          className="bg-[#d565d6] font-semibold text-black hover:bg-[#e77ae6]"
         >
           {saving ? "Saving…" : "Save adapters"}
         </Button>
-        {message ? <p className="text-sm text-[#6f6577]">{message}</p> : null}
+        {message ? <p className="text-sm text-[#b8aebb]">{message}</p> : null}
       </div>
 
-      <div className="space-y-5 rounded-2xl border border-[#e7dfe8] glass p-5">
+      <div className="space-y-5 rounded-2xl border border-white/10 glass p-5">
         <div>
-          <h2 className="text-[#2e2833]">Prompt improvement</h2>
-          <p className="mt-1 text-sm text-[#6f6577]">
+          <h2 className="text-[#f5eff6]">Prompt improvement</h2>
+          <p className="mt-1 text-sm text-[#b8aebb]">
             Powers the <strong>Improve prompt</strong> button on the Create
             workbench. Pick Local to use the Ollama server above — or API key
             to use any OpenAI-compatible chat endpoint.
@@ -235,7 +253,7 @@ export default function SettingsPage() {
         </div>
         <Field label="Improvement provider">
           <select
-            className="flex h-10 w-full rounded-lg border border-[#e7dfe8] bg-white/60 px-3 text-sm"
+            className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3 text-sm"
             value={settings.improveProvider}
             onChange={(e) =>
               setSettings({
@@ -244,7 +262,7 @@ export default function SettingsPage() {
               })
             }
           >
-            <option value="local">Local (Ollama on this mesh)</option>
+            <option value="local">Local openweight model (Ollama)</option>
             <option value="api">API key (OpenAI-compatible)</option>
           </select>
         </Field>
@@ -257,7 +275,7 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, improveApiBase: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
           />
         </Field>
         <Field label="API key" hint="Only used when provider is API key">
@@ -267,7 +285,7 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, improveApiKey: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
             autoComplete="off"
           />
         </Field>
@@ -277,18 +295,18 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, improveApiModel: e.target.value })
             }
-            className="border-[#e7dfe8] bg-white/60"
+            className="border-white/10 bg-white/10"
           />
         </Field>
       </div>
 
-      <div className="rounded-2xl border border-[#e7dfe8] p-5 text-sm text-[#6f6577]">
-        <h2 className="mb-2 text-[#2e2833]">Recommended self-host stack</h2>
+      <div className="rounded-2xl border border-white/10 p-5 text-sm text-[#b8aebb]">
+        <h2 className="mb-2 text-[#f5eff6]">Recommended self-host stack</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>
             <strong className="text-zinc-200">Local Studio controller</strong>{" "}
             — Image generations via{" "}
-            <code className="text-[#a845b0]">/v1/images/generations</code>{" "}
+            <code className="text-[#e77ae6]">/v1/images/generations</code>{" "}
             (same contract as Local Dream Studio)
           </li>
           <li>
@@ -311,10 +329,10 @@ export default function SettingsPage() {
         <p className="mt-3">
           Mesh: use <strong className="text-zinc-200">Netbird</strong> peer DNS
           or current peer IP. Dream Studio&apos;s old Tailscale{" "}
-          <code className="text-[#a845b0]">100.x</code> defaults are not assumed.
+          <code className="text-[#e77ae6]">100.x</code> defaults are not assumed.
         </p>
         <p className="mt-3">
-          See <code className="text-[#a845b0]">docker-compose.yml</code>. Mock
+          See <code className="text-[#e77ae6]">docker-compose.yml</code>. Mock
           mode always works without a GPU.
         </p>
       </div>
@@ -335,7 +353,7 @@ function Field({
     <div className="space-y-2">
       <Label>{label}</Label>
       {children}
-      {hint ? <p className="text-xs text-[#8d8296]">{hint}</p> : null}
+      {hint ? <p className="text-xs text-[#8d838f]">{hint}</p> : null}
     </div>
   );
 }
@@ -350,14 +368,14 @@ function HealthCard({
   detail: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#e7dfe8] glass p-4">
+    <div className="rounded-2xl border border-white/10 glass p-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-[#2e2833]">{label}</span>
-        <span className={ok ? "text-emerald-400" : "text-[#8d8296]"}>
+        <span className="text-sm text-[#f5eff6]">{label}</span>
+        <span className={ok ? "text-emerald-400" : "text-[#8d838f]"}>
           {ok ? "up" : "down"}
         </span>
       </div>
-      <p className="mt-2 truncate text-xs text-[#8d8296]">{detail}</p>
+      <p className="mt-2 truncate text-xs text-[#8d838f]">{detail}</p>
     </div>
   );
 }
