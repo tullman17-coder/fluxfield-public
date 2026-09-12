@@ -8,6 +8,7 @@ import {
   dreamRatio,
   enhancePrompt,
 } from "@/lib/dream/presets";
+import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +45,7 @@ export default function CreatePage() {
   const [improved, setImproved] = useState<ImproveResult | null>(null);
   const [improveError, setImproveError] = useState<string | null>(null);
 
-  const [job, setJob] = useState<StudioJob | null>(null);
+  const { job, setJob } = useJobWatch("dream");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
@@ -62,17 +63,6 @@ export default function CreatePage() {
       })
       .catch(() => undefined);
   }, []);
-
-  useEffect(() => {
-    if (!job || job.status === "completed" || job.status === "failed") return;
-    const id = setInterval(async () => {
-      const res = await fetch(`/api/jobs/${job.id}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { job: StudioJob };
-      setJob(data.job);
-    }, 1200);
-    return () => clearInterval(id);
-  }, [job]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const presets = dreamPresets(unrestricted);
@@ -141,7 +131,7 @@ export default function CreatePage() {
         setSubmitError(err instanceof Error ? err.message : "Failed");
       }
     },
-    [prompt, negativePrompt, preset, ratio, framing, count, seed, steps, cfg, assist],
+    [prompt, negativePrompt, preset, ratio, framing, count, seed, steps, cfg, assist, setJob],
   );
 
   const reuseFromJob = useCallback((j: StudioJob) => {
@@ -187,7 +177,7 @@ export default function CreatePage() {
         })();
       }, 0);
     },
-    [reuseFromJob],
+    [reuseFromJob, setJob],
   );
 
   const images = job?.outputs.filter((o) => o.kind === "image" && o.url) ?? [];

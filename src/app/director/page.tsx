@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { LOOKS, RUNTIMES } from "@/lib/director/plan";
 import { GENRES, MOODS } from "@/lib/music/theory";
+import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
 import { cn } from "@/lib/utils";
 
@@ -47,20 +48,9 @@ export default function DirectorPage() {
   const [aspect, setAspect] = useState("16:9");
   const [genre, setGenre] = useState("synthwave");
   const [mood, setMood] = useState("neutral");
-  const [job, setJob] = useState<StudioJob | null>(null);
+  const { job, setJob } = useJobWatch("director", 1500);
   const [error, setError] = useState<string | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!job || job.status === "completed" || job.status === "failed") return;
-    const id = setInterval(async () => {
-      const res = await fetch(`/api/jobs/${job.id}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { job: StudioJob };
-      setJob(data.job);
-    }, 1500);
-    return () => clearInterval(id);
-  }, [job]);
 
   const start = useCallback(async () => {
     if (!brief.trim()) {
@@ -95,7 +85,7 @@ export default function DirectorPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the plan");
     }
-  }, [brief, mode, runtime, look, pacing, aspect, genre, mood]);
+  }, [brief, mode, runtime, look, pacing, aspect, genre, mood, setJob]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const shotList = job?.outputs.find((o) => o.kind === "storyboard");

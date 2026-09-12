@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { GENRES, MOODS, NOTE_NAMES } from "@/lib/music/theory";
+import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
 import { cn } from "@/lib/utils";
 
@@ -33,20 +34,9 @@ export default function MusicPage() {
   const [bpm, setBpm] = useState("");
   const [lyricMode, setLyricMode] = useState("write");
   const [lyrics, setLyrics] = useState("");
-  const [job, setJob] = useState<StudioJob | null>(null);
+  const { job, setJob } = useJobWatch("music");
   const [error, setError] = useState<string | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!job || job.status === "completed" || job.status === "failed") return;
-    const id = setInterval(async () => {
-      const res = await fetch(`/api/jobs/${job.id}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { job: StudioJob };
-      setJob(data.job);
-    }, 1200);
-    return () => clearInterval(id);
-  }, [job]);
 
   const compose = useCallback(async () => {
     if (!brief.trim()) {
@@ -82,7 +72,7 @@ export default function MusicPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the track");
     }
-  }, [brief, trackName, genre, mood, seconds, key, bpm, lyricMode, lyrics]);
+  }, [brief, trackName, genre, mood, seconds, key, bpm, lyricMode, lyrics, setJob]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const track = job?.outputs.find((o) => o.kind === "audio");

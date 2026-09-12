@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import type { StudioJob } from "@/lib/adapters/types";
 import type { JobTool } from "@/lib/adapters/types";
+import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import { DREAM_PRESETS, FRAMINGS } from "@/lib/dream/presets";
 
 type Field = {
@@ -51,23 +51,12 @@ export function JobRunner({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [job, setJob] = useState<StudioJob | null>(null);
+  const { job, setJob } = useJobWatch(`${tool}:${workflowSlug}`);
 
   const fileField = useMemo(
     () => fields.find((f) => f.type === "file"),
     [fields],
   );
-
-  useEffect(() => {
-    if (!job || job.status === "completed" || job.status === "failed") return;
-    const id = setInterval(async () => {
-      const res = await fetch(`/api/jobs/${job.id}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { job: StudioJob };
-      setJob(data.job);
-    }, 1200);
-    return () => clearInterval(id);
-  }, [job]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
