@@ -89,11 +89,19 @@ export async function runLocalStudioAdapter(
     );
   }
 
-  const body = (await res.json()) as {
+  const text = await res.text();
+  let body: {
     created?: number;
     prompt_id?: string;
     data?: { url: string; revised_prompt?: string }[];
   };
+  try {
+    body = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Local Studio sent back something unreadable: ${text.slice(0, 160)}`,
+    );
+  }
 
   if (!Array.isArray(body.data) || body.data.length === 0) {
     throw new Error("Local Studio returned no image data");

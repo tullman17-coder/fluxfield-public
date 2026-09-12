@@ -35,15 +35,15 @@ async function improveWithOllama(
     });
   } catch {
     throw new Error(
-      `Ollama not reachable at ${baseUrl}. Start it on your model machine, or switch the provider to API key.`,
+      `Could not reach Ollama at ${baseUrl}. Start it on that machine, or switch to Cloud.`,
     );
   }
   if (!res.ok) {
-    throw new Error(`Ollama answered ${res.status} at ${baseUrl}`);
+    throw new Error(`Ollama answered ${res.status} at ${baseUrl}.`);
   }
   const data = (await res.json()) as { response?: string };
   const improved = cleanImproved(data.response || "");
-  if (!improved) throw new Error("Ollama returned an empty improvement");
+  if (!improved) throw new Error("Ollama sent back nothing to use.");
   return improved;
 }
 
@@ -73,14 +73,14 @@ async function improveWithApi(
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(
-      `Improvement API answered ${res.status}: ${body.slice(0, 160)}`,
+      `The cloud model answered ${res.status}: ${body.slice(0, 160)}`,
     );
   }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
   };
   const improved = cleanImproved(data.choices?.[0]?.message?.content || "");
-  if (!improved) throw new Error("Improvement API returned an empty message");
+  if (!improved) throw new Error("The cloud model sent back nothing to use.");
   return improved;
 }
 
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
   const prompt = body.prompt?.trim();
   if (!prompt) {
     return NextResponse.json(
-      { error: "Describe the image first, then ask for an improvement." },
+      { error: "Describe the image first, then ask for a rewrite." },
       { status: 400 },
     );
   }
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
-              "No API key set. Add one under Adapters → Prompt improvement, or pick Local.",
+              "No cloud key saved yet. Add one in Settings, or switch to My model.",
           },
           { status: 400 },
         );

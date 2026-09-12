@@ -272,12 +272,40 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       packCount = Number(current.inputs.beats || 6);
     }
 
-    let result =
-      modeUsed === "local-studio"
-        ? await runLocalStudioAdapter(ctx, packCount)
-        : modeUsed === "comfyui"
-          ? await runComfyAdapter(ctx)
-          : await runMockAdapter(ctx, packCount);
+    // A health probe only says a machine answered, not that it can finish the
+    // job. In auto mode keep walking down the chain when one actually fails.
+    const chain: ModeUsed[] =
+      settings.generationMode === "auto"
+        ? (["local-studio", "comfyui", "mock"] as const).filter(
+            (m) =>
+              m === "mock" ||
+              (m === "local-studio" && studioUp) ||
+              (m === "comfyui" && comfyUp),
+          )
+        : [modeUsed];
+
+    const runWith = (mode: ModeUsed) =>
+      mode === "local-studio"
+        ? runLocalStudioAdapter(ctx, packCount)
+        : mode === "comfyui"
+          ? runComfyAdapter(ctx)
+          : runMockAdapter(ctx, packCount);
+
+    let result: Awaited<ReturnType<typeof runWith>> | undefined;
+    let lastError: unknown;
+    for (const mode of chain) {
+      try {
+        result = await runWith(mode);
+        if (mode !== modeUsed) {
+          modeUsed = mode;
+          await updateJob(jobId, { modeUsed });
+        }
+        break;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    if (!result) throw lastError ?? new Error("Could not make the art");
 
     // Image-2: if remote adapter produced raw frames, wrap them in marketing chrome via SVG compositor
     if (
