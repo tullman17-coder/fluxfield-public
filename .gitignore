@@ -47,3 +47,6 @@ next-env.d.ts
 .data/
 !.data/uploads/.gitkeep
 !.data/outputs/.gitkeep
+
+# throwaway browser checks, not part of the app
+/agent-tools
