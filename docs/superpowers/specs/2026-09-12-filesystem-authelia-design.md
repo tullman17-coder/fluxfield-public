@@ -137,10 +137,10 @@ Authelia config lives with the operator. README ships a paste-ready `client:` sn
 
 ## Secrets hygiene (this change set)
 
-- Scrub README example `100.115.190.105` → generic placeholder.
+- Scrub concrete Tailscale peer IPs from docs (done; use range notation only).
 - Keep `.data/` gitignored; never commit `settings.json` with keys.
 - `.env.example` lists OIDC variable names only.
-- Pre-commit mental check: `rg` for tokens/emails before push (already clean aside from that IP).
+- Pre-commit mental check: `rg` for tokens/emails before push.
 
 ## Verification plan
 
