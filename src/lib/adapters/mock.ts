@@ -47,14 +47,19 @@ async function writePlainSvg(
 <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#101010"/>
-      <stop offset="55%" stop-color="#1c1c1c"/>
+      <stop offset="0%" stop-color="#fdfbf7"/>
+      <stop offset="55%" stop-color="#f3ecf5"/>
       <stop offset="100%" stop-color="${accent}"/>
     </linearGradient>
+    <radialGradient id="swirl" cx="0.7" cy="0.25" r="0.9">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
   </defs>
   <rect width="${w}" height="${h}" fill="url(#g)"/>
-  <rect x="${w * 0.08}" y="${h * 0.7}" width="${w * 0.84}" height="${h * 0.2}" rx="16" fill="#000000bb"/>
-  <text x="${w * 0.12}" y="${h * 0.8}" fill="#f5f5f5" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.045)}">${escapeXml(title)}</text>
+  <rect width="${w}" height="${h}" fill="url(#swirl)"/>
+  <rect x="${w * 0.08}" y="${h * 0.7}" width="${w * 0.84}" height="${h * 0.2}" rx="16" fill="#ffffffbb"/>
+  <text x="${w * 0.12}" y="${h * 0.8}" fill="#2e2833" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.045)}">${escapeXml(title)}</text>
   <text x="${w * 0.12}" y="${h * 0.86}" fill="${accent}" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.028)}">${escapeXml(subtitle)}</text>
 </svg>`;
   await fs.writeFile(path.join(outDir, filename), svg);

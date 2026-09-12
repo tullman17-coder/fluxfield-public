@@ -17,20 +17,20 @@ export default function GalleryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl text-white">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl text-[#2e2833]">
           Gallery
         </h1>
-        <p className="text-zinc-400">Recent wrapper + explainer runs.</p>
+        <p className="text-[#6f6577]">Recent wrapper + explainer runs.</p>
       </div>
 
       {!jobs.length ? (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-[#8d8296]">
           No jobs yet. Open an{" "}
-          <Link href="/" className="text-[#e77ae6]">
+          <Link href="/" className="text-[#a845b0]">
             Image-2 wrapper
           </Link>{" "}
           or the{" "}
-          <Link href="/explainer" className="text-[#e77ae6]">
+          <Link href="/explainer" className="text-[#a845b0]">
             Explainer
           </Link>
           .
@@ -40,17 +40,17 @@ export default function GalleryPage() {
           {jobs.map((job) => (
             <article
               key={job.id}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              className="rounded-2xl border border-[#e7dfe8] glass p-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <div>
-                  <span className="text-white">{job.workflowName}</span>
-                  <span className="text-zinc-500"> · {job.presetLabel}</span>
-                  <span className="ml-2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-zinc-400">
+                  <span className="text-[#2e2833]">{job.workflowName}</span>
+                  <span className="text-[#8d8296]"> · {job.presetLabel}</span>
+                  <span className="ml-2 rounded-full border border-[#e7dfe8] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#6f6577]">
                     {job.tool}
                   </span>
                 </div>
-                <span className="text-zinc-500">
+                <span className="text-[#8d8296]">
                   {job.status} · {job.modeUsed}
                 </span>
               </div>

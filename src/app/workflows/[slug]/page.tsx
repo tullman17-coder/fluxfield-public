@@ -17,14 +17,14 @@ export default async function WorkflowPage({
       <div>
         <Link
           href="/workflows"
-          className="text-xs uppercase tracking-wider text-zinc-500 hover:text-zinc-300"
+          className="text-xs uppercase tracking-wider text-[#8d8296] hover:text-[#6f6577]"
         >
           ← Marketing desk
         </Link>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white">
+        <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[#2e2833]">
           {workflow.name}
         </h1>
-        <p className="text-zinc-400">{workflow.tagline}</p>
+        <p className="text-[#6f6577]">{workflow.tagline}</p>
       </div>
       <JobRunner
         tool="workflow"

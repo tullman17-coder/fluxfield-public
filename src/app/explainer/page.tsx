@@ -66,13 +66,13 @@ export default function ExplainerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-[0.25em] text-[#e77ae6]">
+        <p className="text-xs uppercase tracking-[0.25em] text-[#a845b0]">
           Explainer
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-5xl">
           Style presets → script → beats → VO
         </h1>
-        <p className="mt-2 max-w-2xl text-zinc-400">
+        <p className="mt-2 max-w-2xl text-[#6f6577]">
           Higgsfield-style explainer container. Pick a visual language, describe
           the topic, then Fieldbench routes script (Ollama), frames (Comfy/mock),
           voice (Piper / OpenAI-compatible TTS), and optional FFmpeg assemble to
@@ -90,7 +90,7 @@ export default function ExplainerPage() {
               onClick={() => setPresetId(p.id)}
               className="relative overflow-hidden rounded-2xl border text-left transition"
               style={{
-                borderColor: active ? "#e77ae6" : "rgba(255,255,255,0.1)",
+                borderColor: active ? "#a845b0" : "rgba(255,255,255,0.1)",
               }}
             >
               <div
@@ -100,30 +100,30 @@ export default function ExplainerPage() {
                 }}
               >
                 {active ? (
-                  <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-[#e77ae6] text-xs font-bold text-black">
+                  <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-[#a845b0] text-xs font-bold text-black">
                     ✓
                   </span>
                 ) : null}
-                <span className="absolute bottom-2 left-2 rounded bg-black/55 px-2 py-1 text-[10px] uppercase tracking-wide text-white">
+                <span className="absolute bottom-2 left-2 rounded bg-white/70 px-2 py-1 text-[10px] uppercase tracking-wide text-[#2e2833]">
                   {p.overlayHint}
                 </span>
               </div>
-              <div className="bg-[#121212] p-3">
-                <div className="text-sm font-medium text-white">{p.name}</div>
-                <div className="text-xs text-zinc-500">{p.blurb}</div>
+              <div className="bg-white/70 p-3">
+                <div className="text-sm font-medium text-[#2e2833]">{p.name}</div>
+                <div className="text-xs text-[#8d8296]">{p.blurb}</div>
               </div>
             </button>
           );
         })}
       </div>
 
-      <div className="rounded-[24px] border border-white/10 bg-[#101010] p-5 md:p-6">
+      <div className="rounded-[24px] border border-[#e7dfe8] glass p-5 md:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs uppercase tracking-wider text-zinc-500">
+            <div className="text-xs uppercase tracking-wider text-[#8d8296]">
               Active style
             </div>
-            <div className="text-lg text-white">{preset.name}</div>
+            <div className="text-lg text-[#2e2833]">{preset.name}</div>
           </div>
           <div
             className="rounded-full px-3 py-1 text-xs font-semibold text-black"

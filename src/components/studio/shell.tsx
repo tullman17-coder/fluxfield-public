@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
+  { href: "/supercomputer", label: "Super", icon: "cpu" },
   { href: "/create", label: "Create", icon: "create" },
   { href: "/", label: "Wrappers", icon: "grid" },
   { href: "/explainer", label: "Explainer", icon: "play" },
@@ -37,6 +38,13 @@ function RailIcon({ name }: { name: string }) {
     "aria-hidden": true,
   } as const;
   switch (name) {
+    case "cpu":
+      return (
+        <svg {...common}>
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+          <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+        </svg>
+      );
     case "create":
       return (
         <svg {...common}>
@@ -109,12 +117,19 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
     (health.studio || health.comfy || health.ollama || health.tts);
 
   return (
-    <div className="grid min-h-dvh w-full grid-cols-[3.5rem_minmax(0,1fr)] bg-[#09080c] text-[#f5eff6] sm:grid-cols-[5.75rem_minmax(0,1fr)]">
-      <aside className="sticky top-0 z-40 flex h-dvh min-w-0 flex-col items-stretch border-r border-[#332a38] bg-[#100e14] p-2 sm:p-3">
+    <div className="grid min-h-dvh w-full grid-cols-[3.5rem_minmax(0,1fr)] text-[#2e2833] sm:grid-cols-[5.75rem_minmax(0,1fr)]">
+      {/* Iridescent swirl backdrop */}
+      <div className="swirl-layer" aria-hidden="true">
+        <div className="swirl-blob swirl-blob--a" />
+        <div className="swirl-blob swirl-blob--b" />
+        <div className="swirl-blob swirl-blob--c" />
+      </div>
+
+      <aside className="glass-strong sticky top-0 z-40 flex h-dvh min-w-0 flex-col items-stretch border-y-0 border-l-0 p-2 sm:p-3">
         <Link
-          href="/create"
+          href="/supercomputer"
           aria-label="Fieldbench home"
-          className="grid min-h-11 w-full place-items-center rounded-[10px] border border-[#504156] bg-[#2c162f] text-sm font-extrabold tracking-[0.12em] text-[#e77ae6]"
+          className="grid min-h-11 w-full place-items-center rounded-[10px] border border-[#d5c8da] bg-[#f3e4f4] text-sm font-extrabold tracking-[0.12em] text-[#a845b0]"
         >
           FB
         </Link>
@@ -133,8 +148,8 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "grid min-h-[3.25rem] w-full min-w-0 place-items-center gap-1 rounded-[10px] border border-transparent p-1 text-[11px] leading-tight transition-colors",
                   active
-                    ? "border-[#504156] bg-[#2c162f] text-[#e77ae6]"
-                    : "text-[#8d838f] hover:bg-[#211a25] hover:text-[#f5eff6]",
+                    ? "border-[#d5c8da] bg-[#f3e4f4] text-[#a845b0]"
+                    : "text-[#8d8296] hover:bg-white/70 hover:text-[#2e2833]",
                 )}
               >
                 <RailIcon name={item.icon} />
@@ -147,7 +162,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div
-          className="mt-auto grid justify-items-center gap-1 py-2 text-[11px] text-[#8d838f]"
+          className="mt-auto grid justify-items-center gap-1 py-2 text-[11px] text-[#8d8296]"
           title={`Effective mode: ${health?.effectiveMode || "…"}`}
         >
           <span
@@ -155,8 +170,8 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
             className={cn(
               "size-2 rounded-full",
               anyUp
-                ? "bg-[#d565d6] shadow-[0_0_0_4px_#2c162f]"
-                : "bg-[#8d838f]",
+                ? "bg-[#a845b0] shadow-[0_0_0_4px_#f3e4f4]"
+                : "bg-[#8d8296]",
             )}
           />
           <span className="max-sm:sr-only">

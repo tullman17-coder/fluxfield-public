@@ -4,14 +4,15 @@ Local Higgsfield-style **marketing wrappers** (GPT Image-2 style) and **Explaine
 
 ## What you get
 
-1. **Create workbench** (`/create`) — the Local Dream Studio surface, merged in: prompt-first editor, **AI prompt improvement** (Local Ollama or your own API key), deterministic prompt assist with live preview, preset ribbon, framing, ratios, batch count, seed/steps/CFG, live job strip, and results with Reuse / Vary.
-2. **Image-2 wrapper gallery** — masonry of mini-app containers (streetwear drop, editorial catalog, event poster, ecommerce banner, virtual try-on, sports lockup). Each wrapper is a customized dashboard: fixed inputs, presets, compose → outputs.
-3. **Explainer** — left-rail topic + aspect/duration/voice/subtitles, preset grid (editorial motion, stickman, watercolor, fairy tale, paper diorama, pastel flat), then script → beats → VO → optional MP4.
-4. **Marketing desk** — classic product / ads / UGC / motion / marketplace / poster workflows.
-5. **Dream style + framing** — prompt suffixes ported from Local Dream Studio (photo, cinematic, noir, macro, etc.), available on every generate form.
-6. **Adapters** — Local Studio controller (`/v1/images/generations`), ComfyUI, Ollama, Piper/OpenAI-TTS, FFmpeg. **Mock mode** always works with no GPU.
+1. **superComputer** (`/supercomputer`) — Zermobrands × Dream Studio variant tool. One brief in → improved prompt (Local Ollama or your API key) → generated key art → campaign copy out, with a live pipeline panel.
+2. **Create workbench** (`/create`) — the Local Dream Studio surface, merged in: prompt-first editor, **AI prompt improvement** (Local Ollama or your own API key), deterministic prompt assist with live preview, preset ribbon, framing, ratios, batch count, seed/steps/CFG, live job strip, and results with Reuse / Vary.
+3. **Image-2 wrapper gallery** — masonry of mini-app containers (streetwear drop, editorial catalog, event poster, ecommerce banner, virtual try-on, sports lockup). Cards render **generated key art** (cached per wrapper) behind frosted strips.
+4. **Explainer** — left-rail topic + aspect/duration/voice/subtitles, preset grid (editorial motion, stickman, watercolor, fairy tale, paper diorama, pastel flat), then script → beats → VO → optional MP4.
+5. **Marketing desk** — classic product / ads / UGC / motion / marketplace / poster workflows.
+6. **Dream style + framing** — prompt suffixes ported from Local Dream Studio (photo, cinematic, noir, macro, etc.), available on every generate form.
+7. **Adapters** — Local Studio controller (`/v1/images/generations`), ComfyUI, Ollama, Piper/OpenAI-TTS, FFmpeg. **Mock mode** always works with no GPU.
 
-The UI follows Dream Studio's Midnight workbench hallmark: dark canvas with static violet/magenta blooms, narrow left rail, single accent family — and **no horizontal scrollbars** at any width.
+The UI is a **milky swirled glass** theme: creamy base, slow iridescent swirl blobs (transform-only, reduced-motion safe), frosted glass rail and panels — and **no horizontal scrollbars** at any width.
 
 ## Prompt improvement
 
