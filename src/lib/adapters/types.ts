@@ -9,6 +9,9 @@ export type StudioSettings = {
   /** Piper or OpenAI-compatible TTS base URL */
   ttsUrl: string;
   ttsVoice: string;
+  /** Local music server (ACE-Step / MusicGen style). Blank uses the built-in composer. */
+  musicUrl: string;
+  musicModel: string;
   ffmpegEnabled: boolean;
   /**
    * Local Dream Studio / Local Studio controller.
@@ -29,7 +32,13 @@ export type StudioSettings = {
 };
 
 export type JobStatus = "queued" | "running" | "completed" | "failed";
-export type JobTool = "workflow" | "image2" | "explainer" | "dream";
+export type JobTool =
+  | "workflow"
+  | "image2"
+  | "explainer"
+  | "dream"
+  | "music"
+  | "director";
 
 export type JobOutput = {
   id: string;

@@ -10,6 +10,8 @@ const NAV = [
   { href: "/create", label: "Create", icon: "create" },
   { href: "/", label: "Wrappers", icon: "grid" },
   { href: "/explainer", label: "Explainer", icon: "play" },
+  { href: "/director", label: "Director", icon: "clapper" },
+  { href: "/music", label: "Music", icon: "note" },
   { href: "/workflows", label: "Marketing", icon: "megaphone" },
   { href: "/gallery", label: "Gallery", icon: "image" },
   { href: "/settings", label: "Settings", icon: "gear" },
@@ -71,6 +73,22 @@ function RailIcon({ name }: { name: string }) {
         <svg {...common}>
           <circle cx="12" cy="12" r="9" />
           <path d="m10 8.5 5 3.5-5 3.5z" />
+        </svg>
+      );
+    case "clapper":
+      return (
+        <svg {...common}>
+          <path d="M3 10h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <path d="m3 10 1-4 17-1-1 5" />
+          <path d="m8.5 5.7 1.8 3.9M13.5 5.4l1.8 3.9" />
+        </svg>
+      );
+    case "note":
+      return (
+        <svg {...common}>
+          <path d="M9 18V6l11-2v12" />
+          <circle cx="6.5" cy="18" r="2.5" />
+          <circle cx="17.5" cy="16" r="2.5" />
         </svg>
       );
     case "megaphone":

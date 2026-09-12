@@ -17,6 +17,9 @@ import {
   runLocalStudioAdapter,
 } from "@/lib/adapters/local-studio";
 import { runMockAdapter } from "@/lib/adapters/mock";
+import { runMusicAdapter } from "@/lib/adapters/music";
+import { runDirectorAdapter } from "@/lib/adapters/director";
+import { getGenre } from "@/lib/music/theory";
 import {
   fallbackExplainerScript,
   fallbackMarketingCopy,
@@ -109,6 +112,21 @@ export async function createAndRunJob(
       negativePrompt,
       input.inputs,
     ));
+  } else if (input.tool === "music") {
+    const genre = getGenre(input.presetId || input.inputs.genre || "synthwave");
+    const brief = input.inputs.brief?.trim() || "";
+    if (!brief) throw new Error("Describe the track you want.");
+    workflowName = "Music";
+    presetLabel = genre.label;
+    input.inputs.genre = genre.id;
+    prompt = brief;
+  } else if (input.tool === "director") {
+    const brief = input.inputs.brief?.trim() || "";
+    if (!brief) throw new Error("Describe the film or video you want.");
+    workflowName = input.inputs.mode === "film" ? "Short Film" : "Music Video";
+    presetLabel = input.presetId;
+    aspect = input.inputs.aspect || "16:9";
+    prompt = brief;
   } else {
     const workflow = getWorkflow(input.workflowSlug);
     if (!workflow) throw new Error("Unknown workflow");
@@ -209,6 +227,40 @@ async function processJob(jobId: string, referenceImagePath?: string) {
     }
 
     await updateJob(jobId, { script, progress: 30 });
+
+    // Music does not run through the image adapter chain.
+    if (current.tool === "music") {
+      const music = await runMusicAdapter({
+        settings,
+        job: current,
+        referenceImagePath: undefined,
+      });
+      await updateJob(jobId, {
+        status: "completed",
+        progress: 100,
+        modeUsed: settings.musicUrl ? "local-studio" : "mock",
+        outputs: music.outputs,
+        script: music.outputs.find((o) => o.kind === "storyboard")?.text,
+      });
+      return;
+    }
+
+    // Long-form productions plan their own shots and frames.
+    if (current.tool === "director") {
+      const directed = await runDirectorAdapter({
+        settings,
+        job: current,
+        referenceImagePath: undefined,
+      });
+      await updateJob(jobId, {
+        status: "completed",
+        progress: 100,
+        modeUsed: "mock",
+        outputs: directed.outputs,
+        script: directed.outputs.find((o) => o.kind === "storyboard")?.text,
+      });
+      return;
+    }
 
     const wantStudio = settings.generationMode !== "mock";
     const studioUp =

@@ -14,6 +14,8 @@ export const DEFAULT_SETTINGS: StudioSettings = {
   comfyCheckpoint: "",
   ttsUrl: "http://127.0.0.1:5500",
   ttsVoice: "en_US-lessac-medium",
+  musicUrl: process.env.MUSIC_URL || "",
+  musicModel: process.env.MUSIC_MODEL || "ace-step",
   ffmpegEnabled: true,
   studioUrl: defaultStudioUrlFromEnv(),
   studioApiKey: process.env.LOCAL_STUDIO_API_KEY || "",

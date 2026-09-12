@@ -239,6 +239,29 @@ export default function SettingsPage() {
             className="border-white/10 bg-white/10"
           />
         </Field>
+        <Field
+          label="Music address"
+          hint="A local music model, if you run one. Blank writes the track here."
+        >
+          <Input
+            value={settings.musicUrl}
+            onChange={(e) =>
+              setSettings({ ...settings, musicUrl: e.target.value })
+            }
+            placeholder="http://studio.netbird.cloud:8020"
+            className="border-white/10 bg-white/10"
+          />
+        </Field>
+        <Field label="Music model">
+          <Input
+            value={settings.musicModel}
+            onChange={(e) =>
+              setSettings({ ...settings, musicModel: e.target.value })
+            }
+            placeholder="ace-step-v1"
+            className="border-white/10 bg-white/10"
+          />
+        </Field>
         <label className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-3 text-sm">
           <span>
             Stitch videos
