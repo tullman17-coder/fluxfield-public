@@ -56,6 +56,16 @@ npm run dev
 
 Open [http://127.0.0.1:43127](http://127.0.0.1:43127).
 
+To try it on your phone while you work, bind the dev server to the network and
+open the machine's address instead:
+
+```bash
+HOST=0.0.0.0 npm run dev     # then http://<your-laptop-ip>:43127 on the phone
+```
+
+Private ranges and Netbird peer names are already accepted. Anything else goes
+in `FIELD_BENCH_DEV_ORIGINS`, comma separated.
+
 Go to **Settings → Connections** and set:
 
 | Setting | Typical value on your model box |
@@ -74,6 +84,81 @@ Env overrides (optional):
 export FIELD_BENCH_STUDIO_URL="http://studio.netbird.selfhosted:18088"
 export LOCAL_STUDIO_API_KEY="…"
 ```
+
+## On your phone
+
+Fieldbench works in mobile Safari and Chrome as a normal site, and installs to
+the home screen as a standalone app.
+
+- **iPhone/iPad** — open the site in Safari, tap Share, then **Add to Home
+  Screen**. It opens without browser chrome, sized around the notch and the home
+  indicator.
+- **Android** — Chrome offers **Install app** from the menu.
+
+Install only shows up over HTTPS, so it needs a real domain rather than an IP.
+
+A render keeps going on the machine doing the work even if you lock the phone or
+switch apps. Fieldbench stops asking for progress while the screen is off, picks
+straight back up when you return, and remembers which piece was in progress so a
+tab the phone threw away still comes back to it.
+
+## Host it on a domain
+
+It needs a machine, not a serverless platform: jobs, settings and finished pieces
+live on disk under `.data/`, and that directory has to survive a restart. The
+same machine has to be able to reach your model boxes, so run it on a peer inside
+the Netbird mesh.
+
+```bash
+npm ci
+npm run build
+PORT=43127 npm start
+```
+
+`npm start` listens on every interface. Set `HOST` to pin it to one — worth doing
+if the box has a public NIC and you only want the proxy talking to it:
+
+```bash
+HOST=127.0.0.1 PORT=43127 npm start
+```
+
+Keep it up with whatever you already use. A systemd unit is enough:
+
+```ini
+[Unit]
+Description=Fieldbench
+After=network-online.target
+
+[Service]
+WorkingDirectory=/srv/fieldbench
+Environment=NODE_ENV=production HOST=127.0.0.1 PORT=43127
+ExecStart=/usr/bin/npm start
+Restart=always
+User=fieldbench
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then put the domain in front of it. Caddy gets a certificate on its own, which is
+what makes the home-screen install offer appear:
+
+```caddyfile
+studio.example.com {
+	reverse_proxy 127.0.0.1:43127
+	request_body {
+		max_size 64MB
+	}
+}
+```
+
+The body limit matters — reference images and audio go up through normal form
+posts, and a 1MB default will reject them. On nginx that is
+`client_max_body_size 64m;` plus a `proxy_read_timeout` long enough for your
+slowest render.
+
+Nothing in Fieldbench asks who you are. Put it behind your mesh, a VPN, or your
+proxy's own auth before pointing a public domain at it.
 
 ## Netbird vs Tailscale 100.x
 
