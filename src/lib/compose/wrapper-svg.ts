@@ -85,7 +85,6 @@ export async function composeWrapperSvg(args: {
     args.values.venue ||
     args.wrapper.tagline
   ).slice(0, 280);
-  const body = esc(bodyRaw);
   const cta = esc(args.values.cta || "Shop now");
   const price = esc(args.values.price || "");
   const preset = esc(args.presetLabel);
@@ -132,7 +131,7 @@ export async function composeWrapperSvg(args: {
         ${img ? subjectImage(w * 0.06, h * 0.08, w * 0.88, h * 0.55, 0) : `<rect x="${w * 0.06}" y="${h * 0.08}" width="${w * 0.88}" height="${h * 0.55}" fill="#222"/>`}
         <text x="${w * 0.08}" y="${h * 0.72}" fill="${accent}" font-family="Impact, sans-serif" font-size="${Math.round(w * 0.07)}">${brand}</text>
         <text x="${w * 0.08}" y="${h * 0.78}" fill="#fff" font-family="ui-sans-serif,system-ui" font-size="${Math.round(w * 0.035)}">${product}</text>
-        <text x="${w * 0.08}" y="${h * 0.86}" fill="#ccc" font-family="ui-monospace,monospace" font-size="${Math.round(w * 0.028)}">${body}</text>
+        ${textBlock(bodyRaw, w * 0.08, h * 0.86, Math.round(w * 0.028), 40, "#ccc", "ui-monospace,monospace", 2)}
       `;
       break;
     case "shop-banner":
@@ -188,7 +187,7 @@ export async function composeWrapperSvg(args: {
       : `<rect x="${w * 0.18}" y="${h * 0.22}" width="${w * 0.64}" height="${h * 0.4}" rx="28" fill="url(#subject)" opacity="0.85"/>
   <text x="${w * 0.22}" y="${h * 0.44}" fill="#ffffffcc" font-family="ui-sans-serif,system-ui" font-size="${Math.round(Math.min(w, h) * 0.028)}">${subject.slice(0, 64)}</text>`
   }
-  <text x="${w * 0.06}" y="${h * 0.985}" fill="#ffffff66" font-family="ui-monospace,monospace" font-size="14">${esc(args.wrapper.name)} · ${preset}</text>
+  <text x="${w * 0.06}" y="${h * 0.975}" fill="#ffffff88" font-family="ui-monospace,monospace" font-size="${Math.round(Math.min(w, h) * 0.019)}">${esc(args.wrapper.name)} · ${preset}</text>
 </svg>`;
 
   const id = nanoid(8);

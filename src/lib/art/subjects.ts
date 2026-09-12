@@ -109,18 +109,17 @@ const hoodie: Subject = {
   sdf: (x, y) => {
     const body = rbox(x, y, 0, 0.09, 0.235, 0.25, 0.07);
     const yoke = seg(x, y, -0.2, -0.12, 0.2, -0.12, 0.1);
-    const hood = ell(x, y, 0, -0.235, 0.178, 0.132);
+    // Hood lying flat and closed, the way one sits in a flat-lay shot. Cutting
+    // the opening out of it turns the whole garment into a donut.
+    const hood = ell(x, y, 0, -0.235, 0.168, 0.118);
     const sleeveL = seg(x, y, -0.2, -0.11, -0.37, 0.19, 0.075);
     const sleeveR = seg(x, y, 0.2, -0.11, 0.37, 0.19, 0.075);
     const hem = rbox(x, y, 0, 0.33, 0.24, 0.035, 0.02);
     let d = blend(body, yoke, 0.07);
-    d = blend(d, hood, 0.05);
+    d = blend(d, hood, 0.06);
     d = blend(d, sleeveL, 0.05);
     d = blend(d, sleeveR, 0.05);
-    d = uni(d, hem);
-    // The opening sits low in the hood so the crown stays solid. Centred any
-    // higher and the hood reads as a carrier handle.
-    return sub(d, ell(x, y, 0, -0.185, 0.103, 0.072));
+    return uni(d, hem);
   },
 };
 
@@ -385,9 +384,9 @@ const MATCHES: { words: string[]; subject: Subject }[] = [
   { words: ["lounge chair", "armchair", "chair", "seating", "sofa", "couch", "furniture", "stool", "sat in"], subject: chair },
   { words: ["mug", "bowl", "cup", "saucer", "crockery", "ceramic", "tableware", "breakfast", "dinnerware", "pottery", "kiln"], subject: tableware },
   { words: ["bottle", "flask", "fragrance", "perfume", "serum", "skincare", "can ", "jar"], subject: bottle },
-  { words: ["phone", "handset", "app screen", "interface", "ui hero", "screenshot", "dashboard", "device"], subject: device },
+  { words: ["phone", "handset", "app screen", "interface", "dashboard", "device"], subject: device },
   { words: ["performer", "singer", "dancer", "band", "musician", "stage"], subject: performer },
-  { words: ["avatar", "character", "model wearing", "portrait", "athlete", "person", "figure", "silhouette", "headshot"], subject: figure },
+  { words: ["avatar", "character", "model wearing", "athlete", "person", "figure", "silhouette", "headshot"], subject: figure },
   { words: ["plant", "foliage", "botanical", "flower", "bouquet", "leaf"], subject: plant },
   { words: ["car", "vehicle", "automotive", "sedan", "coupe"], subject: car },
   { words: ["tower", "building", "architecture", "skyline", "facade", "interior wall"], subject: tower },
