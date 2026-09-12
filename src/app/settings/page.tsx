@@ -279,6 +279,24 @@ export default function SettingsPage() {
             className="size-4 accent-[#d565d6]"
           />
         </label>
+        <label className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-3 text-sm">
+          <span>
+            Take prompts as written
+            <span className="mt-1 block text-xs text-[#8d838f]">
+              For openweight models. Stops Fieldbench adding blocks of its own,
+              tells your machine to leave its checker off, and adds a set of
+              adult looks to the style list.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.unrestricted}
+            onChange={(e) =>
+              setSettings({ ...settings, unrestricted: e.target.checked })
+            }
+            className="size-4 accent-[#d565d6]"
+          />
+        </label>
         <Button
           onClick={save}
           disabled={saving}

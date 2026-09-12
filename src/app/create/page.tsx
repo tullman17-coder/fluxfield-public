@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  DREAM_PRESETS,
+  dreamPresets,
   DREAM_RATIOS,
   FRAMINGS,
   dreamRatio,
@@ -39,6 +39,7 @@ export default function CreatePage() {
   );
   const [hasApiKey, setHasApiKey] = useState(false);
   const [localModel, setLocalModel] = useState("");
+  const [unrestricted, setUnrestricted] = useState(false);
   const [improving, setImproving] = useState(false);
   const [improved, setImproved] = useState<ImproveResult | null>(null);
   const [improveError, setImproveError] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export default function CreatePage() {
         }
         setHasApiKey(Boolean(s?.improveApiKey));
         setLocalModel(s?.ollamaModel || "");
+        setUnrestricted(Boolean(s?.unrestricted));
       })
       .catch(() => undefined);
   }, []);
@@ -73,8 +75,8 @@ export default function CreatePage() {
   }, [job]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
-  const activePreset =
-    DREAM_PRESETS.find((p) => p.id === preset) ?? DREAM_PRESETS[0];
+  const presets = dreamPresets(unrestricted);
+  const activePreset = presets.find((p) => p.id === preset) ?? presets[0];
   const activeRatio = dreamRatio(ratio);
   const assistedPrompt =
     assist && prompt.trim() ? enhancePrompt(prompt, preset, framing, true) : "";
@@ -349,11 +351,16 @@ export default function CreatePage() {
           </section>
 
           <fieldset className="min-w-0 border-y border-white/10 py-5">
-            <legend className="text-sm font-medium text-[#b8aebb]">
+            <legend className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#b8aebb]">
               Preset
+              {unrestricted ? (
+                <span className="rounded-full border border-[#d565d6] px-2 py-0.5 text-[11px] text-[#e77ae6]">
+                  Prompts go through as written
+                </span>
+              ) : null}
             </legend>
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 2xl:grid-cols-8">
-              {DREAM_PRESETS.map((p) => (
+              {presets.map((p) => (
                 <button
                   key={p.id}
                   type="button"

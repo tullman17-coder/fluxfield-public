@@ -16,6 +16,8 @@ export async function PUT(request: Request) {
     comfyCheckpoint: string;
     ttsUrl: string;
     ttsVoice: string;
+    musicUrl: string;
+    musicModel: string;
     ffmpegEnabled: boolean;
     studioUrl: string;
     studioApiKey: string;
@@ -23,6 +25,7 @@ export async function PUT(request: Request) {
     improveApiBase: string;
     improveApiKey: string;
     improveApiModel: string;
+    unrestricted: boolean;
   }>;
 
   const settings = await writeSettings({
@@ -41,6 +44,10 @@ export async function PUT(request: Request) {
       : {}),
     ...(body.ttsUrl !== undefined ? { ttsUrl: body.ttsUrl.trim() } : {}),
     ...(body.ttsVoice !== undefined ? { ttsVoice: body.ttsVoice.trim() } : {}),
+    ...(body.musicUrl !== undefined ? { musicUrl: body.musicUrl.trim() } : {}),
+    ...(body.musicModel !== undefined
+      ? { musicModel: body.musicModel.trim() }
+      : {}),
     ...(body.ffmpegEnabled !== undefined
       ? { ffmpegEnabled: body.ffmpegEnabled }
       : {}),
@@ -61,6 +68,9 @@ export async function PUT(request: Request) {
       : {}),
     ...(body.improveApiModel !== undefined
       ? { improveApiModel: body.improveApiModel.trim() }
+      : {}),
+    ...(body.unrestricted !== undefined
+      ? { unrestricted: body.unrestricted }
       : {}),
   });
 

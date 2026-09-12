@@ -32,10 +32,11 @@ import { composeWrapperSvg } from "@/lib/compose/wrapper-svg";
 import {
   applyDreamPreset,
   applyFraming,
-  DREAM_PRESETS,
+  dreamPresets,
   dreamRatio,
   enhanceNegativePrompt,
   enhancePrompt,
+  stripContentFilters,
 } from "@/lib/dream/presets";
 import type { JobTool, ModeUsed, StudioJob } from "@/lib/adapters/types";
 import { nanoid } from "nanoid";
@@ -52,6 +53,7 @@ export async function createAndRunJob(
   input: CreateJobInput,
 ): Promise<StudioJob> {
   const now = new Date().toISOString();
+  const { unrestricted } = await readSettings();
   let workflowName = input.workflowSlug;
   let presetLabel = input.presetId;
   let prompt = "";
@@ -59,8 +61,9 @@ export async function createAndRunJob(
   let aspect = "1:1";
 
   if (input.tool === "dream") {
+    const available = dreamPresets(unrestricted);
     const preset =
-      DREAM_PRESETS.find((p) => p.id === input.presetId) ?? DREAM_PRESETS[0];
+      available.find((p) => p.id === input.presetId) ?? available[0];
     const base = input.inputs.prompt?.trim() || "";
     if (!base) throw new Error("Describe the image you want to create.");
     const ratio = dreamRatio(input.inputs.ratio);
@@ -144,6 +147,9 @@ export async function createAndRunJob(
       input.inputs,
     ));
   }
+
+  // One place to take the filters back out, so every tool behaves the same.
+  if (unrestricted) negativePrompt = stripContentFilters(negativePrompt);
 
   const job: StudioJob = {
     id: newJobId(),

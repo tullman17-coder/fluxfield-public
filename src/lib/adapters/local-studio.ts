@@ -69,6 +69,11 @@ export async function runLocalStudioAdapter(
     steps: Number(ctx.job.inputs.steps || 4),
     cfg_scale: Number(ctx.job.inputs.cfg || 1),
     seed: ctx.job.inputs.seed ? Number(ctx.job.inputs.seed) : undefined,
+    // Controllers name this differently, so send both spellings. A controller
+    // that does not know them ignores them.
+    ...(ctx.settings.unrestricted
+      ? { safety_checker: false, allow_nsfw: true }
+      : {}),
   };
 
   const res = await fetch(new URL("/v1/images/generations", base).toString(), {

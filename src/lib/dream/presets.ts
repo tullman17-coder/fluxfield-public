@@ -53,6 +53,79 @@ export const DREAM_PRESETS: {
   { id: "surreal", label: "Surreal", suffix: "surreal visual logic, unexpected scale, coherent impossible scene" },
 ];
 
+/**
+ * Extra looks for openweight models that take a prompt as written. They stay
+ * hidden until unrestricted mode is on, because a filtered model will refuse
+ * most of them.
+ */
+export const MATURE_PRESETS: {
+  id: string;
+  label: string;
+  suffix: string;
+}[] = [
+  {
+    id: "boudoir",
+    label: "Boudoir",
+    suffix:
+      "boudoir photography, low warm light, intimate interior, shallow depth of field",
+  },
+  {
+    id: "figure",
+    label: "Figure study",
+    suffix:
+      "classical figure study, sculptural form, single directional light, art academy tone",
+  },
+  {
+    id: "pinup",
+    label: "Pin-up",
+    suffix:
+      "mid-century pin-up illustration, bold flat colour, playful posing, painted highlights",
+  },
+  {
+    id: "grindhouse",
+    label: "Grindhouse",
+    suffix:
+      "grindhouse film still, heavy grain, blown highlights, scratched print, lurid colour",
+  },
+  {
+    id: "body-horror",
+    label: "Body horror",
+    suffix:
+      "practical-effects body horror, latex and resin texture, clinical light, unsettling anatomy",
+  },
+];
+
+/**
+ * Content terms Fieldbench adds on its own. With unrestricted mode on these
+ * come back out, including any the layout catalog carries.
+ */
+const CONTENT_FILTER_TERMS = [
+  "nsfw",
+  "nude",
+  "nudity",
+  "explicit",
+  "sexual",
+  "suggestive",
+  "gore",
+  "blood",
+];
+
+export function stripContentFilters(negative: string): string {
+  return negative
+    .split(",")
+    .map((part) => part.trim())
+    .filter(
+      (part) =>
+        part.length > 0 &&
+        !CONTENT_FILTER_TERMS.includes(part.toLowerCase()),
+    )
+    .join(", ");
+}
+
+export function dreamPresets(unrestricted: boolean) {
+  return unrestricted ? [...DREAM_PRESETS, ...MATURE_PRESETS] : DREAM_PRESETS;
+}
+
 export const FRAMINGS: {
   id: FramingId;
   label: string;
@@ -103,7 +176,9 @@ export function applyDreamPreset(
   prompt: string,
   presetId: string | undefined,
 ): string {
-  const preset = DREAM_PRESETS.find((p) => p.id === presetId);
+  const preset = [...DREAM_PRESETS, ...MATURE_PRESETS].find(
+    (p) => p.id === presetId,
+  );
   if (!preset) return prompt.trim();
   const base = prompt.trim();
   const suffix = `, ${preset.suffix}`;

@@ -8,6 +8,21 @@ const SYSTEM_PROMPT = [
   "One paragraph, under 120 words. No lists, no preamble, no quotes.",
 ].join(" ");
 
+/**
+ * A rewrite is meant to sharpen the idea, not change it. Openweight models
+ * take the subject as given, so say so rather than letting the model quietly
+ * swap it for something else.
+ */
+const KEEP_SUBJECT = [
+  "Keep the subject exactly as given.",
+  "Do not soften it, substitute it, add commentary, or decline.",
+  "Return only the rewritten prompt.",
+].join(" ");
+
+function systemPrompt(unrestricted: boolean) {
+  return unrestricted ? `${SYSTEM_PROMPT} ${KEEP_SUBJECT}` : SYSTEM_PROMPT;
+}
+
 function cleanImproved(raw: string): string {
   return raw
     .replace(/^["'\s]+|["'\s]+$/g, "")
@@ -20,6 +35,7 @@ async function improveWithOllama(
   baseUrl: string,
   model: string,
   prompt: string,
+  system: string,
 ): Promise<string> {
   let res: Response;
   try {
@@ -28,7 +44,7 @@ async function improveWithOllama(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
-        prompt: `${SYSTEM_PROMPT}\n\nIdea: ${prompt}\n\nImproved prompt:`,
+        prompt: `${system}\n\nIdea: ${prompt}\n\nImproved prompt:`,
         stream: false,
       }),
       signal: AbortSignal.timeout(120_000),
@@ -52,6 +68,7 @@ async function improveWithApi(
   key: string,
   model: string,
   prompt: string,
+  system: string,
 ): Promise<string> {
   const res = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
@@ -62,7 +79,7 @@ async function improveWithApi(
     body: JSON.stringify({
       model,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: system },
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
@@ -116,6 +133,7 @@ export async function POST(request: Request) {
         settings.improveApiKey,
         settings.improveApiModel,
         prompt,
+        systemPrompt(settings.unrestricted),
       );
       return NextResponse.json({
         prompt: improved,
@@ -128,6 +146,7 @@ export async function POST(request: Request) {
       settings.ollamaUrl,
       settings.ollamaModel,
       prompt,
+      systemPrompt(settings.unrestricted),
     );
     return NextResponse.json({
       prompt: improved,

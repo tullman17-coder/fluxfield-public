@@ -6,7 +6,7 @@ Local Higgsfield/Maestro-style studio — **marketing wrappers**, **Explainer**,
 
 1. **superComputer** (`/supercomputer`) — Zermobrands × Dream Studio variant tool. One brief in → improved prompt (Local Ollama or your API key) → generated key art → campaign copy out, with a live pipeline panel.
 2. **Create workbench** (`/create`) — the Local Dream Studio surface, merged in: prompt-first editor, **AI prompt improvement** (Local Ollama or your own API key), deterministic prompt assist with live preview, preset ribbon, framing, ratios, batch count, seed/steps/CFG, live job strip, and results with Reuse / Vary.
-3. **Image-2 wrapper gallery** — masonry of mini-app containers (streetwear drop, editorial catalog, event poster, ecommerce banner, virtual try-on, sports lockup). Cards render **generated key art** (cached per wrapper) behind frosted strips.
+3. **Image-2 wrapper gallery** — masonry of mini-app containers (streetwear drop, editorial catalog, event poster, ecommerce banner, virtual try-on, sports lockup). Each card shows a **real example made by that layout** — the layout is run for real with the example copy from its own form, cached under `.data/card-bg/`.
 4. **Explainer** — left-rail topic + aspect/duration/voice/subtitles, preset grid (editorial motion, stickman, watercolor, fairy tale, paper diorama, pastel flat), then script → beats → VO → optional MP4.
 5. **Director** (`/director`) — long-form planning instead of single clips. Two modes:
    - **Music video** writes the track first, then cuts every shot to the beat of its section map.
@@ -14,11 +14,29 @@ Local Higgsfield/Maestro-style studio — **marketing wrappers**, **Explainer**,
 
    Runtimes go from 1 minute to **60 minutes**. Output is a timecoded shot list (size, camera move, action, a direction note per section), a score, key frames for the important moments, and a **window plan** that splits anything over two minutes into 2-minute render windows. Long lists are downloadable as plain text.
 6. **Music** (`/music`) — writes a real arrangement (intro, verses, pre, hook, break, outro) in a chosen key and tempo across 8 styles, then renders it to a 16-bit stereo WAV. Uses a local music server when you point at one; otherwise the built-in composer runs with no GPU.
+
+   **Lyrics**: choose no words, have them written, or paste your own. Either way they get timed to the section map — the hook repeats, instrumental parts are marked, and every line carries a timecode. When a music server is connected the words go to it alongside the style prompt (the `lyrics` field ACE-Step and similar servers expect).
 7. **Marketing desk** — classic product / ads / UGC / motion / marketplace / poster workflows.
 8. **Dream style + framing** — prompt suffixes ported from Local Dream Studio (photo, cinematic, noir, macro, etc.), available on every generate form.
 9. **Connections** — Local Studio controller (`/v1/images/generations`), ComfyUI, Ollama, Piper/OpenAI-TTS, a music server, FFmpeg. **Preview mode** always works with no GPU: it paints real raster art (procedural noise fields, composition archetypes, film grain) rather than flat gradients, and synthesizes audio from scratch.
 
 The UI is a **milky swirled glass** theme: creamy base, slow iridescent swirl blobs (transform-only, reduced-motion safe), frosted glass rail and panels — and **no horizontal scrollbars** at any width.
+
+## Openweight models
+
+Settings → Connections has **Take prompts as written**. Turn it on when the
+machine you generate on runs uncensored/openweight weights. It:
+
+- stops Fieldbench adding content terms of its own to negative prompts, and
+  removes the ones the layout catalog carries
+- sends `safety_checker: false` and `allow_nsfw: true` to the Local Studio
+  controller (a controller that does not know those fields ignores them)
+- tells the prompt rewriter to keep your subject exactly as given instead of
+  softening or declining it
+- adds a set of adult looks to the style list — Boudoir, Figure study, Pin-up,
+  Grindhouse, Body horror
+
+Off by default. `FIELD_BENCH_UNRESTRICTED=1` turns it on without the UI.
 
 ## Prompt improvement
 
@@ -90,7 +108,7 @@ Run **Local Studio controller** and/or **ComfyUI** on the GPU machine separately
 
 Optional. Point **Music address** at anything that accepts:
 
-- `POST /generate` with `{ prompt, duration, model }`
+- `POST /generate` with `{ prompt, duration, model, lyrics? }`
 - Response: raw audio bytes, `{ audio: "<base64>" }`, or `{ url }`
 
 ACE-Step and MusicGen-style servers both fit. With the field blank, Fieldbench

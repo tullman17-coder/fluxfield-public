@@ -29,6 +29,12 @@ export type StudioSettings = {
   improveApiBase: string;
   improveApiKey: string;
   improveApiModel: string;
+  /**
+   * Openweight models take the prompt as written. With this on, Fieldbench
+   * stops adding content filters of its own and tells the controller to leave
+   * its own checker off.
+   */
+  unrestricted: boolean;
 };
 
 export type JobStatus = "queued" | "running" | "completed" | "failed";
