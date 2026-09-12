@@ -11,6 +11,11 @@ const CATEGORY_LABEL: Record<string, string> = {
   sports: "Sports",
 };
 
+// The cards report which machine drew them, which is only known at the moment
+// the page is asked for. Left to prerender, a hosted copy would show whatever
+// was true when it was built and never change.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const engines = await readCardEngines();
   return (
