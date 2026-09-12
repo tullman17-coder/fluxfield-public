@@ -13,6 +13,12 @@ const LENGTHS = [
   { id: "300", label: "5 min" },
 ];
 
+const LYRIC_MODES = [
+  { id: "instrumental", label: "No words", blurb: "Just the music" },
+  { id: "write", label: "Write them", blurb: "Words to match the brief" },
+  { id: "own", label: "Use mine", blurb: "Paste your own" },
+];
+
 const selectClass =
   "h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/10 px-3 text-sm text-[#f5eff6] transition-colors hover:border-white/15 focus-visible:outline-2 focus-visible:outline-[#f2a1ed]";
 const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
@@ -25,6 +31,8 @@ export default function MusicPage() {
   const [seconds, setSeconds] = useState("60");
   const [key, setKey] = useState("");
   const [bpm, setBpm] = useState("");
+  const [lyricMode, setLyricMode] = useState("write");
+  const [lyrics, setLyrics] = useState("");
   const [job, setJob] = useState<StudioJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
@@ -55,7 +63,17 @@ export default function MusicPage() {
           tool: "music",
           workflowSlug: "music",
           presetId: genre,
-          inputs: { brief, trackName, genre, mood, seconds, key, bpm },
+          inputs: {
+            brief,
+            trackName,
+            genre,
+            mood,
+            seconds,
+            key,
+            bpm,
+            lyricMode,
+            lyrics,
+          },
         }),
       });
       const data = await res.json();
@@ -64,11 +82,12 @@ export default function MusicPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the track");
     }
-  }, [brief, trackName, genre, mood, seconds, key, bpm]);
+  }, [brief, trackName, genre, mood, seconds, key, bpm, lyricMode, lyrics]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const track = job?.outputs.find((o) => o.kind === "audio");
   const arrangement = job?.outputs.find((o) => o.kind === "storyboard");
+  const lyricSheet = job?.outputs.find((o) => o.kind === "script");
   const activeGenre = GENRES.find((g) => g.id === genre) ?? GENRES[0];
 
   return (
@@ -217,6 +236,48 @@ export default function MusicPage() {
             </div>
           </div>
 
+          <fieldset className="min-w-0 border-t border-white/10 py-5">
+            <legend className="text-sm font-medium text-[#b8aebb]">Words</legend>
+            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+              {LYRIC_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={lyricMode === m.id}
+                  onClick={() => setLyricMode(m.id)}
+                  className={cn(
+                    "grid min-h-11 min-w-0 gap-0.5 rounded-[10px] border px-3 py-2 text-left transition-colors",
+                    lyricMode === m.id
+                      ? "border-[#d565d6] bg-[#2c162f] text-[#e77ae6]"
+                      : "border-white/10 bg-white/5 text-[#b8aebb] hover:border-white/15 hover:text-[#f5eff6]",
+                  )}
+                >
+                  <span className="text-sm font-bold">{m.label}</span>
+                  <span className="text-sm text-[#8d838f]">{m.blurb}</span>
+                </button>
+              ))}
+            </div>
+            {lyricMode === "own" ? (
+              <div className="mt-4 min-w-0">
+                <label htmlFor="lyrics" className={labelClass}>
+                  Your words — leave a blank line between parts
+                </label>
+                <textarea
+                  id="lyrics"
+                  value={lyrics}
+                  onChange={(e) => setLyrics(e.currentTarget.value)}
+                  placeholder={"First verse goes here\nSecond line of the verse\n\nThis block becomes the hook"}
+                  className="min-h-32 w-full min-w-0 resize-y rounded-[10px] border border-white/15 bg-white/15 p-3 font-mono text-sm leading-relaxed text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
+                />
+              </div>
+            ) : lyricMode === "write" ? (
+              <p className="mt-3 text-sm text-[#8d838f]">
+                Your model writes them when one is connected, and they get timed
+                to the section map either way.
+              </p>
+            ) : null}
+          </fieldset>
+
           {error ? (
             <p
               role="alert"
@@ -252,6 +313,17 @@ export default function MusicPage() {
               the hook lands, and how loud each part gets.
             </p>
           )}
+
+          {lyricSheet?.text ? (
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <h3 className="text-sm font-bold text-[#f5eff6]">
+                {lyricSheet.label}
+              </h3>
+              <pre className="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap font-mono text-xs leading-relaxed tabular-nums text-[#b8aebb]">
+                {lyricSheet.text}
+              </pre>
+            </div>
+          ) : null}
         </aside>
 
         <section className="min-w-0 pt-3 xl:col-start-1">

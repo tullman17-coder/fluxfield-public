@@ -88,6 +88,37 @@ END CARD:`,
   );
 }
 
+/**
+ * Words for a track. The section list comes from the arrangement so the model
+ * writes to the shape of the music instead of a generic verse/chorus.
+ */
+export async function generateLyrics(
+  settings: StudioSettings,
+  args: {
+    brief: string;
+    title: string;
+    genre: string;
+    mood: string;
+    sections: string[];
+    linesPerSection: number;
+  },
+): Promise<string | undefined> {
+  const wanted = [...new Set(args.sections)].join(", ");
+  return ollamaGenerate(
+    settings,
+    `Write lyrics for a ${args.genre} track called "${args.title}".
+Subject: ${args.brief}
+Feel: ${args.mood}
+Write a block for each of these parts: ${wanted}
+Around ${args.linesPerSection} lines per block. The chorus is the hook and repeats.
+Write the words only — no commentary, no explanation, no notes about the request.
+Format each block as:
+[Part name]
+line
+line`,
+  );
+}
+
 export function fallbackMarketingCopy(args: {
   wrapperName: string;
   presetLabel: string;

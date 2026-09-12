@@ -10,6 +10,15 @@ import {
 } from "@/lib/music/theory";
 import { MAX_RENDER_SEC, renderArrangement } from "@/lib/music/synth";
 import { encodeWav } from "@/lib/music/wav";
+import {
+  lyricPlainText,
+  lyricSheetText,
+  parseLyricResponse,
+  placeLyrics,
+  writeLyrics,
+  type LyricSheet,
+} from "@/lib/music/lyrics";
+import { generateLyrics } from "@/lib/adapters/ollama";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -34,12 +43,20 @@ async function generateOnServer(
   model: string,
   prompt: string,
   seconds: number,
+  lyrics?: string,
 ): Promise<Buffer | null> {
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/generate`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt, model, duration: seconds, format: "wav" }),
+      body: JSON.stringify({
+        prompt,
+        model,
+        duration: seconds,
+        format: "wav",
+        // ACE-Step and friends take the words alongside the style prompt.
+        lyrics: lyrics || undefined,
+      }),
       signal: AbortSignal.timeout(300_000),
     });
     if (!res.ok) return null;
@@ -72,10 +89,61 @@ export function arrangementSummary(a: Arrangement) {
   return lines.join("\n");
 }
 
+/**
+ * Words for the track: the writer's own, a local model's, or the built-in
+ * writer. Returns null when the track is meant to be instrumental.
+ */
+async function buildLyrics(
+  ctx: AdapterContext,
+  arrangement: Arrangement,
+  title: string,
+): Promise<LyricSheet | null> {
+  const inputs = ctx.job.inputs;
+  const mode = inputs.lyricMode || "instrumental";
+  if (mode === "instrumental") return null;
+
+  if (mode === "own") {
+    const text = inputs.lyrics?.trim();
+    if (!text) return null;
+    return placeLyrics({ text, title, arrangement });
+  }
+
+  const sung = arrangement.sections
+    .map((s) => s.name)
+    .filter((n) => n === "Verse" || n === "Pre" || n === "Chorus" || n === "Bridge");
+  if (sung.length) {
+    const raw = await generateLyrics(ctx.settings, {
+      brief: inputs.brief || ctx.job.prompt,
+      title,
+      genre: inputs.genre || "synthwave",
+      mood: inputs.mood || "neutral",
+      sections: sung,
+      linesPerSection: 4,
+    });
+    if (raw) {
+      const parsed = parseLyricResponse(raw, title, arrangement);
+      if (parsed) return parsed;
+    }
+  }
+
+  return writeLyrics({
+    brief: inputs.brief || ctx.job.prompt,
+    title,
+    arrangement,
+    seedText: `${ctx.job.id}:${inputs.brief || ctx.job.prompt}`,
+  });
+}
+
 /** Composes a track, preferring a local music server and falling back to the built-in composer. */
 export async function runMusicAdapter(
   ctx: AdapterContext,
-): Promise<AdapterResult & { arrangement: Arrangement; usedServer: boolean }> {
+): Promise<
+  AdapterResult & {
+    arrangement: Arrangement;
+    usedServer: boolean;
+    lyrics: LyricSheet | null;
+  }
+> {
   const inputs = ctx.job.inputs;
   const targetSec = Math.max(
     10,
@@ -94,6 +162,9 @@ export async function runMusicAdapter(
   await fs.mkdir(OUT_DIR, { recursive: true });
   const outputs: JobOutput[] = [];
 
+  const title = inputs.trackName?.trim() || "Untitled";
+  const sheet = await buildLyrics(ctx, arrangement, title);
+
   let audio: Buffer | null = null;
 
   if (ctx.settings.musicUrl) {
@@ -102,6 +173,7 @@ export async function runMusicAdapter(
       ctx.settings.musicModel,
       `${inputs.brief || ctx.job.prompt}. ${inputs.genre || ""} ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
       targetSec,
+      sheet ? lyricPlainText(sheet) : undefined,
     );
   }
   const usedServer = Boolean(audio);
@@ -131,5 +203,15 @@ export async function runMusicAdapter(
     text: arrangementSummary(arrangement),
   });
 
-  return { outputs, arrangement, usedServer };
+  if (sheet) {
+    const sung = sheet.sections.reduce((n, s) => n + s.lines.length, 0);
+    outputs.push({
+      id: nanoid(8),
+      kind: "script",
+      label: `Lyrics · ${sung} lines`,
+      text: lyricSheetText(sheet),
+    });
+  }
+
+  return { outputs, arrangement, usedServer, lyrics: sheet };
 }
