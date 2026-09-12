@@ -75,59 +75,49 @@ export default function HomePage() {
               className="glass mb-4 block break-inside-avoid overflow-hidden rounded-[14px] transition hover:shadow-[0_16px_48px_rgb(90_70_110/16%)]"
               style={{ background: `${w.surface}55` }}
             >
+              {/* The example is a finished piece with its own words in it, so
+                  it gets its own panel instead of sitting under the caption. */}
               <div
-                className={
-                  w.span === "tall"
-                    ? "relative min-h-[420px]"
-                    : w.span === "wide"
-                      ? "relative min-h-[220px]"
-                      : "relative min-h-[280px]"
-                }
+                className="relative flex items-center justify-center overflow-hidden p-3"
+                style={{ background: `${w.surface}33` }}
               >
-                {/* real generated art, cached per layout */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/api/card-bg/${w.slug}`}
-                  alt=""
+                  alt={`Example made with ${w.name}`}
                   loading="lazy"
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className={
+                    w.span === "tall"
+                      ? "max-h-[22rem] w-auto max-w-full rounded-[8px] shadow-[0_10px_30px_rgb(0_0_0/45%)]"
+                      : "max-h-[14rem] w-auto max-w-full rounded-[8px] shadow-[0_10px_30px_rgb(0_0_0/45%)]"
+                  }
                 />
-                <div className="relative flex h-full min-h-[inherit] flex-col justify-between p-5">
-                  <div className="flex min-w-0 items-start justify-between gap-3">
+                <span
+                  className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm"
+                  style={{ background: w.accent }}
+                >
+                  {CATEGORY_LABEL[w.category] ?? w.category}
+                </span>
+                <span className="absolute right-3 top-3 rounded-full bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70 backdrop-blur-sm">
+                  Example
+                </span>
+              </div>
+              <div className="min-w-0 border-t border-white/10 p-5">
+                <div className="text-lg font-medium text-[#f5eff6]">
+                  {w.name}
+                </div>
+                <p className="mt-1 text-sm text-pretty text-[#b8aebb]">
+                  {w.tagline}
+                </p>
+                <div className="mt-4 flex min-w-0 flex-wrap gap-2">
+                  {w.copyHints.slice(0, 3).map((hint) => (
                     <span
-                      className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm"
-                      style={{ background: w.accent }}
+                      key={hint}
+                      className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] text-white/75"
                     >
-                      {CATEGORY_LABEL[w.category] ?? w.category}
+                      {hint}
                     </span>
-                    <span className="rounded-full bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/60 backdrop-blur-sm">
-                      Layout
-                    </span>
-                  </div>
-                  <div className="min-w-0 rounded-[12px] bg-[#100e14]/55 p-4 backdrop-blur-md">
-                    <div
-                      className="text-3xl font-bold leading-none"
-                      style={{ color: w.accent }}
-                    >
-                      {w.brandSample}
-                    </div>
-                    <div className="mt-3 text-lg font-medium text-[#f5eff6]">
-                      {w.name}
-                    </div>
-                    <p className="mt-1 text-sm text-pretty text-[#b8aebb]">
-                      {w.tagline}
-                    </p>
-                    <div className="mt-4 flex min-w-0 flex-wrap gap-2">
-                      {w.copyHints.slice(0, 3).map((hint) => (
-                        <span
-                          key={hint}
-                          className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] text-white/75"
-                        >
-                          {hint}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </Link>

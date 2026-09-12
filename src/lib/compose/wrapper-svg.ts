@@ -11,6 +11,42 @@ function esc(value: string) {
     .replaceAll('"', "&quot;");
 }
 
+/**
+ * Wrap a paragraph into tspans. Browsers drop foreignObject when an SVG is
+ * shown through an <img>, so body copy has to be laid out here.
+ */
+function textBlock(
+  text: string,
+  x: number,
+  y: number,
+  size: number,
+  maxChars: number,
+  fill: string,
+  family: string,
+  maxLines = 4,
+) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    if (!line.length) line = word;
+    else if (line.length + word.length + 1 <= maxChars) line += ` ${word}`;
+    else {
+      lines.push(line);
+      line = word;
+      if (lines.length >= maxLines) break;
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  const spans = lines
+    .map(
+      (l, i) =>
+        `<tspan x="${x}" dy="${i === 0 ? 0 : size * 1.45}">${esc(l)}</tspan>`,
+    )
+    .join("");
+  return `<text x="${x}" y="${y}" fill="${fill}" font-family="${family}" font-size="${size}">${spans}</text>`;
+}
+
 function sizeForAspect(aspect: string): { w: number; h: number } {
   const map: Record<string, { w: number; h: number }> = {
     "1:1": { w: 1080, h: 1080 },
@@ -43,14 +79,13 @@ export async function composeWrapperSvg(args: {
       args.wrapper.copyHints[0] ||
       product,
   );
-  const body = esc(
-    (
-      args.values.bodyCopy ||
-      args.values.productDescription ||
-      args.values.venue ||
-      args.wrapper.tagline
-    ).slice(0, 280),
-  );
+  const bodyRaw = (
+    args.values.bodyCopy ||
+    args.values.productDescription ||
+    args.values.venue ||
+    args.wrapper.tagline
+  ).slice(0, 280);
+  const body = esc(bodyRaw);
   const cta = esc(args.values.cta || "Shop now");
   const price = esc(args.values.price || "");
   const preset = esc(args.presetLabel);
@@ -88,9 +123,7 @@ export async function composeWrapperSvg(args: {
         <text x="${w * 0.08}" y="${h * 0.08}" fill="#111" font-family="Georgia, serif" font-size="${Math.round(w * 0.035)}" letter-spacing="4">${brand}</text>
         ${img ? subjectImage(w * 0.08, h * 0.12, w * 0.84, h * 0.48, 4) : `<rect x="${w * 0.08}" y="${h * 0.12}" width="${w * 0.84}" height="${h * 0.48}" rx="4" fill="#dbe4ee"/>`}
         <text x="${w * 0.08}" y="${h * 0.7}" fill="#111" font-family="Georgia, serif" font-size="${Math.round(w * 0.055)}" font-weight="700">${headline}</text>
-        <foreignObject x="${w * 0.08}" y="${h * 0.74}" width="${w * 0.84}" height="${h * 0.2}">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Georgia, serif; font-size: ${Math.round(w * 0.028)}px; color:#333; line-height:1.45">${body}</div>
-        </foreignObject>
+        ${textBlock(bodyRaw, w * 0.08, h * 0.76, Math.round(w * 0.028), 48, "#333", "Georgia, serif")}
       `;
       break;
     case "event-stack":

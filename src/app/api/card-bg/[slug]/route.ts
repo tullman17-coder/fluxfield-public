@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { getImage2Wrapper } from "@/lib/wrappers/catalog";
+import { getImage2Wrapper, sampleValues } from "@/lib/wrappers/catalog";
 import { createAndRunJob } from "@/lib/jobs/runner";
 import { getJob } from "@/lib/jobs/store";
 
@@ -64,29 +64,25 @@ export async function GET(
     });
   }
 
-  // First hit: generate real card art through the active adapter chain
-  // (Local Studio → ComfyUI → mock) and cache it under .data/card-bg/.
+  // A card should show what its layout actually makes, so run the layout for
+  // real with its own example copy and keep the finished piece.
   const job = await createAndRunJob({
-    tool: "dream",
-    workflowSlug: "dream",
-    presetId: "cinematic",
+    tool: "image2",
+    workflowSlug: slug,
+    presetId: wrapper.presets[0].id,
     inputs: {
-      prompt: `${wrapper.name} marketing key art — ${wrapper.tagline} ${wrapper.category} campaign atmosphere, dominant accent color ${wrapper.accent}, bold composition, no text, no words, no letters`,
-      negativePrompt: "text, words, letters, logo, watermark, caption",
-      ratio: wrapper.span === "wide" ? "landscape" : "portrait",
-      framing: "auto",
-      count: "1",
-      steps: "4",
-      cfg: "1",
-      assist: "on",
-      productName: wrapper.name,
+      ...sampleValues(wrapper),
+      aspect: wrapper.aspectDefault,
       // Cards render around 600px wide; full-size art would be megabytes each.
       maxDim: "600",
     },
   });
 
   const done = await waitForJob(job.id);
-  const art = done?.outputs.find((o) => o.kind === "image" && o.url);
+  // The composed layout is the last image; earlier ones are the bare subject.
+  const art = [...(done?.outputs ?? [])]
+    .reverse()
+    .find((o) => o.kind === "image" && o.url);
   if (!art?.url) {
     return NextResponse.json({ error: "no art produced" }, { status: 502 });
   }

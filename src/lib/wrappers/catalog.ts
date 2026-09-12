@@ -436,6 +436,28 @@ export function getImage2Wrapper(slug: string) {
   return IMAGE2_WRAPPERS.find((w) => w.slug === slug);
 }
 
+/**
+ * Example values for a layout, taken from the hints already shown in its form.
+ * Running these gives a card a genuine sample of what the layout makes rather
+ * than a decorative background.
+ */
+export function sampleValues(wrapper: Image2Wrapper): Record<string, string> {
+  const values: Record<string, string> = {
+    brandName: wrapper.brandSample,
+  };
+  for (const field of wrapper.inputs) {
+    if (field.type === "file") continue;
+    if (field.type === "select") {
+      const first = field.options?.[0]?.value;
+      if (first) values[field.id] = first;
+      continue;
+    }
+    if (field.placeholder) values[field.id] = field.placeholder;
+  }
+  values.brandName = wrapper.brandSample;
+  return values;
+}
+
 export function fillWrapperPrompt(
   template: string,
   values: Record<string, string>,
