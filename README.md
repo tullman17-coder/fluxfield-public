@@ -1,6 +1,6 @@
 # Fieldbench
 
-Local Higgsfield-style **marketing wrappers** (GPT Image-2 style) and **Explainer** studio that talk to offline models on another machine — including a **Local Studio / Local Dream Studio** controller over **Netbird**.
+Local Higgsfield/Maestro-style studio — **marketing wrappers**, **Explainer**, a **Director** for long-form pieces, and a **Music** desk — talking to offline models on another machine, including a **Local Studio / Local Dream Studio** controller over **Netbird**.
 
 ## What you get
 
@@ -8,9 +8,15 @@ Local Higgsfield-style **marketing wrappers** (GPT Image-2 style) and **Explaine
 2. **Create workbench** (`/create`) — the Local Dream Studio surface, merged in: prompt-first editor, **AI prompt improvement** (Local Ollama or your own API key), deterministic prompt assist with live preview, preset ribbon, framing, ratios, batch count, seed/steps/CFG, live job strip, and results with Reuse / Vary.
 3. **Image-2 wrapper gallery** — masonry of mini-app containers (streetwear drop, editorial catalog, event poster, ecommerce banner, virtual try-on, sports lockup). Cards render **generated key art** (cached per wrapper) behind frosted strips.
 4. **Explainer** — left-rail topic + aspect/duration/voice/subtitles, preset grid (editorial motion, stickman, watercolor, fairy tale, paper diorama, pastel flat), then script → beats → VO → optional MP4.
-5. **Marketing desk** — classic product / ads / UGC / motion / marketplace / poster workflows.
-6. **Dream style + framing** — prompt suffixes ported from Local Dream Studio (photo, cinematic, noir, macro, etc.), available on every generate form.
-7. **Adapters** — Local Studio controller (`/v1/images/generations`), ComfyUI, Ollama, Piper/OpenAI-TTS, FFmpeg. **Mock mode** always works with no GPU.
+5. **Director** (`/director`) — long-form planning instead of single clips. Two modes:
+   - **Music video** writes the track first, then cuts every shot to the beat of its section map.
+   - **Short film** walks six acts, tightening framing and shortening holds as tension rises.
+
+   Runtimes go from 1 minute to **60 minutes**. Output is a timecoded shot list (size, camera move, action, a direction note per section), a score, key frames for the important moments, and a **window plan** that splits anything over two minutes into 2-minute render windows. Long lists are downloadable as plain text.
+6. **Music** (`/music`) — writes a real arrangement (intro, verses, pre, hook, break, outro) in a chosen key and tempo across 8 styles, then renders it to a 16-bit stereo WAV. Uses a local music server when you point at one; otherwise the built-in composer runs with no GPU.
+7. **Marketing desk** — classic product / ads / UGC / motion / marketplace / poster workflows.
+8. **Dream style + framing** — prompt suffixes ported from Local Dream Studio (photo, cinematic, noir, macro, etc.), available on every generate form.
+9. **Connections** — Local Studio controller (`/v1/images/generations`), ComfyUI, Ollama, Piper/OpenAI-TTS, a music server, FFmpeg. **Preview mode** always works with no GPU: it paints real raster art (procedural noise fields, composition archetypes, film grain) rather than flat gradients, and synthesizes audio from scratch.
 
 The UI is a **milky swirled glass** theme: creamy base, slow iridescent swirl blobs (transform-only, reduced-motion safe), frosted glass rail and panels — and **no horizontal scrollbars** at any width.
 
@@ -18,10 +24,10 @@ The UI is a **milky swirled glass** theme: creamy base, slow iridescent swirl bl
 
 The Create workbench **Improve prompt** button rewrites your idea into a full generation prompt:
 
-- **Local** — uses the Ollama server configured in Adapters (any model you pulled, e.g. `llama3.2`). Nothing leaves your mesh.
-- **API key** — uses any OpenAI-compatible chat endpoint (`API base URL` + `API key` + `API model` in Adapters → Prompt improvement).
+- **Local** — uses the Ollama server set under Connections (any model you pulled, e.g. `llama3.2`). Nothing leaves your mesh.
+- **API key** — uses any OpenAI-compatible chat endpoint (`API base URL` + `API key` + `API model` under Connections → Rewrite with).
 
-Pick the provider per-click on the workbench, or set the default in Adapters. Env overrides: `IMPROVE_API_BASE`, `IMPROVE_API_KEY`, `IMPROVE_API_MODEL`.
+Pick the provider per-click on the workbench, or set the default under Connections. Env overrides: `IMPROVE_API_BASE`, `IMPROVE_API_KEY`, `IMPROVE_API_MODEL`.
 
 ## Run locally
 
@@ -32,7 +38,7 @@ npm run dev
 
 Open [http://127.0.0.1:43127](http://127.0.0.1:43127).
 
-Go to **Adapters** and set:
+Go to **Settings → Connections** and set:
 
 | Setting | Typical value on your model box |
 |---|---|
@@ -41,7 +47,8 @@ Go to **Adapters** and set:
 | ComfyUI URL | `http://<netbird-peer>:8188` |
 | Ollama URL | `http://<netbird-peer>:11434` |
 | TTS URL | `http://<netbird-peer>:5500` |
-| Mode | `auto` (Local Studio → Comfy → mock) |
+| Music URL | `http://<netbird-peer>:8020` (optional, blank uses the built-in composer) |
+| Mode | `auto` (Local Studio → Comfy → preview) |
 
 Env overrides (optional):
 
@@ -55,7 +62,7 @@ export LOCAL_STUDIO_API_KEY="…"
 Local Dream Studio historically hard-coded Tailscale CGNAT hosts (`100.x`). This mesh is **Netbird** now.
 
 - Prefer Netbird **peer DNS** or the **current Netbird IP** for Local Studio / Comfy / Ollama.
-- Fieldbench warns in Adapters if a URL still looks like a Tailscale `100.64.0.0/10` address.
+- Fieldbench warns under Connections if a URL still looks like a Tailscale `100.64.0.0/10` address.
 - Do not assume `http://100.115.190.105:18088` still reaches your controller.
 
 ## Self-host helper stack
@@ -76,6 +83,18 @@ Run **Local Studio controller** and/or **ComfyUI** on the GPU machine separately
 | Explainer frames | Local Studio, Comfy, or mock beats |
 | Explainer voice | Piper / OpenAI-compatible `/v1/audio/speech` |
 | Explainer cut | FFmpeg slideshow mux |
+| Music tracks | Local music server `POST /generate`, else the built-in composer |
+| Director frames | Local Studio, Comfy, or the built-in painter |
+
+### Music server contract
+
+Optional. Point **Music address** at anything that accepts:
+
+- `POST /generate` with `{ prompt, duration, model }`
+- Response: raw audio bytes, `{ audio: "<base64>" }`, or `{ url }`
+
+ACE-Step and MusicGen-style servers both fit. With the field blank, Fieldbench
+writes the arrangement and renders the WAV itself — no GPU, no network.
 
 ### Local Studio contract
 
@@ -88,10 +107,11 @@ Same as Local Dream Studio:
 
 ## Optimizations baked in
 
-- **Mock compositor** so UI/workflows are usable before GPUs are online
-- **Auto mode** health-probes Local Studio (with key), then Comfy, else mock
+- **Preview painter** so every surface is usable before GPUs are online — PNGs encoded from scratch, no image libraries
+- **Auto mode** health-probes Local Studio (with key), then Comfy, else preview — and keeps walking the chain when a machine answers a probe but fails the job
 - Soft-fail TTS/FFmpeg (still returns storyboard + frames)
-- Job store on disk under `.data/`
+- Job store on disk under `.data/`, written atomically and serialized so parallel jobs cannot corrupt it
+- Long runtimes are split into 2-minute render windows rather than one enormous job
 - Wrapper chrome is local SVG compose (typography/CTA/layout) — not baked into the diffusion prompt
 
 ## Notes
