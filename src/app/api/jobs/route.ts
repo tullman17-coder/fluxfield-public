@@ -6,8 +6,25 @@ import path from "path";
 import { nanoid } from "nanoid";
 import type { JobTool } from "@/lib/adapters/types";
 
-export async function GET() {
-  const jobs = await listJobs();
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const sort = (searchParams.get("sort") as
+    | "createdAt"
+    | "updatedAt"
+    | "name"
+    | "tool"
+    | "status") || "createdAt";
+  const order = searchParams.get("order") === "asc" ? "asc" : "desc";
+  const tool = searchParams.get("tool") || undefined;
+  const status = searchParams.get("status") || undefined;
+  const limit = searchParams.get("limit")
+    ? Number(searchParams.get("limit"))
+    : undefined;
+  const offset = searchParams.get("offset")
+    ? Number(searchParams.get("offset"))
+    : undefined;
+
+  const jobs = await listJobs({ sort, order, tool, status, limit, offset });
   return NextResponse.json({ jobs });
 }
 

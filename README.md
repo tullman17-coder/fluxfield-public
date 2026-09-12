@@ -213,9 +213,62 @@ Same as Local Dream Studio:
 - **Preview painter** so every surface is usable before GPUs are online — PNGs encoded from scratch, no image libraries
 - **Auto mode** health-probes Local Studio (with key), then Comfy, else preview — and keeps walking the chain when a machine answers a probe but fails the job
 - Soft-fail TTS/FFmpeg (still returns storyboard + frames)
-- Job store on disk under `.data/`, written atomically and serialized so parallel jobs cannot corrupt it
+- Job store on disk under `.data/jobs/<date>/<id>/`, with a browsable `.data/library/` and rebuildable indexes — not a capped JSON ledger
 - Long runtimes are split into 2-minute render windows rather than one enormous job
 - Wrapper chrome is local SVG compose (typography/CTA/layout) — not baked into the diffusion prompt
+
+## On-disk layout
+
+```
+.data/
+  jobs/YYYY-MM-DD/<jobId>/job.json
+  jobs/YYYY-MM-DD/<jobId>/outputs/
+  library/image|audio|video/YYYY/MM/<file>   # hard links into job outputs
+  indexes/jobs.json
+  indexes/library.json
+  settings.json
+  outputs/          # flat compatibility links for /api/outputs/*
+```
+
+Migrate an older single-file ledger with:
+
+```bash
+npm run data:migrate
+```
+
+Gallery sorts through `GET /api/library?sort=createdAt|name|tool|kind|mtime&order=desc&kind=image`.
+
+## Authelia (bring your own)
+
+Fluxfield is an OIDC client. Authelia stays on your box; register a client and point the app at it:
+
+```yaml
+# Authelia identity_providers.oidc.clients entry
+- client_id: 'fluxfield'
+  client_name: 'Fluxfield'
+  client_secret: 'your-secret'   # use a hash in Authelia
+  public: false
+  authorization_policy: 'two_factor'
+  redirect_uris:
+    - 'https://fluxfield.example.com/api/auth/callback/authelia'
+  scopes: ['openid', 'profile', 'email']
+  response_types: ['code']
+  grant_types: ['authorization_code']
+  userinfo_signed_response_alg: 'none'
+```
+
+App env (see `.env.example`):
+
+```bash
+AUTH_SECRET=...
+AUTH_TRUST_HOST=true
+AUTHELIA_ISSUER=https://auth.example.com
+AUTHELIA_CLIENT_ID=fluxfield
+AUTHELIA_CLIENT_SECRET=...
+# AUTH_DISABLED=true   # only for local / mesh-only testing
+```
+
+Anyone Authelia authenticates for this client may use the studio. `/api/health` stays reachable without a session.
 
 ## Notes
 

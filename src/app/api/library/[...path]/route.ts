@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { resolveOutputFile } from "@/lib/jobs/store";
+import { LIBRARY_DIR } from "@/lib/data/paths";
 
 function contentTypeFor(name: string) {
   const ext = path.extname(name).toLowerCase();
@@ -17,24 +17,28 @@ function contentTypeFor(name: string) {
 
 export async function GET(
   _request: Request,
-  context: { params: Promise<{ name: string }> },
+  context: { params: Promise<{ path: string[] }> },
 ) {
-  const { name } = await context.params;
-  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
-    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+  const parts = (await context.params).path || [];
+  if (parts.some((p) => !p || p === "." || p === ".." || p.includes("\0"))) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  const filePath = await resolveOutputFile(name);
-  if (!filePath) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const relative = parts.join("/");
+  const absolute = path.resolve(LIBRARY_DIR, relative);
+  if (
+    absolute !== LIBRARY_DIR &&
+    !absolute.startsWith(LIBRARY_DIR + path.sep)
+  ) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
   try {
-    const data = await fs.readFile(filePath);
+    const data = await fs.readFile(absolute);
     return new NextResponse(data, {
       headers: {
-        "Content-Type": contentTypeFor(name),
-        "Cache-Control": "public, max-age=3600",
+        "Content-Type": contentTypeFor(absolute),
+        "Cache-Control": "private, max-age=3600",
       },
     });
   } catch {

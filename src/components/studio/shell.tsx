@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { AuthStatus } from "@/components/studio/auth-status";
 
 const NAV = [
   { href: "/supercomputer", label: "Super", icon: "cpu" },
@@ -209,6 +210,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
           <span className="text-[9px] sm:text-[11px]">
             {health ? (ENGINE_LABEL[health.effectiveMode] ?? health.effectiveMode) : "…"}
           </span>
+          <AuthStatus />
         </div>
       </aside>
 
