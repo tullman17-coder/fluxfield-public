@@ -1,6 +1,6 @@
 /**
  * Style presets + framing suffixes ported from local-dream-studio.
- * Used to enrich Fieldbench prompts before Comfy / Local Studio / mock.
+ * Used to enrich Fluxfield prompts before Comfy / Local Studio / mock.
  */
 
 export type DreamPresetId =
@@ -96,7 +96,7 @@ export const MATURE_PRESETS: {
 ];
 
 /**
- * Content terms Fieldbench adds on its own. With unrestricted mode on these
+ * Content terms Fluxfield adds on its own. With unrestricted mode on these
  * come back out, including any the layout catalog carries.
  */
 const CONTENT_FILTER_TERMS = [

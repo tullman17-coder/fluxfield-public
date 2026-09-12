@@ -30,7 +30,7 @@ export type StudioSettings = {
   improveApiKey: string;
   improveApiModel: string;
   /**
-   * Openweight models take the prompt as written. With this on, Fieldbench
+   * Openweight models take the prompt as written. With this on, Fluxfield
    * stops adding content filters of its own and tells the controller to leave
    * its own checker off.
    */

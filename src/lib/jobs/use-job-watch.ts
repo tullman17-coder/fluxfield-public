@@ -20,7 +20,7 @@ function inProgress(job: StudioJob | null): boolean {
 export function useJobWatch(scope: string, intervalMs = 1200) {
   const [job, setJobState] = useState<StudioJob | null>(null);
   const [onScreen, setOnScreen] = useState(true);
-  const memory = `fieldbench:job:${scope}`;
+  const memory = `fluxfield:job:${scope}`;
 
   const setJob = useCallback(
     (next: StudioJob | null) => {

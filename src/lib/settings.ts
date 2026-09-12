@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS: StudioSettings = {
   improveApiBase: process.env.IMPROVE_API_BASE || "https://api.openai.com/v1",
   improveApiKey: process.env.IMPROVE_API_KEY || "",
   improveApiModel: process.env.IMPROVE_API_MODEL || "gpt-4o-mini",
-  unrestricted: process.env.FIELD_BENCH_UNRESTRICTED === "1",
+  unrestricted: process.env.FLUXFIELD_UNRESTRICTED === "1",
 };
 
 async function ensureDataDir() {

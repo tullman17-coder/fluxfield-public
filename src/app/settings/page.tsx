@@ -92,7 +92,7 @@ export default function SettingsPage() {
           Where your work gets made
         </h1>
         <p className="mt-2 text-[#b8aebb]">
-          Fieldbench hands image, writing, and voice work to the machines you
+          Fluxfield hands image, writing, and voice work to the machines you
           point it at here. Fill in what you have running and leave the rest
           blank.
         </p>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
           <span>
             Take prompts as written
             <span className="mt-1 block text-xs text-[#8d838f]">
-              For openweight models. Stops Fieldbench adding blocks of its own,
+              For openweight models. Stops Fluxfield adding blocks of its own,
               tells your machine to leave its checker off, and adds a set of
               adult looks to the style list.
             </span>

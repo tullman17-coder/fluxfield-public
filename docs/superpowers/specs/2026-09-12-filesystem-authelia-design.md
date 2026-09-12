@@ -1,18 +1,19 @@
-# Fieldbench — disk filesystem + Authelia OIDC
+# Fluxfield — disk filesystem + Authelia OIDC
 
-**Status:** draft for user review  
+**Status:** approved (naming revision 2026-09-12)  
 **Date:** 2026-09-12  
+**Product name:** **Fluxfield** everywhere — UI, PWA, compose service, npm package (`"name": "fluxfield"`), and the git repository. No “Fieldbench” string remains in shipped or developer-facing surfaces.  
 **Decisions locked in chat:** library layout **C** (job folders + media library), Authelia mode **C** (OIDC into the app), Authelia hosting **A** (bring your own), access **A** (anyone Authelia authenticates), implementation approach **1** (disk-native jobs + library index + Auth.js OIDC).
 
 ## Problem
 
-Fieldbench today keeps work in a single `.data/jobs.json` ledger (capped) and a flat `.data/outputs/` directory. That is fine for a laptop demo and wrong for a hosted studio: jobs can be truncated while files remain, nothing is browsable on disk by date or kind, sorting is “newest job only,” and there is no identity gate for a public domain.
+The app today keeps work in a single `.data/jobs.json` ledger (capped) and a flat `.data/outputs/` directory. That is fine for a laptop demo and wrong for a hosted studio: jobs can be truncated while files remain, nothing is browsable on disk by date or kind, sorting is “newest job only,” and there is no identity gate for a public domain.
 
 We need:
 
 1. A real on-disk layout that survives restarts and scales past a JSON array.
 2. Sorting/filtering over both **jobs** (provenance) and a **library** (finished media).
-3. Authelia as the login gate via OIDC (Fieldbench is the client; Authelia stays yours).
+3. Authelia as the login gate via OIDC (Fluxfield is the client; Authelia stays yours).
 4. Confirmation the git tree holds no personal secrets, then an end-to-end check of what already works plus the new paths.
 
 ## Non-goals
@@ -61,7 +62,7 @@ One library file per output that is safe to browse (images, audio, video, notabl
 
 ### Index
 
-`indexes/library.json` is a cache. `fieldbench library rebuild` (npm script / boot hook) walks `jobs/**/job.json` and regenerates it. List APIs never require the index to be perfect: if missing or stale, rebuild or fall back to a bounded walk.
+`indexes/library.json` is a cache. `fluxfield library rebuild` (npm script / boot hook) walks `jobs/**/job.json` and regenerates it. List APIs never require the index to be perfect: if missing or stale, rebuild or fall back to a bounded walk.
 
 ## Sorting & APIs
 
@@ -110,28 +111,29 @@ Orphan outputs (no matching job) go to `library/other/<date>/orphan-<name>` and 
 ## Identity (Authelia OIDC)
 
 - **Library:** Auth.js (NextAuth v5) with a single Authelia OIDC provider.
-- **Env (Fieldbench):**
+- **Env (Fluxfield):**
   - `AUTH_SECRET`
   - `AUTH_TRUST_HOST=true` (behind TLS terminator)
   - `AUTHELIA_ISSUER` (e.g. `https://auth.example.com`)
   - `AUTHELIA_CLIENT_ID`
   - `AUTHELIA_CLIENT_SECRET`
   - `AUTHELIA_END_SESSION_URL` (optional, for SSO logout)
-- **Callback:** `https://<fieldbench-host>/api/auth/callback/authelia`
-- **Access rule:** any subject Authelia successfully authenticates for this client is allowed. No second allowlist in Fieldbench.
+- **Callback:** `https://<fluxfield-host>/api/auth/callback/authelia`
+- **Access rule:** any subject Authelia successfully authenticates for this client is allowed. No second allowlist in the app.
 - **Route protection:** Next.js middleware requires a session for all pages and `/api/*` except:
   - `/api/auth/*`
   - `/api/health` (liveness only; no settings leakage)
   - static icons / manifest needed post-login install still go through auth on first hit (acceptable for a private studio)
 - **Dev without Authelia:** `AUTH_DISABLED=true` or missing issuer keeps local `npm run dev` open on loopback only; production start refuses to boot if OIDC env is incomplete unless `AUTH_DISABLED` is set explicitly.
 
-Authelia config lives with the operator. README ships a paste-ready `client:` snippet (authorization code + PKCE, scopes `openid profile email`, correct callback).
+Authelia config lives with the operator. README ships a paste-ready `client:` snippet (authorization code + PKCE, scopes `openid profile email`, correct callback). Client name in Authelia should read **Fluxfield**.
 
 ## Hosting surface
 
-- Compose service `fieldbench`: build from this repo, bind-mount `./.data` → `/app/.data`, publish `43127`, `HOST=0.0.0.0`.
+- Compose service `fluxfield`: build from this repo, bind-mount `./.data` → `/app/.data`, publish `43127`, `HOST=0.0.0.0`.
 - No Authelia container in the default file.
 - README sections: BYO Authelia client, volume backup, scrubbed Netbird examples (no concrete Tailscale peer IPs).
+- Shipped strings (title, PWA name, shell mark, install prompt, package, repo) all say **Fluxfield**.
 
 ## Secrets hygiene (this change set)
 
@@ -154,10 +156,21 @@ Authelia config lives with the operator. README ships a paste-ready `client:` sn
 | Topic | Choice |
 |---|---|
 | Layout | Job folders **and** media library |
-| Authelia shape | OIDC into Fieldbench (Auth.js) |
+| Authelia shape | OIDC into Fluxfield (Auth.js) |
 | Who runs Authelia | Bring your own |
 | Who may enter | Anyone Authelia authenticates for this client |
 | Index | Rebuildable JSON catalog (SQLite not required for v1) |
+
+## Naming
+
+| Surface | Name |
+|---|---|
+| Product / UI / PWA / compose | **Fluxfield** |
+| Authelia OIDC client name | Fluxfield |
+| npm `package.json` `name` | `fluxfield` |
+| Git repository | `fluxfield` (rename or recreate under that name; interim scratch remotes from New Project are not the public name) |
+
+Rhythm sits near “Higgsfield” without borrowing the particle prefix. Retired names: Fieldbench / fieldbench (dev nickname), Higgs* (too on-the-nose), Lightfield (real camera term).
 
 ## Out of scope follow-ups
 

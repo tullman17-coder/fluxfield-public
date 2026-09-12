@@ -1,4 +1,4 @@
-# Optional LAN helpers for Fieldbench adapters.
+# Optional LAN helpers for Fluxfield adapters.
 # The Next app itself runs with `npm run dev` on your workstation.
 # Point Settings → Adapters at these services (or at ComfyUI on a GPU box).
 

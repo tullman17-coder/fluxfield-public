@@ -1,4 +1,4 @@
-# Fieldbench
+# Fluxfield
 
 Local Higgsfield/Maestro-style studio — **marketing wrappers**, **Explainer**, a **Director** for long-form pieces, and a **Music** desk — talking to offline models on another machine, including a **Local Studio / Local Dream Studio** controller over **Netbird**.
 
@@ -27,7 +27,7 @@ The UI is a **milky swirled glass** theme: creamy base, slow iridescent swirl bl
 Settings → Connections has **Take prompts as written**. Turn it on when the
 machine you generate on runs uncensored/openweight weights. It:
 
-- stops Fieldbench adding content terms of its own to negative prompts, and
+- stops Fluxfield adding content terms of its own to negative prompts, and
   removes the ones the layout catalog carries
 - sends `safety_checker: false` and `allow_nsfw: true` to the Local Studio
   controller (a controller that does not know those fields ignores them)
@@ -36,7 +36,7 @@ machine you generate on runs uncensored/openweight weights. It:
 - adds a set of adult looks to the style list — Boudoir, Figure study, Pin-up,
   Grindhouse, Body horror
 
-Off by default. `FIELD_BENCH_UNRESTRICTED=1` turns it on without the UI.
+Off by default. `FLUXFIELD_UNRESTRICTED=1` turns it on without the UI.
 
 ## Prompt improvement
 
@@ -64,7 +64,7 @@ HOST=0.0.0.0 npm run dev     # then http://<your-laptop-ip>:43127 on the phone
 ```
 
 Private ranges and Netbird peer names are already accepted. Anything else goes
-in `FIELD_BENCH_DEV_ORIGINS`, comma separated.
+in `FLUXFIELD_DEV_ORIGINS`, comma separated.
 
 Go to **Settings → Connections** and set:
 
@@ -81,13 +81,13 @@ Go to **Settings → Connections** and set:
 Env overrides (optional):
 
 ```bash
-export FIELD_BENCH_STUDIO_URL="http://studio.netbird.selfhosted:18088"
+export FLUXFIELD_STUDIO_URL="http://studio.netbird.selfhosted:18088"
 export LOCAL_STUDIO_API_KEY="…"
 ```
 
 ## On your phone
 
-Fieldbench works in mobile Safari and Chrome as a normal site, and installs to
+Fluxfield works in mobile Safari and Chrome as a normal site, and installs to
 the home screen as a standalone app.
 
 - **iPhone/iPad** — open the site in Safari, tap Share, then **Add to Home
@@ -98,7 +98,7 @@ the home screen as a standalone app.
 Install only shows up over HTTPS, so it needs a real domain rather than an IP.
 
 A render keeps going on the machine doing the work even if you lock the phone or
-switch apps. Fieldbench stops asking for progress while the screen is off, picks
+switch apps. Fluxfield stops asking for progress while the screen is off, picks
 straight back up when you return, and remembers which piece was in progress so a
 tab the phone threw away still comes back to it.
 
@@ -126,15 +126,15 @@ Keep it up with whatever you already use. A systemd unit is enough:
 
 ```ini
 [Unit]
-Description=Fieldbench
+Description=Fluxfield
 After=network-online.target
 
 [Service]
-WorkingDirectory=/srv/fieldbench
+WorkingDirectory=/srv/fluxfield
 Environment=NODE_ENV=production HOST=127.0.0.1 PORT=43127
 ExecStart=/usr/bin/npm start
 Restart=always
-User=fieldbench
+User=fluxfield
 
 [Install]
 WantedBy=multi-user.target
@@ -157,7 +157,7 @@ posts, and a 1MB default will reject them. On nginx that is
 `client_max_body_size 64m;` plus a `proxy_read_timeout` long enough for your
 slowest render.
 
-Nothing in Fieldbench asks who you are. Put it behind your mesh, a VPN, or your
+Nothing in Fluxfield asks who you are. Put it behind your mesh, a VPN, or your
 proxy's own auth before pointing a public domain at it.
 
 ## Netbird vs Tailscale 100.x
@@ -165,8 +165,8 @@ proxy's own auth before pointing a public domain at it.
 Local Dream Studio historically hard-coded Tailscale CGNAT hosts (`100.x`). This mesh is **Netbird** now.
 
 - Prefer Netbird **peer DNS** or the **current Netbird IP** for Local Studio / Comfy / Ollama.
-- Fieldbench warns under Connections if a URL still looks like a Tailscale `100.64.0.0/10` address.
-- Do not assume `http://100.115.190.105:18088` still reaches your controller.
+- Fluxfield warns under Connections if a URL still looks like a Tailscale `100.64.0.0/10` address.
+- Do not assume an old Tailscale `100.x` address still reaches your controller.
 
 ## Self-host helper stack
 
@@ -175,7 +175,7 @@ docker compose up -d
 ollama pull llama3.2   # on the ollama host
 ```
 
-Run **Local Studio controller** and/or **ComfyUI** on the GPU machine separately. Fieldbench does not vendor weights.
+Run **Local Studio controller** and/or **ComfyUI** on the GPU machine separately. Fluxfield does not vendor weights.
 
 ### Adapter map
 
@@ -196,7 +196,7 @@ Optional. Point **Music address** at anything that accepts:
 - `POST /generate` with `{ prompt, duration, model, lyrics? }`
 - Response: raw audio bytes, `{ audio: "<base64>" }`, or `{ url }`
 
-ACE-Step and MusicGen-style servers both fit. With the field blank, Fieldbench
+ACE-Step and MusicGen-style servers both fit. With the field blank, Fluxfield
 writes the arrangement and renders the WAV itself — no GPU, no network.
 
 ### Local Studio contract

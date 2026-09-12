@@ -33,7 +33,7 @@ export default async function HomePage() {
           Campaign layouts
         </p>
         <h1 className="relative mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[#f5eff6] md:text-6xl">
-          Fieldbench
+          Fluxfield
         </h1>
         <p className="relative mt-4 max-w-2xl text-base text-pretty text-[#b8aebb] md:text-lg">
           Drop posters, catalog spreads, event bills, shop banners, fitting-room
@@ -71,7 +71,7 @@ export default async function HomePage() {
             <p className="text-sm text-[#8d838f]">
               Your art and your words drop straight into the design. Every
               example below was drawn by whatever you have connected — point
-              Fieldbench at your own setup in{" "}
+              Fluxfield at your own setup in{" "}
               <Link href="/settings" className="text-[#b8aebb] underline-offset-2 hover:underline">
                 Settings
               </Link>{" "}

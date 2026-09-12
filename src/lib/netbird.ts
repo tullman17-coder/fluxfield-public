@@ -1,7 +1,7 @@
 /**
  * Netbird / mesh networking helpers.
  * local-dream-studio previously hard-locked Tailscale CGNAT 100.x hosts.
- * Fieldbench prefers Netbird DNS / peer names (or LAN IPs), and only warns on 100.x leftovers.
+ * Fluxfield prefers Netbird DNS / peer names (or LAN IPs), and only warns on 100.x leftovers.
  */
 
 const TAILSCALE_CGNAT =
@@ -23,7 +23,7 @@ export function urlUsesLegacyTailscale(url: string): boolean {
 /** Suggest a Netbird-style default when env is unset. */
 export function defaultStudioUrlFromEnv(): string {
   return (
-    process.env.FIELD_BENCH_STUDIO_URL ||
+    process.env.FLUXFIELD_STUDIO_URL ||
     process.env.LOCAL_STUDIO_URL ||
     "http://127.0.0.1:18088"
   );

@@ -66,7 +66,7 @@ function buildTxt2ImgWorkflow(
     },
     "9": {
       class_type: "SaveImage",
-      inputs: { filename_prefix: "fieldbench", images: ["8", 0] },
+      inputs: { filename_prefix: "fluxfield", images: ["8", 0] },
     },
   };
 }

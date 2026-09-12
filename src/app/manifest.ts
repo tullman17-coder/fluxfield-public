@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Fieldbench",
-    short_name: "Fieldbench",
+    name: "Fluxfield",
+    short_name: "Fluxfield",
     description:
       "Make key art, campaign layouts, music and short films from a single brief, on the machines you run yourself.",
     start_url: "/",

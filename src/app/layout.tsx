@@ -15,15 +15,15 @@ const mono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Fieldbench",
-    template: "%s · Fieldbench",
+    default: "Fluxfield",
+    template: "%s · Fluxfield",
   },
   description:
     "Make key art, campaign layouts, and short explainer videos from a single brief.",
-  applicationName: "Fieldbench",
+  applicationName: "Fluxfield",
   appleWebApp: {
     capable: true,
-    title: "Fieldbench",
+    title: "Fluxfield",
     // The rail runs to the top of the screen, so the clock and battery sit
     // over it rather than on a bar of their own.
     statusBarStyle: "black-translucent",

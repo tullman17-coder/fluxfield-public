@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 // Opening the dev server on a phone means asking for it by LAN or mesh address
 // rather than localhost, and Next turns those away unless they are named here.
-// Set FIELD_BENCH_DEV_ORIGINS to add your own, comma separated.
+// Set FLUXFIELD_DEV_ORIGINS to add your own, comma separated.
 const devOrigins = [
   "127.0.0.1",
   "localhost",
@@ -16,7 +16,7 @@ const devOrigins = [
   "172.3*.*.*",
   "100.*.*.*",
   "*.netbird.selfhosted",
-  ...(process.env.FIELD_BENCH_DEV_ORIGINS || "")
+  ...(process.env.FLUXFIELD_DEV_ORIGINS || "")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean),

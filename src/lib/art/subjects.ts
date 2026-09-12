@@ -1,7 +1,7 @@
 /**
  * Subject shapes for the built-in painter.
  *
- * Without a graphics card behind it, Fieldbench still has to put something in
+ * Without a graphics card behind it, Fluxfield still has to put something in
  * the frame that reads as the thing the brief describes — a hoodie brief should
  * not come back looking like a cloud. Each subject here is a signed distance
  * field: it returns how far a point is from the surface, negative inside. That

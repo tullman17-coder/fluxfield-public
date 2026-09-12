@@ -154,7 +154,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
       <aside className="shell-rail glass-strong sticky top-0 z-40 flex h-dvh min-w-0 flex-col items-stretch overflow-y-auto overscroll-contain border-y-0 border-l-0">
         <Link
           href="/supercomputer"
-          aria-label="Fieldbench home"
+          aria-label="Fluxfield home"
           className="grid min-h-11 w-full place-items-center rounded-[10px] border border-white/15 bg-[#2c162f] text-sm font-extrabold tracking-[0.12em] text-[#e77ae6]"
         >
           FB
