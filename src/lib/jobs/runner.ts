@@ -238,7 +238,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       await updateJob(jobId, {
         status: "completed",
         progress: 100,
-        modeUsed: settings.musicUrl ? "local-studio" : "mock",
+        modeUsed: music.usedServer ? "local-studio" : "mock",
         outputs: music.outputs,
         script: music.outputs.find((o) => o.kind === "storyboard")?.text,
       });

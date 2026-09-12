@@ -75,7 +75,7 @@ export function arrangementSummary(a: Arrangement) {
 /** Composes a track, preferring a local music server and falling back to the built-in composer. */
 export async function runMusicAdapter(
   ctx: AdapterContext,
-): Promise<AdapterResult & { arrangement: Arrangement }> {
+): Promise<AdapterResult & { arrangement: Arrangement; usedServer: boolean }> {
   const inputs = ctx.job.inputs;
   const targetSec = Math.max(
     10,
@@ -132,5 +132,5 @@ export async function runMusicAdapter(
     text: arrangementSummary(arrangement),
   });
 
-  return { outputs, arrangement };
+  return { outputs, arrangement, usedServer: source !== "Built-in composer" };
 }
