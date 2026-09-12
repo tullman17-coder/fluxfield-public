@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readSettings } from "@/lib/settings";
 import { checkComfyHealth } from "@/lib/adapters/comfyui";
 import { checkLocalStudioHealth } from "@/lib/adapters/local-studio";
+import { pickMode } from "@/lib/adapters/effective-mode";
 import { checkOllamaHealth } from "@/lib/adapters/ollama";
 import { checkTtsHealth } from "@/lib/adapters/tts";
 import { checkFfmpeg } from "@/lib/adapters/ffmpeg";
@@ -18,21 +19,7 @@ export async function GET() {
   ]);
 
   const studioReady = studio && Boolean(settings.studioApiKey);
-
-  let effectiveMode: string;
-  if (settings.generationMode === "mock") {
-    effectiveMode = "mock";
-  } else if (settings.generationMode === "local-studio") {
-    effectiveMode = studioReady ? "local-studio" : "local-studio-unreachable";
-  } else if (settings.generationMode === "comfyui") {
-    effectiveMode = comfy ? "comfyui" : "comfyui-unreachable";
-  } else if (studioReady) {
-    effectiveMode = "local-studio";
-  } else if (comfy) {
-    effectiveMode = "comfyui";
-  } else {
-    effectiveMode = "mock";
-  }
+  const effectiveMode = pickMode(settings, { studioReady, comfy });
 
   return NextResponse.json({
     settings: {

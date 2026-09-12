@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { IMAGE2_WRAPPERS } from "@/lib/wrappers/catalog";
+import { ENGINE_LABEL, readCardEngines } from "@/lib/wrappers/card-art";
 
 const CATEGORY_LABEL: Record<string, string> = {
   streetwear: "Streetwear",
@@ -10,7 +11,8 @@ const CATEGORY_LABEL: Record<string, string> = {
   sports: "Sports",
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const engines = await readCardEngines();
   return (
     <div className="w-full min-w-0 space-y-8">
       <section className="glass-strong relative overflow-hidden rounded-[14px] px-5 py-8 sm:px-8 sm:py-12">
@@ -62,7 +64,13 @@ export default function HomePage() {
               Layouts
             </h2>
             <p className="text-sm text-[#8d838f]">
-              Your art and your words drop straight into the design.
+              Your art and your words drop straight into the design. Every
+              example below was drawn by whatever you have connected — point
+              Fieldbench at your own setup in{" "}
+              <Link href="/settings" className="text-[#b8aebb] underline-offset-2 hover:underline">
+                Settings
+              </Link>{" "}
+              and they redraw themselves.
             </p>
           </div>
         </div>
@@ -98,8 +106,12 @@ export default function HomePage() {
                 >
                   {CATEGORY_LABEL[w.category] ?? w.category}
                 </span>
-                <span className="absolute right-3 top-3 rounded-full bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70 backdrop-blur-sm">
-                  Example
+                {/* Say which machine drew it, so nobody has to guess whether
+                    they are looking at their own model's work. */}
+                <span className="absolute right-3 top-3 rounded-full bg-black/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70 backdrop-blur-sm">
+                  {engines[w.slug]
+                    ? `Example · ${ENGINE_LABEL[engines[w.slug]]}`
+                    : "Example"}
                 </span>
               </div>
               <div className="min-w-0 border-t border-white/10 p-5">

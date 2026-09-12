@@ -1,0 +1,41 @@
+import { checkComfyHealth } from "@/lib/adapters/comfyui";
+import { checkLocalStudioHealth } from "@/lib/adapters/local-studio";
+import type { ModeUsed, StudioSettings } from "@/lib/adapters/types";
+
+/**
+ * Which machine would draw an image right now.
+ *
+ * The `-unreachable` results only happen when a specific machine has been
+ * chosen and it is not answering; on the automatic setting the chain falls
+ * through to preview art instead of failing.
+ */
+export function pickMode(
+  settings: StudioSettings,
+  reach: { studioReady: boolean; comfy: boolean },
+): ModeUsed | "local-studio-unreachable" | "comfyui-unreachable" {
+  if (settings.generationMode === "mock") return "mock";
+  if (settings.generationMode === "local-studio") {
+    return reach.studioReady ? "local-studio" : "local-studio-unreachable";
+  }
+  if (settings.generationMode === "comfyui") {
+    return reach.comfy ? "comfyui" : "comfyui-unreachable";
+  }
+  if (reach.studioReady) return "local-studio";
+  if (reach.comfy) return "comfyui";
+  return "mock";
+}
+
+/** Probes the configured machines and reports which one would be used. */
+export async function currentMode(settings: StudioSettings) {
+  const [comfy, studio] = await Promise.all([
+    checkComfyHealth(settings.comfyUrl),
+    checkLocalStudioHealth(settings),
+  ]);
+  const studioReady = studio && Boolean(settings.studioApiKey);
+  return {
+    comfy,
+    studio,
+    studioReady,
+    mode: pickMode(settings, { studioReady, comfy }),
+  };
+}

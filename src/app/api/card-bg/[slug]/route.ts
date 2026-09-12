@@ -4,6 +4,9 @@ import path from "path";
 import { getImage2Wrapper, sampleValues } from "@/lib/wrappers/catalog";
 import { createAndRunJob } from "@/lib/jobs/runner";
 import { getJob } from "@/lib/jobs/store";
+import { readCardEngines, recordCardEngine } from "@/lib/wrappers/card-art";
+import { currentMode } from "@/lib/adapters/effective-mode";
+import { readSettings } from "@/lib/settings";
 
 const CACHE_DIR = path.join(process.cwd(), ".data", "card-bg");
 const EXTS = ["png", "jpg", "webp", "svg"] as const;
@@ -55,7 +58,19 @@ export async function GET(
 
   const cached = await findCached(slug);
   const refresh = _request.url.includes("refresh=1");
+
+  // An example drawn before a graphics card came online would otherwise sit
+  // there as preview art forever. Redraw it the first time a better machine
+  // answers, so the card always shows what the current setup actually makes.
+  let stale = false;
   if (cached && !refresh) {
+    const settings = await readSettings();
+    const { mode } = await currentMode(settings);
+    const drawnBy = (await readCardEngines())[slug];
+    stale = !drawnBy || (mode !== drawnBy && !mode.endsWith("-unreachable"));
+  }
+
+  if (cached && !refresh && !stale) {
     return new NextResponse(new Uint8Array(cached.data), {
       headers: {
         "Content-Type": contentType(cached.ext),
@@ -93,6 +108,7 @@ export async function GET(
   await fs.mkdir(CACHE_DIR, { recursive: true });
   const dest = path.join(CACHE_DIR, `${slug}.${ext}`);
   await fs.copyFile(src, dest);
+  await recordCardEngine(slug, done!.modeUsed);
   const data = await fs.readFile(dest);
 
   return new NextResponse(new Uint8Array(data), {
