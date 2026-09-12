@@ -25,19 +25,22 @@ const PREVIEW_LINES = 220;
 
 function pickKeyShots(p: Production): Shot[] {
   if (p.shots.length <= MAX_FRAMES) return p.shots;
-  // One per section where possible, then spread the remainder evenly.
-  const bySection = new Map<string, Shot>();
-  for (const s of p.shots) {
-    if (!bySection.has(s.section)) bySection.set(s.section, s);
+  // Split the runtime into equal stretches and take the strongest shot in each,
+  // so an hour-long piece is covered end to end rather than front-loaded.
+  const bucket = p.runtimeSec / MAX_FRAMES;
+  const picked: Shot[] = [];
+  for (let i = 0; i < MAX_FRAMES; i++) {
+    const from = i * bucket;
+    const to = from + bucket;
+    let best: Shot | undefined;
+    for (const s of p.shots) {
+      if (s.startSec < from || s.startSec >= to) continue;
+      // Prefer the peak of the stretch; ties go to whichever comes first.
+      if (!best || s.energy > best.energy) best = s;
+    }
+    if (best) picked.push(best);
   }
-  const picked = [...bySection.values()];
-  if (picked.length >= MAX_FRAMES) return picked.slice(0, MAX_FRAMES);
-  const step = Math.max(1, Math.floor(p.shots.length / (MAX_FRAMES - picked.length)));
-  for (let i = 0; i < p.shots.length && picked.length < MAX_FRAMES; i += step) {
-    const s = p.shots[i];
-    if (!picked.includes(s)) picked.push(s);
-  }
-  return picked.sort((a, b) => a.startSec - b.startSec);
+  return picked;
 }
 
 const ASPECTS: Record<string, { w: number; h: number }> = {
