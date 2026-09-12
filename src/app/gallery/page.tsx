@@ -9,6 +9,8 @@ const KIND_LABEL: Record<string, string> = {
   dream: "Image",
   explainer: "Video",
   workflow: "Marketing",
+  music: "Track",
+  director: "Long form",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -81,6 +83,14 @@ export default function GalleryPage() {
                     />
                   ))}
               </div>
+              {job.outputs
+                .filter((o) => o.url && o.kind === "audio")
+                .map((o) => (
+                  <div key={o.id} className="mt-3">
+                    <p className="mb-2 text-sm text-[#b8aebb]">{o.label}</p>
+                    <audio src={o.url} controls className="w-full" />
+                  </div>
+                ))}
             </article>
           ))}
         </div>
