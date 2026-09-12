@@ -1,4 +1,5 @@
 import { encodePng } from "@/lib/art/png";
+import { subjectFor, type Material, type Subject } from "@/lib/art/subjects";
 
 /* ------------------------------------------------------------------ noise */
 
@@ -168,6 +169,216 @@ const STRUCTURE: Record<string, { horizon: number; bloom: number; grain: number;
   dream: { horizon: 0.55, bloom: 0.9, grain: 0.05, sat: 0.7 },
 };
 
+const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** 1 when x is past `edge0`, 0 before `edge1`, eased between. */
+function step(edge0: number, edge1: number, x: number) {
+  return smooth(clamp01((x - edge0) / (edge1 - edge0)));
+}
+
+type Finish = {
+  /** How much the surface buckles into folds. */
+  fold: number;
+  foldScale: number;
+  /** Highlight tightness and strength. */
+  shine: number;
+  shineAmount: number;
+  /** Stitched seam following the outline, for anything made of fabric. */
+  seam: boolean;
+};
+
+const FINISH: Record<Material, Finish> = {
+  cloth: { fold: 0.2, foldScale: 15, shine: 16, shineAmount: 0.09, seam: true },
+  knit: { fold: 0.26, foldScale: 22, shine: 10, shineAmount: 0.06, seam: true },
+  hard: { fold: 0.04, foldScale: 9, shine: 46, shineAmount: 0.32, seam: false },
+  skin: { fold: 0.09, foldScale: 11, shine: 22, shineAmount: 0.14, seam: false },
+  glaze: { fold: 0.05, foldScale: 9, shine: 60, shineAmount: 0.42, seam: false },
+  glass: { fold: 0.04, foldScale: 7, shine: 86, shineAmount: 0.55, seam: false },
+};
+
+const TOON = new Set(["anime", "vaporwave"]);
+
+/**
+ * Paints a single object on a studio sweep. Used whenever the brief names a
+ * thing — a hoodie, a chair, a mug — so the frame comes back with that object
+ * in it rather than weather.
+ */
+function renderSubjectScene(
+  spec: ArtSpec,
+  subject: Subject,
+  seed: number,
+  s: (typeof STRUCTURE)[string],
+  baseHue: number,
+  sat: number,
+  mood: number,
+): Buffer {
+  const { width: w, height: h } = spec;
+  const aspect = w / h;
+
+  // The backdrop stays muted so the object is the thing you look at. The object
+  // itself sits below full saturation — pushed any higher it stops reading as a
+  // material and starts reading as coloured glass.
+  const backdrop = buildRamp(baseHue - 8, sat * 0.28, mood * 0.6);
+  const surface = buildRamp(baseHue, Math.min(0.7, sat * 0.72), mood);
+
+  const finish = FINISH[subject.material];
+  const toon = TOON.has(spec.style || "");
+
+  // Object placement, nudged off dead centre so the frame has somewhere to
+  // breathe for type.
+  const fitH = 0.66 + ((seed >> 5) % 8) / 100;
+  const cx = 0.5 + (((seed >> 11) % 13) - 6) / 100;
+  const cy = 0.5 + (((seed >> 15) % 7) - 3) / 100;
+
+  // Key light, upper left by default.
+  const jitter = (((seed >> 3) % 40) - 20) / 100;
+  let Lx = -0.46 + jitter;
+  let Ly = -0.62;
+  let Lz = 0.64;
+  const Ll = Math.hypot(Lx, Ly, Lz);
+  Lx /= Ll;
+  Ly /= Ll;
+  Lz /= Ll;
+
+  // Half vector against a viewer straight on, for highlights.
+  let Hx = Lx;
+  let Hy = Ly;
+  let Hz = Lz + 1;
+  const Hl = Math.hypot(Hx, Hy, Hz);
+  Hx /= Hl;
+  Hy /= Hl;
+  Hz /= Hl;
+
+  const px = 1 / (h * fitH);
+  const grad = Math.max(px * 1.5, 0.0035);
+  const floorY = cy + fitH * 0.47;
+
+  const rgb = new Uint8Array(w * h * 3);
+
+  for (let y = 0; y < h; y++) {
+    const v = y / h;
+    const sy = (v - cy) / fitH;
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const sx = ((u - cx) * aspect) / fitH;
+
+      /* ---------------------------------------------------------- backdrop */
+
+      const poolX = (u - 0.5) * aspect;
+      const poolY = v - 0.36;
+      const pool = Math.exp(-(poolX * poolX * 2.2 + poolY * poolY * 3)) * s.bloom;
+      let bt = 0.17 + pool * 0.4;
+      if (v > floorY) bt -= ((v - floorY) / Math.max(0.0001, 1 - floorY)) * 0.2;
+      bt += (fbm(u * 3 * aspect, v * 3, seed + 55, 3) - 0.5) * 0.05;
+
+      // Shadow cast by the object's own outline, offset with the key light.
+      const shd = subject.sdf(sx - 0.035, sy - 0.03);
+      bt -= (1 - step(-0.02, 0.14, shd)) * 0.17;
+
+      // Where it meets the floor.
+      const contactX = (u - cx) * aspect;
+      const contactY = (v - floorY) * 5.5;
+      bt -= Math.exp(-(contactX * contactX * 7 + contactY * contactY)) * 0.16;
+
+      let [r, g, b] = sampleRamp(backdrop, bt);
+
+      /* ------------------------------------------------------------ object */
+
+      const d = subject.sdf(sx, sy);
+      const cover = 1 - step(-px * 1.2, px * 1.2, d);
+
+      if (cover > 0.002) {
+        // Outward normal from the field gradient.
+        const bx = subject.sdf(sx + grad, sy) - subject.sdf(sx - grad, sy);
+        const by = subject.sdf(sx, sy + grad) - subject.sdf(sx, sy - grad);
+        const bl = Math.hypot(bx, by) || 1;
+
+        // Where two parts merge the field flattens out, which is exactly where
+        // a real object would be in shadow. Read this off the plain shape —
+        // measuring it after the folds go on turns fabric texture into blotches.
+        const crease = clamp01(1 - bl / (2 * grad));
+
+        let nx = bx / bl;
+        let ny = by / bl;
+
+        // Folds and weave ride on top of the surface normal.
+        if (finish.fold > 0) {
+          const fs = finish.foldScale;
+          nx += (fbm(sx * fs + 3.1, sy * fs, seed + 17, 3) - 0.5) * finish.fold;
+          ny += (fbm(sx * fs, sy * fs + 7.7, seed + 41, 3) - 0.5) * finish.fold;
+          const fl = Math.hypot(nx, ny) || 1;
+          nx /= fl;
+          ny /= fl;
+        }
+
+        // Treat the outline as the edge of a rounded body: dead-on at the
+        // centre, turning away toward the silhouette.
+        const depth = clamp01(-d / subject.puff);
+        const Nz = Math.sqrt(depth);
+        const lat = Math.sqrt(Math.max(0, 1 - depth));
+        const Nx = nx * lat;
+        const Ny = ny * lat;
+
+        let diffuse = Math.max(0, Nx * Lx + Ny * Ly + Nz * Lz);
+        if (toon) diffuse = Math.round(diffuse * 3) / 3;
+
+        const specDot = Math.max(0, Nx * Hx + Ny * Hy + Nz * Hz);
+        const spec = Math.pow(specDot, finish.shine) * finish.shineAmount;
+
+        // A broad falloff across the whole object. Without this a flat panel
+        // lights evenly and comes out looking like a picture frame: bright in
+        // the middle, dark band all round.
+        const across = sx * Lx + sy * Ly;
+        const form = clamp01(0.5 + across * 0.85);
+
+        // Light catching the edge that faces away from the key, which is what
+        // lifts the object off the backdrop.
+        const facing = clamp01(-(Nx * Lx + Ny * Ly));
+        const rim = Math.pow(1 - depth, 3.5) * (0.12 + facing * 0.42);
+
+        // Wide enough a spread that the object carries real shadow and real
+        // highlight, instead of sitting in a narrow band of one colour.
+        let t = 0.04 + diffuse * 0.5 + form * 0.34 + spec + rim * 0.32;
+
+        if (finish.seam) {
+          // A stitch line just inside the outline.
+          const inner = Math.abs(d + 0.018);
+          t -= (1 - step(0.003, 0.009, inner)) * 0.09;
+        }
+
+        t -= crease * 0.14;
+
+        const [sr, sg, sb] = sampleRamp(surface, t);
+        r += (sr - r) * cover;
+        g += (sg - g) * cover;
+        b += (sb - b) * cover;
+      }
+
+      /* ------------------------------------------------------------ finish */
+
+      const dv = Math.hypot((u - 0.5) * aspect, v - 0.5);
+      const vig = Math.pow(dv * 0.9, 2.4) * 0.28;
+      r -= vig * 255 * 0.35;
+      g -= vig * 255 * 0.35;
+      b -= vig * 255 * 0.35;
+
+      if (s.grain > 0) {
+        const n = (hash2(x >> 1, y >> 1, seed + 991) - 0.5) * 255 * s.grain;
+        r += n;
+        g += n;
+        b += n;
+      }
+
+      const o = (y * w + x) * 3;
+      rgb[o] = r < 0 ? 0 : r > 255 ? 255 : r;
+      rgb[o + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+      rgb[o + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+    }
+  }
+
+  return encodePng(w, h, rgb);
+}
+
 /**
  * Paints a frame from a prompt. Deterministic for a given prompt + seed, so the
  * same settings always reproduce the same image.
@@ -181,6 +392,14 @@ export function renderArt(spec: ArtSpec): Buffer {
   const baseHue = accentHsl ? accentHsl[0] : (seed % 360);
   const sat = Math.min(0.95, s.sat + ((seed % 17) / 17) * 0.15);
   const mood = (seed % 23) / 23;
+
+  // When the brief names an object, paint the object. Only briefs about places
+  // and moods fall through to the atmospheric treatment below.
+  const subject = subjectFor(spec.prompt);
+  if (subject) {
+    return renderSubjectScene(spec, subject, seed, s, baseHue, sat, mood);
+  }
+
   const ramp = buildRamp(baseHue, sat, mood);
 
   // Four composition archetypes keep a set of cards from looking like one image.
