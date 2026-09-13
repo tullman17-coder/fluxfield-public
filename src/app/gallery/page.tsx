@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MediaLightbox } from "@/components/studio/media-lightbox";
 
 type LibraryItem = {
   id: string;
@@ -46,6 +47,7 @@ export default function GalleryPage() {
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeMedia, setActiveMedia] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams({
@@ -153,12 +155,18 @@ export default function GalleryPage() {
               className="overflow-hidden rounded-2xl border border-white/10 glass"
             >
               {entry.kind === "image" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={entry.url}
-                  alt={entry.label}
-                  className="aspect-square w-full object-cover"
-                />
+                <button
+                  type="button"
+                  onClick={() => setActiveMedia(entry.url)}
+                  className="block w-full"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={entry.url}
+                    alt={entry.label}
+                    className="aspect-square w-full object-cover"
+                  />
+                </button>
               ) : entry.kind === "audio" ? (
                 <div className="space-y-3 p-4">
                   <p className="text-sm text-[#f5eff6]">{entry.label}</p>
@@ -189,6 +197,18 @@ export default function GalleryPage() {
           ))}
         </div>
       )}
+      <MediaLightbox
+        items={entries
+          .filter((entry) => entry.kind === "image" || entry.kind === "video")
+          .map((entry) => ({
+            url: entry.url,
+            label: entry.label,
+            kind: entry.kind === "video" ? "video" : "image",
+          }))}
+        activeUrl={activeMedia}
+        onClose={() => setActiveMedia(null)}
+        onActiveUrl={setActiveMedia}
+      />
     </div>
   );
 }

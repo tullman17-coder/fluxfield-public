@@ -44,7 +44,10 @@ export type JobTool =
   | "explainer"
   | "dream"
   | "music"
-  | "director";
+  | "director"
+  | "ugc"
+  | "ad-multiplier"
+  | "faceless";
 
 export type JobOutput = {
   id: string;
@@ -74,6 +77,10 @@ export type StudioJob = {
   error?: string;
   outputs: JobOutput[];
   script?: string;
+  /** Multi-step studio jobs (intake → subject → compose → finalize). */
+  phase?: "intake" | "subject" | "compose" | "finalize";
+  brandKitId?: string;
+  primaryOutputId?: string;
   createdAt: string;
   updatedAt: string;
 };

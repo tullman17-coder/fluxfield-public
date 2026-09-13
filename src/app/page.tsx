@@ -69,13 +69,12 @@ export default async function HomePage() {
               Layouts
             </h2>
             <p className="text-sm text-[#8d838f]">
-              Your art and your words drop straight into the design. Every
-              example below was drawn by whatever you have connected — point
-              Fluxfield at your own setup in{" "}
+              Your art and your words drop straight into the design. Each card
+              is a finished sample of that layout — connect your own studio in{" "}
               <Link href="/settings" className="text-[#b8aebb] underline-offset-2 hover:underline">
                 Settings
               </Link>{" "}
-              and they redraw themselves.
+              when you want live redraws from your machine.
             </p>
           </div>
         </div>

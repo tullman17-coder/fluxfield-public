@@ -4,7 +4,8 @@ import path from "path";
 import { getImage2Wrapper, sampleValues } from "@/lib/wrappers/catalog";
 import { createAndRunJob } from "@/lib/jobs/runner";
 import { getJob } from "@/lib/jobs/store";
-import { readCardEngines, recordCardEngine } from "@/lib/wrappers/card-art";
+import { recordCardEngine } from "@/lib/wrappers/card-art";
+import { findShippedExample } from "@/lib/wrappers/shipped-examples";
 import { currentMode } from "@/lib/adapters/effective-mode";
 import { readSettings } from "@/lib/settings";
 
@@ -46,6 +47,25 @@ async function waitForJob(id: string, timeoutMs = 120_000) {
   throw new Error("card art timed out");
 }
 
+async function readCachedEngine(slug: string) {
+  try {
+    const raw = await fs.readFile(path.join(CACHE_DIR, `${slug}.json`), "utf8");
+    const { engine } = JSON.parse(raw) as { engine?: string };
+    return engine ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function serve(data: Buffer, ext: string, maxAge: number) {
+  return new NextResponse(new Uint8Array(data), {
+    headers: {
+      "Content-Type": contentType(ext),
+      "Cache-Control": `public, max-age=${maxAge}`,
+    },
+  });
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ slug: string }> },
@@ -56,31 +76,26 @@ export async function GET(
     return NextResponse.json({ error: "Unknown wrapper" }, { status: 404 });
   }
 
-  const cached = await findCached(slug);
   const refresh = _request.url.includes("refresh=1");
+  const settings = await readSettings();
+  const { mode } = await currentMode(settings);
+  const realBackend = mode === "local-studio" || mode === "comfyui";
 
-  // An example drawn before a graphics card came online would otherwise sit
-  // there as preview art forever. Redraw it the first time a better machine
-  // answers, so the card always shows what the current setup actually makes.
-  let stale = false;
-  if (cached && !refresh) {
-    const settings = await readSettings();
-    const { mode } = await currentMode(settings);
-    const drawnBy = (await readCardEngines())[slug];
-    stale = !drawnBy || (mode !== drawnBy && !mode.endsWith("-unreachable"));
+  const cached = await findCached(slug);
+  const cachedEngine = cached ? await readCachedEngine(slug) : null;
+
+  // Live Studio/Comfy redraws win when present (never prefer stale mock).
+  if (cached && cachedEngine && cachedEngine !== "mock" && !refresh) {
+    return serve(cached.data, cached.ext, 300);
   }
 
-  if (cached && !refresh && !stale) {
-    return new NextResponse(new Uint8Array(cached.data), {
-      headers: {
-        "Content-Type": contentType(cached.ext),
-        "Cache-Control": "public, max-age=300",
-      },
-    });
+  // Shipped campaign samples — default for public hosts / no GPU.
+  // Never regenerate over these with mock art.
+  const shipped = await findShippedExample(slug);
+  if (shipped && (!refresh || !realBackend)) {
+    return serve(shipped.data, shipped.ext, 86_400);
   }
 
-  // A card should show what its layout actually makes, so run the layout for
-  // real with its own example copy and keep the finished piece.
   const job = await createAndRunJob({
     tool: "image2",
     workflowSlug: slug,
@@ -88,18 +103,23 @@ export async function GET(
     inputs: {
       ...sampleValues(wrapper),
       aspect: wrapper.aspectDefault,
-      // Cards render around 600px wide; full-size art would be megabytes each.
       maxDim: "600",
+      silent: "card-bg",
     },
   });
 
   const done = await waitForJob(job.id);
-  // The composed layout is the last image; earlier ones are the bare subject.
   const art = [...(done?.outputs ?? [])]
     .reverse()
     .find((o) => o.kind === "image" && o.url);
   if (!art?.url) {
+    if (shipped) return serve(shipped.data, shipped.ext, 86_400);
     return NextResponse.json({ error: "no art produced" }, { status: 502 });
+  }
+
+  // Prefer a shipped sample over caching mock output as "the example".
+  if (done!.modeUsed === "mock" && shipped) {
+    return serve(shipped.data, shipped.ext, 86_400);
   }
 
   const srcName = art.url.split("/").pop()!;
@@ -111,10 +131,5 @@ export async function GET(
   await recordCardEngine(slug, done!.modeUsed);
   const data = await fs.readFile(dest);
 
-  return new NextResponse(new Uint8Array(data), {
-    headers: {
-      "Content-Type": contentType(ext),
-      "Cache-Control": "public, max-age=300",
-    },
-  });
+  return serve(data, ext, 300);
 }

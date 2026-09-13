@@ -1,7 +1,12 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
-import type { AdapterContext, AdapterResult, JobOutput } from "@/lib/adapters/types";
+import type {
+  AdapterContext,
+  AdapterResult,
+  JobOutput,
+  ModeUsed,
+} from "@/lib/adapters/types";
 import {
   planProduction,
   shotListText,
@@ -10,15 +15,18 @@ import {
   type Shot,
 } from "@/lib/director/plan";
 import { planArrangement } from "@/lib/music/theory";
-import { hueToHex, renderArt } from "@/lib/art/render";
 import { renderArrangement } from "@/lib/music/synth";
 import { encodeWav } from "@/lib/music/wav";
 import { keyLabel, timecode } from "@/lib/music/theory";
+import {
+  generateDirectorFrames,
+  MAX_DIRECTOR_FRAMES,
+} from "@/lib/adapters/director-frames";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
 /** Frames are expensive, so only key shots get art on the first pass. */
-const MAX_FRAMES = 12;
+const MAX_FRAMES = MAX_DIRECTOR_FRAMES;
 
 /** How much of a long shot list is worth showing before the download. */
 const PREVIEW_LINES = 220;
@@ -61,7 +69,7 @@ const ASPECTS: Record<string, { w: number; h: number }> = {
 
 export async function runDirectorAdapter(
   ctx: AdapterContext,
-): Promise<AdapterResult & { production: Production }> {
+): Promise<AdapterResult & { production: Production; modeUsed: ModeUsed }> {
   const inputs = ctx.job.inputs;
   const mode = inputs.mode === "film" ? "film" : "music-video";
   const runtimeSec = Math.max(30, Math.min(3600, Number(inputs.runtime || 180)));
@@ -132,37 +140,27 @@ export async function runDirectorAdapter(
     url: `/api/outputs/${wavName}`,
   });
 
-  // Key frames.
+  // Key frames — live GPU when Studio/Comfy is up, otherwise local art.
   const size = ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];
   const keyShots = pickKeyShots(production);
   // One palette for the whole piece. Without this each frame picks its own hue
   // from its own prompt and a storyboard reads like twelve unrelated films.
   const baseHue = hash32(`${production.title}:${production.look}`) % 360;
-  for (const shot of keyShots) {
-    // The light turns once over the runtime rather than jumping shot to shot,
-    // so the set holds together and still moves.
+  const frameShots = keyShots.map((shot) => {
     const progress = production.runtimeSec
       ? shot.startSec / production.runtimeSec
       : 0;
     const drift = Math.sin(progress * Math.PI * 2) * 20 + (shot.index % 3) * 5;
-    const png = renderArt({
-      width: size.w,
-      height: size.h,
+    return {
+      label: `${shot.timecode} · ${shot.size} · ${shot.section}`,
       prompt: `${production.title} ${shot.section} ${shot.size} ${shot.move} ${shot.action}`,
       style: production.look,
-      accent: hueToHex(baseHue + drift, 0.5 + shot.energy * 0.25),
-      // Composition varies by position even when two shots read alike.
+      hue: baseHue + drift,
       seed: hash32(`${production.title}:${shot.index}:${shot.move}`),
-    });
-    const name = `${ctx.job.id}-${nanoid(8)}.png`;
-    await fs.writeFile(path.join(OUT_DIR, name), png);
-    outputs.push({
-      id: nanoid(8),
-      kind: "image",
-      label: `${shot.timecode} · ${shot.size} · ${shot.section}`,
-      url: `/api/outputs/${name}`,
-    });
-  }
+    };
+  });
+  const frames = await generateDirectorFrames(ctx, frameShots, size);
+  outputs.push(...frames.outputs);
 
   // Window plan — what is rendered and what is still queued.
   const windowLines = production.windows.map((w) => {
@@ -190,5 +188,5 @@ export async function runDirectorAdapter(
     url: `/api/outputs/${listName}`,
   });
 
-  return { outputs, production };
+  return { outputs, production, modeUsed: frames.modeUsed };
 }

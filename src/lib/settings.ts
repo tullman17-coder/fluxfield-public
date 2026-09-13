@@ -1,14 +1,19 @@
 import { promises as fs } from "fs";
+import os from "os";
 import path from "path";
 import type { StudioSettings } from "@/lib/adapters/types";
 import { defaultStudioUrlFromEnv } from "@/lib/netbird";
+import {
+  defaultFactoryOllamaUrl,
+  sanitizeGenerationUrl,
+} from "@/lib/mesh/factory";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const SETTINGS_PATH = path.join(DATA_DIR, "settings.json");
 
 export const DEFAULT_SETTINGS: StudioSettings = {
-  comfyUrl: "http://127.0.0.1:8188",
-  ollamaUrl: "http://127.0.0.1:11434",
+  comfyUrl: "",
+  ollamaUrl: defaultFactoryOllamaUrl(),
   ollamaModel: "llama3.2",
   generationMode: "auto",
   comfyCheckpoint: "",
@@ -33,6 +38,18 @@ async function ensureDataDir() {
   await fs.mkdir(path.join(DATA_DIR, "tmp"), { recursive: true });
 }
 
+async function studioKeyFromDisk(): Promise<string> {
+  const file =
+    process.env.LOCAL_STUDIO_API_KEY_FILE ||
+    path.join(os.homedir(), ".hermes", "secrets", "local-studio-api-key");
+  try {
+    const value = (await fs.readFile(file, "utf8")).trim();
+    return value;
+  } catch {
+    return "";
+  }
+}
+
 export async function readSettings(): Promise<StudioSettings> {
   await ensureDataDir();
   try {
@@ -41,10 +58,17 @@ export async function readSettings(): Promise<StudioSettings> {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
-      // env key wins when file key empty
+      comfyUrl: sanitizeGenerationUrl(
+        parsed.comfyUrl ?? DEFAULT_SETTINGS.comfyUrl,
+      ),
+      studioUrl: sanitizeGenerationUrl(
+        parsed.studioUrl ?? DEFAULT_SETTINGS.studioUrl,
+      ) || DEFAULT_SETTINGS.studioUrl,
+      // env / house secret file wins when the saved key is empty
       studioApiKey:
         parsed.studioApiKey ||
         process.env.LOCAL_STUDIO_API_KEY ||
+        (await studioKeyFromDisk()) ||
         DEFAULT_SETTINGS.studioApiKey,
       improveApiKey:
         parsed.improveApiKey ||
@@ -52,7 +76,13 @@ export async function readSettings(): Promise<StudioSettings> {
         DEFAULT_SETTINGS.improveApiKey,
     };
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return {
+      ...DEFAULT_SETTINGS,
+      studioApiKey:
+        process.env.LOCAL_STUDIO_API_KEY ||
+        (await studioKeyFromDisk()) ||
+        DEFAULT_SETTINGS.studioApiKey,
+    };
   }
 }
 
@@ -60,8 +90,24 @@ export async function writeSettings(
   next: Partial<StudioSettings>,
 ): Promise<StudioSettings> {
   await ensureDataDir();
-  const current = await readSettings();
-  const merged = { ...current, ...next };
+  let persisted: Partial<StudioSettings> = {};
+  try {
+    persisted = JSON.parse(await fs.readFile(SETTINGS_PATH, "utf8")) as Partial<StudioSettings>;
+  } catch {
+    persisted = {};
+  }
+  const merged: StudioSettings = {
+    ...DEFAULT_SETTINGS,
+    ...persisted,
+    ...next,
+  };
+  if (next.comfyUrl !== undefined || persisted.comfyUrl) {
+    merged.comfyUrl = sanitizeGenerationUrl(merged.comfyUrl);
+  }
+  if (next.studioUrl !== undefined || persisted.studioUrl) {
+    merged.studioUrl =
+      sanitizeGenerationUrl(merged.studioUrl) || DEFAULT_SETTINGS.studioUrl;
+  }
   await fs.writeFile(SETTINGS_PATH, JSON.stringify(merged, null, 2));
-  return merged;
+  return readSettings();
 }

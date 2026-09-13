@@ -11,6 +11,7 @@ import {
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
 import { cn } from "@/lib/utils";
+import { MediaLightbox } from "@/components/studio/media-lightbox";
 
 type ImproveResult = {
   prompt: string;
@@ -47,6 +48,7 @@ export default function CreatePage() {
 
   const { job, setJob } = useJobWatch("dream");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -180,7 +182,13 @@ export default function CreatePage() {
     [reuseFromJob, setJob],
   );
 
-  const images = job?.outputs.filter((o) => o.kind === "image" && o.url) ?? [];
+  const images =
+    job?.outputs.filter(
+      (o) =>
+        o.kind === "image" &&
+        o.url &&
+        !/^Subject(\b| ·)/i.test(o.label),
+    ) ?? [];
 
   return (
     <div className="w-full min-w-0">
@@ -682,7 +690,11 @@ export default function CreatePage() {
                   className="min-w-0 border-b border-white/10 pb-4"
                 >
                   <figure className="min-w-0">
-                    <div className="relative aspect-square min-w-0 overflow-hidden rounded-[14px] border border-white/10 bg-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setActiveMedia(o.url!)}
+                      className="relative aspect-square min-w-0 w-full overflow-hidden rounded-[14px] border border-white/10 bg-white/10"
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={o.url}
@@ -692,7 +704,7 @@ export default function CreatePage() {
                       <span className="absolute right-2 bottom-2 rounded-full border border-white/15 glass px-2 py-1 text-xs text-[#b8aebb]">
                         Saved
                       </span>
-                    </div>
+                    </button>
                     <figcaption className="min-w-0 py-3">
                       <p className="font-bold break-words text-[#f5eff6]">
                         {job.inputs.prompt || job.prompt}
@@ -703,14 +715,13 @@ export default function CreatePage() {
                     </figcaption>
                   </figure>
                   <div className="flex min-w-0 flex-wrap gap-2">
-                    <a
-                      href={o.url}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setActiveMedia(o.url!)}
                       className="grid min-h-11 flex-1 place-items-center rounded-[10px] px-3 text-sm font-bold text-[#b8aebb] transition-colors hover:text-[#f5eff6]"
                     >
                       Open
-                    </a>
+                    </button>
                     <button
                       type="button"
                       onClick={() => reuseFromJob(job)}
@@ -740,6 +751,15 @@ export default function CreatePage() {
           )}
         </section>
       </div>
+      <MediaLightbox
+        items={images.map((o) => ({
+          url: o.url!,
+          label: o.label,
+        }))}
+        activeUrl={activeMedia}
+        onClose={() => setActiveMedia(null)}
+        onActiveUrl={setActiveMedia}
+      />
     </div>
   );
 }

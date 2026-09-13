@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readSettings } from "@/lib/settings";
+import { generateWithOllamaOrThrow } from "@/lib/adapters/ollama";
 
 const SYSTEM_PROMPT = [
   "You are a prompt engineer for a local Flux image generator.",
@@ -32,35 +33,17 @@ function cleanImproved(raw: string): string {
 }
 
 async function improveWithOllama(
-  baseUrl: string,
-  model: string,
   prompt: string,
   system: string,
-): Promise<string> {
-  let res: Response;
-  try {
-    res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        prompt: `${system}\n\nIdea: ${prompt}\n\nImproved prompt:`,
-        stream: false,
-      }),
-      signal: AbortSignal.timeout(120_000),
-    });
-  } catch {
-    throw new Error(
-      `Could not reach Ollama at ${baseUrl}. Start it on that machine, or switch to Cloud.`,
-    );
-  }
-  if (!res.ok) {
-    throw new Error(`Ollama answered ${res.status} at ${baseUrl}.`);
-  }
-  const data = (await res.json()) as { response?: string };
-  const improved = cleanImproved(data.response || "");
+): Promise<{ text: string; model: string }> {
+  const settings = await readSettings();
+  const raw = await generateWithOllamaOrThrow(
+    settings,
+    `${system}\n\nIdea: ${prompt}\n\nImproved prompt:`,
+  );
+  const improved = cleanImproved(raw.text);
   if (!improved) throw new Error("Ollama sent back nothing to use.");
-  return improved;
+  return { text: improved, model: raw.model };
 }
 
 async function improveWithApi(
@@ -143,15 +126,13 @@ export async function POST(request: Request) {
     }
 
     const improved = await improveWithOllama(
-      settings.ollamaUrl,
-      settings.ollamaModel,
       prompt,
       systemPrompt(settings.unrestricted),
     );
     return NextResponse.json({
-      prompt: improved,
+      prompt: improved.text,
       provider: "local",
-      model: settings.ollamaModel,
+      model: improved.model,
     });
   } catch (error) {
     return NextResponse.json(

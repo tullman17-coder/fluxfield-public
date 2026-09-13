@@ -2,22 +2,11 @@ import { promises as fs } from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
 import type { StudioSettings, JobOutput } from "@/lib/adapters/types";
+import { probeTts } from "@/lib/adapters/probe";
 
-/** Piper / OpenAI-compatible TTS health check */
+/** Piper / OpenAI-compatible TTS — 404 is a miss, not a connection. */
 export async function checkTtsHealth(baseUrl: string): Promise<boolean> {
-  if (!baseUrl) return false;
-  const root = baseUrl.replace(/\/$/, "");
-  for (const probe of ["/health", "/v1/models", "/"]) {
-    try {
-      const res = await fetch(`${root}${probe}`, {
-        signal: AbortSignal.timeout(2000),
-      });
-      if (res.ok || res.status === 404) return true;
-    } catch {
-      /* try next */
-    }
-  }
-  return false;
+  return (await probeTts(baseUrl)).ok;
 }
 
 /**

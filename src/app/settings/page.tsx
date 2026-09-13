@@ -6,14 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { GenerationMode, StudioSettings } from "@/lib/adapters/types";
 
-function load() {
-  return Promise.all([
-    fetch("/api/settings").then((r) => r.json()),
-    fetch("/api/health").then((r) => r.json()),
+async function loadHealth(force = false) {
+  const q = force ? "?refresh=1" : "";
+  const [h, m] = await Promise.all([
+    fetch(`/api/health${q}`).then((r) => r.json()),
     fetch("/api/ollama-models")
       .then((r) => r.json())
       .catch(() => null),
   ]);
+  return { h, m };
 }
 
 const ENGINE_LABEL: Record<string, string> = {
@@ -22,14 +23,44 @@ const ENGINE_LABEL: Record<string, string> = {
   mock: "Preview art",
 };
 
+type Probe = {
+  ok: boolean;
+  reachable: boolean;
+  detail: string;
+  models?: string[];
+};
+
 type Health = {
   comfy: boolean;
   ollama: boolean;
   tts: boolean;
   ffmpeg: boolean;
   studio: boolean;
+  studioReady?: boolean;
   effectiveMode: string;
   netbirdHint: string | null;
+  probes?: {
+    studio: Probe;
+    comfy: Probe;
+    ollama: Probe;
+    tts: Probe;
+  };
+  applied?: string[];
+  found?: { kind: string; url: string; detail: string; ok: boolean }[];
+  mesh?: {
+    provider: "netbird" | "tailscale" | "none";
+    selfName: string;
+    connected: number;
+    total: number;
+    peers: {
+      name: string;
+      fqdn: string;
+      ip: string;
+      connected: boolean;
+      self: boolean;
+      role?: "factory" | "personal" | "other" | "self" | "loopback";
+    }[];
+  };
 };
 
 export default function SettingsPage() {
@@ -39,21 +70,35 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function refresh() {
-    const [s, h, m] = await load();
-    setSettings(s.settings);
+  function applyHealth(
+    h: { settings?: Partial<StudioSettings>; health: Health },
+    m: { models?: string[] } | null,
+  ) {
+    setSettings((current) =>
+      current ? { ...current, ...(h.settings || {}) } : current,
+    );
     setHealth(h.health);
-    setOllamaModels(m?.models || []);
+    setOllamaModels(m?.models || h.health.probes?.ollama.models || []);
+  }
+
+  async function refresh(force = false) {
+    const { h, m } = await loadHealth(force);
+    applyHealth(h, m);
   }
 
   useEffect(() => {
     let alive = true;
-    load().then(([s, h, m]) => {
-      if (!alive) return;
-      setSettings(s.settings);
-      setHealth(h.health);
-      setOllamaModels(m?.models || []);
-    });
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s: { settings: StudioSettings }) => {
+        if (alive) setSettings(s.settings);
+      })
+      .catch(() => undefined);
+    loadHealth()
+      .then(({ h, m }) => {
+        if (alive) applyHealth(h, m);
+      })
+      .catch(() => undefined);
     return () => {
       alive = false;
     };
@@ -92,24 +137,40 @@ export default function SettingsPage() {
           Where your work gets made
         </h1>
         <p className="mt-2 text-[#b8aebb]">
-          Fluxfield hands image, writing, and voice work to the machines you
-          point it at here. Fill in what you have running and leave the rest
-          blank.
+          Image and video run on the factory box — DGX Spark. Other mesh
+          machines stay visible. Personal stacks are never used for
+          generation.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <HealthCard
           label="Studio"
-          ok={!!health?.studio}
+          probe={health?.probes?.studio}
+          fallbackOk={!!health?.studio}
           detail={settings.studioUrl}
         />
-        <HealthCard label="Comfy" ok={!!health?.comfy} detail={settings.comfyUrl} />
-        <HealthCard label="Ollama" ok={!!health?.ollama} detail={settings.ollamaUrl} />
-        <HealthCard label="Voice" ok={!!health?.tts} detail={settings.ttsUrl} />
+        <HealthCard
+          label="Comfy"
+          probe={health?.probes?.comfy}
+          fallbackOk={!!health?.comfy}
+          detail={settings.comfyUrl}
+        />
+        <HealthCard
+          label="Ollama"
+          probe={health?.probes?.ollama}
+          fallbackOk={!!health?.ollama}
+          detail={`${settings.ollamaUrl}${settings.ollamaModel ? ` · ${settings.ollamaModel}` : ""}`}
+        />
+        <HealthCard
+          label="Voice"
+          probe={health?.probes?.tts}
+          fallbackOk={!!health?.tts}
+          detail={settings.ttsUrl}
+        />
         <HealthCard
           label="FFmpeg"
-          ok={!!health?.ffmpeg}
+          fallbackOk={!!health?.ffmpeg}
           detail={settings.ffmpegEnabled ? "On" : "Off"}
         />
       </div>
@@ -119,6 +180,88 @@ export default function SettingsPage() {
           {health ? (ENGINE_LABEL[health.effectiveMode] ?? health.effectiveMode) : "…"}
         </span>
       </p>
+      {health?.applied?.length ? (
+        <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+          Found on the mesh and saved: {health.applied.join(" · ")}
+        </p>
+      ) : null}
+      {health?.mesh && health.mesh.provider !== "none" ? (
+        <div className="rounded-2xl border border-white/10 glass p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-[#f5eff6]">
+              Mesh · {health.mesh.provider}
+              {health.mesh.selfName ? ` · this machine is ${health.mesh.selfName}` : ""}
+            </p>
+            <p className="text-xs text-[#8d838f]">
+              {health.mesh.connected} connected of {health.mesh.total} peers
+            </p>
+          </div>
+          <ul className="mt-3 grid gap-1 text-xs text-[#b8aebb] sm:grid-cols-2">
+            {health.mesh.peers
+              .filter((p) => !p.self)
+              .map((peer) => (
+                <li key={peer.fqdn || peer.ip}>
+                  <span className={peer.connected ? "text-emerald-400" : "text-[#8d838f]"}>
+                    {peer.connected ? "●" : "○"}
+                  </span>{" "}
+                  <span className="text-[#f5eff6]">{peer.name}</span>{" "}
+                  {peer.role === "factory" ? (
+                    <span className="text-emerald-400">factory</span>
+                  ) : peer.role === "personal" ? (
+                    <span className="text-amber-300">personal</span>
+                  ) : null}{" "}
+                  <span className="text-[#8d838f]">
+                    {peer.fqdn || peer.ip}
+                  </span>
+                </li>
+              ))}
+          </ul>
+          {health.found?.some((f) => f.ok) ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs uppercase tracking-wider text-[#8d838f]">
+                Live services
+              </p>
+              {health.found
+                .filter((f) => f.ok)
+                .map((hit) => (
+                  <div
+                    key={`${hit.kind}-${hit.url}`}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2"
+                  >
+                    <p className="text-xs text-[#f5eff6]">
+                      <span className="uppercase text-[#8d838f]">{hit.kind}</span>{" "}
+                      {hit.url}
+                      <span className="mt-0.5 block text-[#8d838f]">{hit.detail}</span>
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-[#d565d6] text-black hover:bg-[#e77ae6]"
+                      onClick={() => {
+                        const key =
+                          hit.kind === "studio"
+                            ? "studioUrl"
+                            : hit.kind === "comfy"
+                              ? "comfyUrl"
+                              : hit.kind === "tts"
+                                ? "ttsUrl"
+                                : "ollamaUrl";
+                        setSettings((s) => (s ? { ...s, [key]: hit.url } : s));
+                      }}
+                    >
+                      Use
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="text-sm text-[#8d838f]">
+          No mesh client found on this machine. Install Netbird (or Tailscale)
+          so Fluxfield can see the other boxes.
+        </p>
+      )}
       {health?.netbirdHint ? (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
           {health.netbirdHint}
@@ -137,7 +280,7 @@ export default function SettingsPage() {
               })
             }
           >
-            <option value="auto">Automatic — use whatever is reachable</option>
+            <option value="auto">Automatic — factory Studio, then factory Comfy</option>
             <option value="local-studio">Studio only</option>
             <option value="comfyui">Comfy only</option>
             <option value="mock">Preview art — no graphics card needed</option>
@@ -145,7 +288,7 @@ export default function SettingsPage() {
         </Field>
         <Field
           label="Studio address"
-          hint="Use the Netbird name for that machine, like http://studio.netbird.selfhosted:18088. Old 100.x addresses will not reach it."
+          hint="DGX Spark on the mesh, like http://dgx-spark.netbird.selfhosted:18088. Old 100.x addresses will not reach it."
         >
           <Input
             value={settings.studioUrl}
@@ -169,7 +312,10 @@ export default function SettingsPage() {
             autoComplete="off"
           />
         </Field>
-        <Field label="Comfy address" hint="For example http://gpu-box:8188">
+        <Field
+          label="Comfy address"
+          hint="Only if Comfy is listening on DGX. Leave blank otherwise — personal machines are rejected."
+        >
           <Input
             value={settings.comfyUrl}
             onChange={(e) =>
@@ -188,7 +334,10 @@ export default function SettingsPage() {
             className="border-white/10 bg-white/10"
           />
         </Field>
-        <Field label="Ollama address">
+        <Field
+          label="Ollama address"
+          hint="Ollama, or any OpenAI-style local server. Fluxfield scans 11434 / 1234 on this machine and will not call Connected unless a model is actually loaded."
+        >
           <Input
             value={settings.ollamaUrl}
             onChange={(e) =>
@@ -297,13 +446,24 @@ export default function SettingsPage() {
             className="size-4 accent-[#d565d6]"
           />
         </label>
-        <Button
-          onClick={save}
-          disabled={saving}
-          className="bg-[#d565d6] font-semibold text-black hover:bg-[#e77ae6]"
-        >
-          {saving ? "Saving…" : "Save"}
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            onClick={save}
+            disabled={saving}
+            className="bg-[#d565d6] font-semibold text-black hover:bg-[#e77ae6]"
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving}
+            onClick={() => void refresh(true)}
+            className="border-white/15 bg-white/5 text-[#f5eff6]"
+          >
+            Scan the mesh
+          </Button>
+        </div>
         {message ? <p className="text-sm text-[#b8aebb]">{message}</p> : null}
       </div>
 
@@ -368,12 +528,12 @@ export default function SettingsPage() {
         <h2 className="mb-2 text-[#f5eff6]">What each one does</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            <strong className="text-zinc-200">Studio</strong> — makes your
-            images. This is the one worth setting up first.
+            <strong className="text-zinc-200">Studio</strong> — makes images
+            and video frames on DGX. This is the one worth setting up first.
           </li>
           <li>
-            <strong className="text-zinc-200">Comfy</strong> — picks up image
-            work when Studio is offline.
+            <strong className="text-zinc-200">Comfy</strong> — only if it is
+            running on DGX. Other Comfy boxes on the mesh are ignored.
           </li>
           <li>
             <strong className="text-zinc-200">Ollama</strong> — writes campaign
@@ -417,22 +577,43 @@ function Field({
 
 function HealthCard({
   label,
-  ok,
+  probe,
+  fallbackOk,
   detail,
 }: {
   label: string;
-  ok: boolean;
+  probe?: Probe;
+  fallbackOk: boolean;
   detail: string;
 }) {
+  const ok = probe?.ok ?? fallbackOk;
+  const warn = !ok && !!probe?.reachable;
+  const tone = ok ? "ok" : warn ? "warn" : "down";
+  const status = ok
+    ? "Connected"
+    : warn
+      ? "Reached — not usable"
+      : "Not found";
   return (
     <div className="rounded-2xl border border-white/10 glass p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-[#f5eff6]">{label}</span>
-        <span className={ok ? "text-emerald-400" : "text-[#8d838f]"}>
-          {ok ? "Connected" : "Not found"}
+        <span
+          className={
+            tone === "ok"
+              ? "text-emerald-400"
+              : tone === "warn"
+                ? "text-amber-300"
+                : "text-[#8d838f]"
+          }
+        >
+          {status}
         </span>
       </div>
       <p className="mt-2 truncate text-xs text-[#8d838f]">{detail}</p>
+      {probe?.detail ? (
+        <p className="mt-1 text-xs text-[#8d838f]">{probe.detail}</p>
+      ) : null}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { checkLocalStudioHealth } from "@/lib/adapters/local-studio";
 import type { ModeUsed, StudioSettings } from "@/lib/adapters/types";
 
 /**
- * Which machine would draw an image right now.
+ * Which factory machine would draw an image right now.
  *
  * The `-unreachable` results only happen when a specific machine has been
  * chosen and it is not answering; on the automatic setting the chain falls

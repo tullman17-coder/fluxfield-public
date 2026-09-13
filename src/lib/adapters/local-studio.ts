@@ -7,6 +7,8 @@ import type {
   JobOutput,
   StudioSettings,
 } from "@/lib/adapters/types";
+import { probeStudio } from "@/lib/adapters/probe";
+import { allowsImageVideo, refuseImageVideo } from "@/lib/mesh/factory";
 
 function aspectToSize(aspect: string): string {
   const map: Record<string, string> = {
@@ -24,24 +26,8 @@ function aspectToSize(aspect: string): string {
 export async function checkLocalStudioHealth(
   settings: StudioSettings,
 ): Promise<boolean> {
-  if (!settings.studioUrl) return false;
-  try {
-    const headers: HeadersInit = {};
-    if (settings.studioApiKey) {
-      headers.authorization = `Bearer ${settings.studioApiKey}`;
-    }
-    const res = await fetch(
-      new URL("/health", settings.studioUrl).toString(),
-      {
-        headers,
-        signal: AbortSignal.timeout(2500),
-        redirect: "manual",
-      },
-    );
-    return res.ok;
-  } catch {
-    return false;
-  }
+  if (!allowsImageVideo(settings.studioUrl)) return false;
+  return (await probeStudio(settings.studioUrl, settings.studioApiKey)).ok;
 }
 
 /**
@@ -54,6 +40,7 @@ export async function runLocalStudioAdapter(
 ): Promise<AdapterResult> {
   const base = ctx.settings.studioUrl.replace(/\/$/, "");
   if (!base) throw new Error("Local Studio URL is empty");
+  refuseImageVideo(base, "Local Studio");
   if (!ctx.settings.studioApiKey) {
     throw new Error(
       "Local Studio API key missing. Set it in Adapters (or LOCAL_STUDIO_API_KEY).",
@@ -61,6 +48,25 @@ export async function runLocalStudioAdapter(
   }
 
   const n = Math.min(4, Math.max(1, count));
+  let referenceB64: string | undefined;
+  if (ctx.referenceImagePath) {
+    try {
+      const buf = await fs.readFile(ctx.referenceImagePath);
+      if (buf.byteLength < 8 * 1024 * 1024) {
+        const ext = path.extname(ctx.referenceImagePath).toLowerCase();
+        const mime =
+          ext === ".jpg" || ext === ".jpeg"
+            ? "image/jpeg"
+            : ext === ".webp"
+              ? "image/webp"
+              : "image/png";
+        referenceB64 = `data:${mime};base64,${buf.toString("base64")}`;
+      }
+    } catch {
+      // generate without a reference if the file cannot be read
+    }
+  }
+
   const payload = {
     prompt: ctx.job.prompt,
     negative_prompt: ctx.job.negativePrompt || undefined,
@@ -69,8 +75,10 @@ export async function runLocalStudioAdapter(
     steps: Number(ctx.job.inputs.steps || 4),
     cfg_scale: Number(ctx.job.inputs.cfg || 1),
     seed: ctx.job.inputs.seed ? Number(ctx.job.inputs.seed) : undefined,
-    // Controllers name this differently, so send both spellings. A controller
-    // that does not know them ignores them.
+    // Controllers that support img2img / reference accept one of these.
+    ...(referenceB64
+      ? { image: referenceB64, init_image: referenceB64, strength: 0.65 }
+      : {}),
     ...(ctx.settings.unrestricted
       ? { safety_checker: false, allow_nsfw: true }
       : {}),

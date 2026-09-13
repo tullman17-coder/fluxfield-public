@@ -120,8 +120,10 @@ export async function syncJobToLibrary(
   job: StudioJob,
   resolveFile: (fileName: string) => Promise<string | null>,
 ) {
+  if (job.inputs.silent) return;
   for (const output of job.outputs) {
     if (!output.url) continue;
+    if (/^Subject(\b| ·)/i.test(output.label)) continue;
     const fileName = filenameFromOutputUrl(output.url);
     if (!fileName) continue;
     const kind = libraryKindFor(output);
@@ -168,6 +170,7 @@ export async function listLibrary(
   const sort = opts.sort ?? "createdAt";
   const order = opts.order ?? "desc";
   let entries = await readLibraryIndex();
+  entries = entries.filter((e) => !/^Subject(\b| ·)/i.test(e.label));
   if (opts.kind) entries = entries.filter((e) => e.kind === opts.kind);
   if (opts.tool) entries = entries.filter((e) => e.tool === opts.tool);
   entries = [...entries].sort((a, b) => compareLibrary(a, b, sort, order));

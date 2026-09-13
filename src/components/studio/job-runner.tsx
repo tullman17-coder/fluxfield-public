@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import type { JobTool } from "@/lib/adapters/types";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import { DREAM_PRESETS, FRAMINGS } from "@/lib/dream/presets";
+import type { BrandKit } from "@/lib/brand-kits/types";
+import { MediaLightbox } from "@/components/studio/media-lightbox";
 
 type Field = {
   id: string;
@@ -51,7 +53,24 @@ export function JobRunner({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [kits, setKits] = useState<BrandKit[]>([]);
+  const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const { job, setJob } = useJobWatch(`${tool}:${workflowSlug}`);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/brand-kits")
+      .then((r) => r.json())
+      .then((data) => {
+        if (alive && Array.isArray(data.kits)) setKits(data.kits);
+      })
+      .catch(() => {
+        // picker stays empty — jobs still run without a kit
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const fileField = useMemo(
     () => fields.find((f) => f.type === "file"),
@@ -198,6 +217,30 @@ export function JobRunner({
           </div>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="brandKitId">Brand kit</Label>
+          <select
+            id="brandKitId"
+            className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm"
+            value={values.brandKitId || ""}
+            onChange={(e) =>
+              setValues((v) => ({ ...v, brandKitId: e.target.value }))
+            }
+          >
+            <option value="">
+              {kits.length ? "None — use layout colors" : "No kits yet"}
+            </option>
+            {kits.map((kit) => (
+              <option key={kit.id} value={kit.id}>
+                {kit.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-[#8d838f]">
+            Palette from the kit lands in the finished layout.
+          </p>
+        </div>
+
         {fileField ? (
           <div className="space-y-2">
             <Label htmlFor="ref">{fileField.label}</Label>
@@ -255,18 +298,24 @@ export function JobRunner({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {job.outputs
-                .filter((o) => o.url)
-                .map((o) => (
-                  <a
-                    key={o.id}
-                    href={o.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="overflow-hidden rounded-2xl border border-white/10 bg-white/10"
-                  >
-                    {o.kind === "video" ? (
-                      // playsInline keeps iPhones from yanking playback into
-                      // their own fullscreen player the moment you press play.
+                .filter(
+                  (o) => o.url && !/^Subject(\b| ·)/i.test(o.label),
+                )
+                .slice()
+                .sort((a, b) => {
+                  if (a.id === job.primaryOutputId) return -1;
+                  if (b.id === job.primaryOutputId) return 1;
+                  const aHero = /creative|layout/i.test(a.label);
+                  const bHero = /creative|layout/i.test(b.label);
+                  if (aHero !== bHero) return aHero ? -1 : 1;
+                  return 0;
+                })
+                .map((o) =>
+                  o.kind === "video" ? (
+                    <div
+                      key={o.id}
+                      className="overflow-hidden rounded-2xl border border-white/10 bg-white/10"
+                    >
                       <video
                         src={o.url}
                         controls
@@ -274,26 +323,36 @@ export function JobRunner({
                         preload="metadata"
                         className="w-full"
                       />
-                    ) : o.kind === "audio" ? (
-                      <div className="p-4">
-                        <div className="mb-2 text-sm">{o.label}</div>
-                        <audio
-                          src={o.url}
-                          controls
-                          preload="none"
-                          className="w-full"
-                        />
-                      </div>
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
+                    </div>
+                  ) : o.kind === "audio" ? (
+                    <div
+                      key={o.id}
+                      className="overflow-hidden rounded-2xl border border-white/10 bg-white/10 p-4"
+                    >
+                      <div className="mb-2 text-sm">{o.label}</div>
+                      <audio
+                        src={o.url}
+                        controls
+                        preload="none"
+                        className="w-full"
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => setActiveMedia(o.url!)}
+                      className="overflow-hidden rounded-2xl border border-white/10 bg-white/10 text-left"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={o.url}
                         alt={o.label}
                         className="w-full object-cover"
                       />
-                    )}
-                  </a>
-                ))}
+                    </button>
+                  ),
+                )}
               {job.outputs
                 .filter((o) => o.text)
                 .map((o) => (
@@ -310,6 +369,23 @@ export function JobRunner({
           </>
         )}
       </div>
+      <MediaLightbox
+        items={(job?.outputs ?? [])
+          .filter(
+            (o) =>
+              o.url &&
+              (o.kind === "image" || o.kind === "video") &&
+              !/^Subject(\b| ·)/i.test(o.label),
+          )
+          .map((o) => ({
+            url: o.url!,
+            label: o.label,
+            kind: o.kind === "video" ? "video" : "image",
+          }))}
+        activeUrl={activeMedia}
+        onClose={() => setActiveMedia(null)}
+        onActiveUrl={setActiveMedia}
+      />
     </div>
   );
 }

@@ -20,12 +20,12 @@ export function urlUsesLegacyTailscale(url: string): boolean {
   }
 }
 
-/** Suggest a Netbird-style default when env is unset. */
+/** Factory box (DGX) when env is unset — not this Mac, not a personal peer. */
 export function defaultStudioUrlFromEnv(): string {
   return (
     process.env.FLUXFIELD_STUDIO_URL ||
     process.env.LOCAL_STUDIO_URL ||
-    "http://127.0.0.1:18088"
+    "http://dgx-spark.netbird.selfhosted:18088"
   );
 }
 

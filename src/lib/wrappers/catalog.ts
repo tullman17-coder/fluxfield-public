@@ -108,9 +108,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Streetwear campaign photo for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, vertical advertising poster subject, fashion editorial flash photography, bold graphic apparel, high contrast",
+      "Streetwear product photo for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, centered subject with clean margins, fashion editorial flash photography, bold graphic apparel, high contrast, correct anatomy if a person is present: matching eyes, intact face, natural hands and limbs",
     negativePrompt:
-      "blurry, watermark, low-res, deformed hands, busy unreadable text baked in",
+      "blurry, watermark, low-res, extra limbs, missing limbs, fused fingers, crossed eyes, collapsed face",
     aspectDefault: "9:16",
     copyHints: ["Drop badge", "Shop CTA", "Sticker overlays"],
   },
@@ -177,8 +177,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Editorial catalogue photography for {{brandName}} featuring {{productName}}, {{productDescription}}, {{preset}}, clean magazine lighting, generous negative space for typography, premium brand still",
-    negativePrompt: "clutter, harsh flash, watermark, comic style, neon",
+      "Editorial product still for {{brandName}} featuring {{productName}}, {{productDescription}}, {{preset}}, clean magazine lighting, object centered left-of-frame with soft negative space, premium brand still, correct hands and face if a person appears",
+    negativePrompt:
+      "clutter, harsh flash, watermark, comic style, neon, extra limbs, fused fingers, collapsed face",
     aspectDefault: "4:5",
     copyHints: ["Split layout", "Room for long copy", "Brand masthead"],
   },
@@ -239,8 +240,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Event poster hero portrait for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, print-ready promotional key art, strong silhouette, space for venue typography",
-    negativePrompt: "soft lifestyle stock, pastel gradients, watermark",
+      "Event key art portrait for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, strong silhouette, print-ready photographic subject, matching eyes and intact face, the right number of limbs",
+    negativePrompt:
+      "soft lifestyle stock, pastel gradients, watermark, extra limbs, missing limbs, fused fingers, crossed eyes, collapsed face",
     aspectDefault: "2:3",
     copyHints: ["Venue stack", "Date and time", "Ticket line"],
   },
@@ -307,8 +309,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Ecommerce collection hero for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, soft commercial product lighting, floating product arrangement, clean web banner subject",
-    negativePrompt: "busy background, harsh shadows, watermark, unreadably small props",
+      "Ecommerce product hero for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, soft commercial lighting, floating product on a clean field, correct hands if someone is holding the product",
+    negativePrompt:
+      "busy background, harsh shadows, watermark, unreadably small props, extra limbs, fused fingers",
     aspectDefault: "1.91:1",
     copyHints: ["Price chip", "Shop CTA", "Collection title"],
   },
@@ -369,8 +372,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Virtual try-on UI hero character for {{brandName}}, avatar {{productName}}, {{productDescription}}, {{preset}}, clean character sheet, fashion tech product screenshot subject, soft studio lighting",
-    negativePrompt: "nsfw, deformed anatomy, cluttered desktop chrome, watermark",
+      "Full-body fashion avatar for {{brandName}}, avatar {{productName}}, {{productDescription}}, {{preset}}, clean studio character plate, soft studio lighting, correct anthropomorphic anatomy: two matching eyes, intact face, two arms, two legs, natural hands",
+    negativePrompt:
+      "extra limbs, missing limbs, fused fingers, extra digits, crossed eyes, collapsed face, watermark",
     aspectDefault: "16:9",
     copyHints: ["Outfit grid", "Start Fitting", "How it works"],
   },
@@ -425,8 +429,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Sports brand lockup hero for {{brandName}}, {{productName}}, {{productDescription}}, {{preset}}, bold athletic advertising key art, strong silhouette, room for calligraphy mark",
-    negativePrompt: "weak contrast, watermark, muddy colors",
+      "Sports portrait for {{brandName}}, {{productName}}, {{productDescription}}, {{preset}}, bold athletic key art, strong silhouette, matching eyes, intact face, natural hands and the right number of limbs",
+    negativePrompt:
+      "weak contrast, watermark, muddy colors, extra limbs, missing limbs, fused fingers, crossed eyes, collapsed face",
     aspectDefault: "1:1",
     copyHints: ["Wordmark", "Name and number", "Season mark"],
   },

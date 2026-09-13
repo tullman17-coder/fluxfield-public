@@ -34,6 +34,7 @@ export async function GET(
     return new NextResponse(data, {
       headers: {
         "Content-Type": contentTypeFor(name),
+        "Content-Disposition": `inline; filename="${name}"`,
         "Cache-Control": "public, max-age=3600",
       },
     });

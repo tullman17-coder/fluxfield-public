@@ -111,7 +111,8 @@ export default function SupercomputerPage() {
           presetId: style,
           inputs: {
             prompt: improved,
-            negativePrompt: "text, words, letters, logo, watermark",
+            negativePrompt:
+              "extra limbs, missing limbs, fused fingers, crossed eyes, collapsed face, watermark",
             ratio,
             framing: "auto",
             count: "1",

@@ -10,8 +10,12 @@ const NAV = [
   { href: "/supercomputer", label: "Super", icon: "cpu" },
   { href: "/create", label: "Create", icon: "create" },
   { href: "/", label: "Wrappers", icon: "grid" },
+  { href: "/studio", label: "Studio", icon: "studio" },
   { href: "/explainer", label: "Explainer", icon: "play" },
   { href: "/director", label: "Director", icon: "clapper" },
+  { href: "/ugc", label: "UGC", icon: "ugc" },
+  { href: "/ad-multiplier", label: "Ads", icon: "ads" },
+  { href: "/faceless", label: "Faceless", icon: "faceless" },
   { href: "/music", label: "Music", icon: "note" },
   { href: "/workflows", label: "Marketing", icon: "megaphone" },
   { href: "/gallery", label: "Gallery", icon: "image" },
@@ -82,6 +86,34 @@ function RailIcon({ name }: { name: string }) {
           <path d="M3 10h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
           <path d="m3 10 1-4 17-1-1 5" />
           <path d="m8.5 5.7 1.8 3.9M13.5 5.4l1.8 3.9" />
+        </svg>
+      );
+    case "studio":
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="14" rx="2" />
+          <path d="M8 18v2M16 18v2M7 9h4M7 13h10" />
+        </svg>
+      );
+    case "ugc":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 19c1.5-3 4-4.5 7-4.5S17.5 16 19 19" />
+        </svg>
+      );
+    case "ads":
+      return (
+        <svg {...common}>
+          <path d="M4 8h10l6-3v14l-6-3H4z" />
+          <path d="M8 12v4" />
+        </svg>
+      );
+    case "faceless":
+      return (
+        <svg {...common}>
+          <rect x="4" y="5" width="16" height="14" rx="2" />
+          <path d="M8 15h8M9 10h.01M15 10h.01" />
         </svg>
       );
     case "note":

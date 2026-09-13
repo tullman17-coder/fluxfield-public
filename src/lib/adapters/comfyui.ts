@@ -6,6 +6,8 @@ import type {
   AdapterResult,
   JobOutput,
 } from "@/lib/adapters/types";
+import { probeComfy } from "@/lib/adapters/probe";
+import { allowsImageVideo, refuseImageVideo } from "@/lib/mesh/factory";
 
 function aspectPixels(aspect: string): { width: number; height: number } {
   const map: Record<string, { width: number; height: number }> = {
@@ -71,15 +73,102 @@ function buildTxt2ImgWorkflow(
   };
 }
 
-export async function checkComfyHealth(baseUrl: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/system_stats`, {
-      signal: AbortSignal.timeout(2500),
-    });
-    return res.ok;
-  } catch {
-    return false;
+function buildImg2ImgWorkflow(
+  prompt: string,
+  negative: string,
+  width: number,
+  height: number,
+  imageName: string,
+  checkpoint?: string,
+) {
+  const model = checkpoint || "v1-5-pruned-emaonly.safetensors";
+  return {
+    "1": {
+      class_type: "LoadImage",
+      inputs: { image: imageName },
+    },
+    "3": {
+      class_type: "KSampler",
+      inputs: {
+        seed: Math.floor(Math.random() * 1_000_000_000),
+        steps: 22,
+        cfg: 6.5,
+        sampler_name: "euler",
+        scheduler: "normal",
+        denoise: 0.65,
+        model: ["4", 0],
+        positive: ["6", 0],
+        negative: ["7", 0],
+        latent_image: ["10", 0],
+      },
+    },
+    "4": {
+      class_type: "CheckpointLoaderSimple",
+      inputs: { ckpt_name: model },
+    },
+    "6": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: prompt, clip: ["4", 1] },
+    },
+    "7": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: negative, clip: ["4", 1] },
+    },
+    "8": {
+      class_type: "VAEDecode",
+      inputs: { samples: ["3", 0], vae: ["4", 2] },
+    },
+    "9": {
+      class_type: "SaveImage",
+      inputs: { filename_prefix: "fluxfield", images: ["8", 0] },
+    },
+    "10": {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["11", 0], vae: ["4", 2] },
+    },
+    "11": {
+      class_type: "ImageScale",
+      inputs: {
+        image: ["1", 0],
+        width,
+        height,
+        upscale_method: "lanczos",
+        crop: "center",
+      },
+    },
+  };
+}
+
+async function uploadComfyImage(
+  baseUrl: string,
+  filePath: string,
+): Promise<string> {
+  const buf = await fs.readFile(filePath);
+  const name = path.basename(filePath);
+  const form = new FormData();
+  form.append(
+    "image",
+    new Blob([new Uint8Array(buf)], {
+      type: name.endsWith(".png") ? "image/png" : "image/jpeg",
+    }),
+    name,
+  );
+  form.append("overwrite", "true");
+  const res = await fetch(`${baseUrl}/upload/image`, {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) {
+    throw new Error(`ComfyUI image upload failed (${res.status})`);
   }
+  const data = (await res.json()) as { name?: string };
+  return data.name || name;
+}
+
+export async function checkComfyHealth(baseUrl: string): Promise<boolean> {
+  if (!allowsImageVideo(baseUrl)) return false;
+  return (await probeComfy(baseUrl)).ok;
 }
 
 async function waitForHistory(
@@ -144,14 +233,29 @@ export async function runComfyAdapter(
   ctx: AdapterContext,
 ): Promise<AdapterResult> {
   const baseUrl = ctx.settings.comfyUrl.replace(/\/$/, "");
+  refuseImageVideo(baseUrl, "ComfyUI");
   const { width, height } = aspectPixels(ctx.job.aspect);
-  const workflow = buildTxt2ImgWorkflow(
-    ctx.job.prompt,
-    ctx.job.negativePrompt,
-    width,
-    height,
-    ctx.settings.comfyCheckpoint || undefined,
-  );
+
+  let workflow: Record<string, unknown>;
+  if (ctx.referenceImagePath) {
+    const uploaded = await uploadComfyImage(baseUrl, ctx.referenceImagePath);
+    workflow = buildImg2ImgWorkflow(
+      ctx.job.prompt,
+      ctx.job.negativePrompt,
+      width,
+      height,
+      uploaded,
+      ctx.settings.comfyCheckpoint || undefined,
+    );
+  } else {
+    workflow = buildTxt2ImgWorkflow(
+      ctx.job.prompt,
+      ctx.job.negativePrompt,
+      width,
+      height,
+      ctx.settings.comfyCheckpoint || undefined,
+    );
+  }
 
   const queueRes = await fetch(`${baseUrl}/prompt`, {
     method: "POST",

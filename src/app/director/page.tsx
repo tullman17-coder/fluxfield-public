@@ -7,6 +7,7 @@ import { GENRES, MOODS } from "@/lib/music/theory";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
 import { cn } from "@/lib/utils";
+import { MediaLightbox } from "@/components/studio/media-lightbox";
 
 const MODES = [
   {
@@ -50,6 +51,7 @@ export default function DirectorPage() {
   const [mood, setMood] = useState("neutral");
   const { job, setJob } = useJobWatch("director", 1500);
   const [error, setError] = useState<string | null>(null);
+  const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
 
   const start = useCallback(async () => {
@@ -341,14 +343,20 @@ export default function DirectorPage() {
             <ul className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {frames.map((f) => (
                 <li key={f.id} className="glass min-w-0 rounded-[14px] p-2">
-                  <Image
-                    src={f.url!}
-                    alt={f.label}
-                    width={480}
-                    height={270}
-                    unoptimized
-                    className="h-auto w-full rounded-[10px] border border-white/10"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setActiveMedia(f.url!)}
+                    className="block w-full"
+                  >
+                    <Image
+                      src={f.url!}
+                      alt={f.label}
+                      width={480}
+                      height={270}
+                      unoptimized
+                      className="h-auto w-full rounded-[10px] border border-white/10"
+                    />
+                  </button>
                   <p className="px-1 py-2 font-mono text-xs tabular-nums text-[#b8aebb]">
                     {f.label}
                   </p>
@@ -397,6 +405,15 @@ export default function DirectorPage() {
           ) : null}
         </section>
       </div>
+      <MediaLightbox
+        items={frames.map((f) => ({
+          url: f.url!,
+          label: f.label,
+        }))}
+        activeUrl={activeMedia}
+        onClose={() => setActiveMedia(null)}
+        onActiveUrl={setActiveMedia}
+      />
     </div>
   );
 }

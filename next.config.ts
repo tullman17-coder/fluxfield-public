@@ -24,6 +24,11 @@ const devOrigins = [
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: devOrigins,
+  // Native optional binding — Turbopack cannot bundle @resvg/resvg-js-darwin-arm64.
+  serverExternalPackages: ["@resvg/resvg-js"],
+  turbopack: {
+    root: process.cwd(),
+  },
 };
 
 export default nextConfig;

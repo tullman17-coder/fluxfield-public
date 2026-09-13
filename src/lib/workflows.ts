@@ -87,7 +87,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     promptTemplate:
       "Professional advertising product photography of {{productName}}, {{productDescription}}, {{preset}}, commercial brand campaign, crisp detail, controlled lighting, high-end ecommerce still",
     negativePrompt:
-      "blurry, low quality, watermark, text overlay, logo artifacts, deformed, extra objects",
+      "blurry, low quality, watermark, extra limbs, missing limbs, fused fingers, collapsed face",
     aspectDefault: "1:1",
     comfyMode: "img2img",
   },
@@ -152,7 +152,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     promptTemplate:
       "Paid social ad creative for {{productName}}, {{productDescription}}, audience {{audience}}, {{preset}} composition, scroll-stopping commercial advertising still, clean layout space for headline, brand photography",
     negativePrompt:
-      "illegible text, cluttered UI chrome, watermark, low contrast, amateur snapshot",
+      "watermark, low contrast, amateur snapshot, extra limbs, fused fingers, crossed eyes",
     aspectDefault: "4:5",
     comfyMode: "txt2img",
   },
@@ -340,7 +340,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     promptTemplate:
       "Ecommerce marketplace listing photo of {{productName}}, {{productDescription}}, {{preset}}, accurate product representation, bright even lighting, conversion-focused product image",
     negativePrompt:
-      "misleading props, heavy stylization, text badges, price stickers, watermark",
+      "misleading props, heavy stylization, watermark, extra limbs, fused fingers",
     aspectDefault: "1:1",
     comfyMode: "img2img",
   },
@@ -404,7 +404,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     promptTemplate:
       "Campaign poster key art for {{productName}}, {{productDescription}}, headline concept '{{headline}}', {{preset}}, advertising poster composition with clear focal point and space for typography, print-ready commercial art",
     negativePrompt:
-      "busy typography baked into image, stock photo watermark, muddy colors",
+      "stock photo watermark, muddy colors, extra limbs, missing limbs, collapsed face",
     aspectDefault: "2:3",
     comfyMode: "txt2img",
   },

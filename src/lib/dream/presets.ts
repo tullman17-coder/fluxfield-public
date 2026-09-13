@@ -241,7 +241,11 @@ export function resolveFraming(prompt: string, requested: string): FramingId {
 }
 
 const PERSON_WORDS =
-  /\b(person|people|woman|man|girl|boy|child|human|portrait|character|dancer|warrior|astronaut|hands?|feet|face)\b/;
+  /\b(person|people|woman|man|girl|boy|child|human|portrait|character|dancer|warrior|astronaut|hands?|feet|face|avatar|model|athlete|creature|organism|anthropomorphic|humanoid|being|figure|android|elf|orc|goblin|mermaid|centaur|furry)\b/;
+
+export function promptHasFigure(prompt: string): boolean {
+  return PERSON_WORDS.test(prompt.toLowerCase());
+}
 const ENV_WORDS =
   /\b(background|environment|room|street|forest|mountain|city|landscape|interior|exterior|sky|sea|ocean|field|studio|space)\b/;
 const LIGHT_WORDS =
@@ -279,7 +283,7 @@ export function enhancePrompt(
   }
   if (PERSON_WORDS.test(prompt.toLowerCase())) {
     additions.push(
-      "anatomically coherent body, natural hands and limbs, consistent facial features",
+      "correct anthropomorphic anatomy: matching pair of eyes, intact face, the right number of limbs, natural hands and fingers",
     );
   } else {
     additions.push(
@@ -305,11 +309,9 @@ export function enhanceNegativePrompt(
   if (!enabled)
     return [userNegative, framingNegative].filter(Boolean).join(", ");
   const defects = PERSON_WORDS.test(prompt.toLowerCase())
-    ? "mutated anatomy, extra limbs, missing limbs, fused fingers, duplicated features, inconsistent face"
+    ? "extra limbs, missing limbs, fused fingers, extra digits, crossed or missing eyes, collapsed face, mismatched pupils, broken jaw"
     : "warped geometry, duplicated objects, fused forms, inconsistent perspective, malformed structure";
-  const outputArtifacts =
-    "text, watermark, logo, signature, caption, UI elements, border";
-  return [userNegative, defects, outputArtifacts, framingNegative]
+  return [userNegative, defects, "watermark, blurry, low-res", framingNegative]
     .filter(Boolean)
     .join(", ");
 }
