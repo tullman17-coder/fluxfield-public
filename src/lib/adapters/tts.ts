@@ -19,6 +19,7 @@ export async function synthesizeSpeech(args: {
   jobId: string;
   label?: string;
 }): Promise<JobOutput | undefined> {
+  if (args.settings.generationMode === "zermo") return undefined;
   const healthy = await checkTtsHealth(args.settings.ttsUrl);
   if (!healthy) return undefined;
 

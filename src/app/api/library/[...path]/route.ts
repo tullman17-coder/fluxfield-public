@@ -9,6 +9,7 @@ function contentTypeFor(name: string) {
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   if (ext === ".webp") return "image/webp";
   if (ext === ".wav") return "audio/wav";
+  if (ext === ".flac") return "audio/flac";
   if (ext === ".mp3") return "audio/mpeg";
   if (ext === ".mp4") return "video/mp4";
   if (ext === ".txt") return "text/plain; charset=utf-8";

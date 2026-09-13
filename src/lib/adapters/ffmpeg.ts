@@ -91,7 +91,7 @@ export async function assembleExplainerVideo(args: {
     return {
       id,
       kind: "video",
-      label: "Explainer video",
+      label: "Local slideshow (FFmpeg)",
       url: `/api/outputs/${filename}`,
     };
   } catch {

@@ -1,11 +1,13 @@
 "use client";
+import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
+import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   dreamPresets,
   DREAM_RATIOS,
   FRAMINGS,
-  dreamRatio,
+
   enhancePrompt,
 } from "@/lib/dream/presets";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
@@ -34,6 +36,7 @@ export default function CreatePage() {
   const [seed, setSeed] = useState("");
   const [steps, setSteps] = useState("4");
   const [cfg, setCfg] = useState("1");
+  const [zermo, setZermo] = useState(false);
   const [assist, setAssist] = useState(true);
 
   const [improveProvider, setImproveProvider] = useState<"local" | "api">(
@@ -56,6 +59,7 @@ export default function CreatePage() {
       .then((r) => r.json())
       .then((d) => {
         const s = d.settings;
+        if (s?.generationMode === "zermo") { setZermo(true); setSteps("8"); setCfg("1"); }
         if (s?.improveProvider === "api" && s?.improveApiKey) {
           setImproveProvider("api");
         }
@@ -69,7 +73,8 @@ export default function CreatePage() {
   const running = !!job && (job.status === "queued" || job.status === "running");
   const presets = dreamPresets(unrestricted);
   const activePreset = presets.find((p) => p.id === preset) ?? presets[0];
-  const activeRatio = dreamRatio(ratio);
+  const ratios = DREAM_RATIOS.map((r) => zermo ? { ...r, ...fitZermoSize(r.width, r.height) } : r);
+  const activeRatio = ratios.find((r) => r.id === ratio) ?? ratios[0];
   const assistedPrompt =
     assist && prompt.trim() ? enhancePrompt(prompt, preset, framing, true) : "";
 
@@ -120,8 +125,8 @@ export default function CreatePage() {
               framing,
               count,
               seed: seedOverride ?? seed,
-              steps,
-              cfg,
+              steps: zermo ? "8" : steps,
+              cfg: zermo ? "1" : cfg,
               assist: assist ? "on" : "off",
             },
           }),
@@ -133,7 +138,7 @@ export default function CreatePage() {
         setSubmitError(err instanceof Error ? err.message : "Failed");
       }
     },
-    [prompt, negativePrompt, preset, ratio, framing, count, seed, steps, cfg, assist, setJob],
+    [prompt, negativePrompt, preset, ratio, framing, count, seed, steps, cfg, assist, setJob, zermo],
   );
 
   const reuseFromJob = useCallback((j: StudioJob) => {
@@ -386,7 +391,7 @@ export default function CreatePage() {
                 Aspect ratio
               </legend>
               <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
-                {DREAM_RATIOS.map((r) => (
+                {ratios.map((r) => (
                   <button
                     key={r.id}
                     type="button"
@@ -482,7 +487,8 @@ export default function CreatePage() {
                   type="number"
                   min={1}
                   max={50}
-                  value={steps}
+                  value={zermo ? "8" : steps}
+                  disabled={zermo}
                   onChange={(e) => setSteps(e.currentTarget.value)}
                   className={inputClass}
                 />
@@ -494,7 +500,8 @@ export default function CreatePage() {
                   min={0}
                   max={20}
                   step={0.1}
-                  value={cfg}
+                  value={zermo ? "1" : cfg}
+                  disabled={zermo}
                   onChange={(e) => setCfg(e.currentTarget.value)}
                   className={inputClass}
                 />
@@ -512,6 +519,7 @@ export default function CreatePage() {
                   That did not finish
                 </p>
                 <p className="text-sm text-[#f5eff6]">{job.error}</p>
+                <ZermoJobStatus job={job} onResume={setJob} />
                 <p className="mt-1 text-sm text-[#b8aebb]">
                   Try again, or check your connections in Settings.
                 </p>

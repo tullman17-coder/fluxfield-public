@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readSettings } from "@/lib/settings";
+import { checkZermoHealth } from "@/lib/adapters/zermo";
 import { pickMode } from "@/lib/adapters/effective-mode";
 import { checkFfmpeg } from "@/lib/adapters/ffmpeg";
 import { discoverAndHeal } from "@/lib/adapters/discover";
@@ -9,6 +10,10 @@ import { netbirdHint } from "@/lib/netbird";
 export async function GET(request: Request) {
   const force = new URL(request.url).searchParams.get("refresh") === "1";
   const current = await readSettings();
+  if (current.generationMode === "zermo") {
+    const zermo = await checkZermoHealth();
+    return NextResponse.json({ settings: { generationMode: "zermo" }, health: { zermo, comfy: false, studio: false, ollama: false, tts: false, ffmpeg: false, effectiveMode: zermo.ready ? "zermo" : "zermo-unreachable", netbirdHint: null } });
+  }
   const [discovered, ffmpeg] = await Promise.all([
     discoverAndHeal(current, { force }),
     current.ffmpegEnabled ? checkFfmpeg() : Promise.resolve(false),

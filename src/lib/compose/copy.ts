@@ -6,7 +6,7 @@ export type CampaignCopy = {
   cta: string;
 };
 
-function cleanPhrase(value: string, fallback = ""): string {
+function cleanPhrase(value: string = "", fallback = ""): string {
   const text = value.replace(/\s+/g, " ").trim();
   if (!text) return fallback;
   return text;

@@ -18,6 +18,8 @@ import {
 } from "@/lib/adapters/local-studio";
 import { runMockAdapter } from "@/lib/adapters/mock";
 import { runMusicAdapter } from "@/lib/adapters/music";
+import { runZermoAdapter } from "@/lib/adapters/zermo";
+import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 import { runDirectorAdapter } from "@/lib/adapters/director";
 import { runVideoWorkflowAdapter } from "@/lib/adapters/video-workflow";
 import {
@@ -74,7 +76,7 @@ export async function createAndRunJob(
   input: CreateJobInput,
 ): Promise<StudioJob> {
   const now = new Date().toISOString();
-  const { unrestricted } = await readSettings();
+  const { unrestricted, generationMode } = await readSettings();
   let workflowName = input.workflowSlug;
   let presetLabel = input.presetId;
   let prompt = "";
@@ -93,7 +95,12 @@ export async function createAndRunJob(
     workflowName = "Dream Studio";
     presetLabel = preset.label;
     aspect = ratio.aspect;
-    input.inputs.size = `${ratio.width}x${ratio.height}`;
+    if (generationMode === "zermo") {
+      const size = fitZermoSize(ratio.width, ratio.height);
+      input.inputs.size ||= `${size.width}x${size.height}`;
+      input.inputs.steps ||= "8";
+      input.inputs.cfg ||= "1";
+    } else input.inputs.size = `${ratio.width}x${ratio.height}`;
     prompt = enhancePrompt(base, preset.id, framing, assist);
     negativePrompt = enhanceNegativePrompt(
       base,
@@ -201,7 +208,9 @@ export async function createAndRunJob(
     negativePrompt,
     aspect,
     inputs: input.inputs,
-    modeUsed: "mock",
+    modeUsed: generationMode === "zermo" ? "zermo" : "mock",
+    generationMode,
+    referenceImagePath: input.referenceImagePath,
     outputs: [],
     phase: "intake",
     brandKitId: input.inputs.brandKitId || undefined,
@@ -210,16 +219,26 @@ export async function createAndRunJob(
   };
 
   await saveJob(job);
-  void processJob(job.id, input.referenceImagePath);
+  void resumeJob(job.id);
   return job;
 }
 
-async function processJob(jobId: string, referenceImagePath?: string) {
+// ponytail: one runner per job in this server process; use DB leases for multi-process hosting.
+const activeJobs = new Set<string>();
+export async function resumeJob(jobId: string) {
+  if (activeJobs.has(jobId)) return;
+  activeJobs.add(jobId);
+  try { await processJob(jobId); } finally { activeJobs.delete(jobId); }
+}
+
+async function processJob(jobId: string) {
   const settings = await readSettings();
-  await updateJob(jobId, { status: "running", progress: 12 });
+  await updateJob(jobId, { status: "running", progress: 12, error: undefined });
 
   const current = await getJob(jobId);
   if (!current) return;
+  if (current.generationMode) settings.generationMode = current.generationMode;
+  const referenceImagePath = current.referenceImagePath;
 
   try {
     let script: string | undefined;
@@ -292,7 +311,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       await updateJob(jobId, {
         status: "completed",
         progress: 100,
-        modeUsed: music.usedServer ? "local-studio" : "mock",
+        modeUsed: settings.generationMode === "zermo" ? "zermo" : music.usedServer ? "local-studio" : "mock",
         outputs: music.outputs,
         script: music.outputs.find((o) => o.kind === "storyboard")?.text,
       });
@@ -344,17 +363,18 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       return;
     }
 
-    const wantStudio = settings.generationMode !== "mock";
+    const wantStudio = settings.generationMode !== "mock" && settings.generationMode !== "zermo";
     const studioUp =
       wantStudio &&
       Boolean(settings.studioUrl && settings.studioApiKey) &&
       (await checkLocalStudioHealth(settings));
     const comfyUp =
+      settings.generationMode !== "zermo" &&
       settings.generationMode !== "mock" &&
       settings.generationMode !== "local-studio" &&
       (await checkComfyHealth(settings.comfyUrl));
 
-    let modeUsed: ModeUsed = "mock";
+    let modeUsed: ModeUsed = settings.generationMode === "zermo" ? "zermo" : "mock";
     if (settings.generationMode === "local-studio") {
       if (!studioUp) {
         throw new Error(
@@ -421,6 +441,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
 
     const runWith = (mode: ModeUsed, job = refreshed) => {
       const next = { ...ctx, job };
+      if (mode === "zermo") return runZermoAdapter(next, packCount);
       return mode === "local-studio"
         ? runLocalStudioAdapter(next, packCount)
         : mode === "comfyui"
@@ -451,7 +472,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
         imageUrl: subjectOut?.url,
         prompt: refreshed.prompt,
       });
-      if (subjectCheck && !subjectCheck.anatomy.ok && subjectCheck.repair) {
+      if (modeUsed !== "zermo" && subjectCheck && !subjectCheck.anatomy.ok && subjectCheck.repair) {
         await updateJob(jobId, { phase: "subject", progress: 58 });
         try {
           result = await runWith(modeUsed, {

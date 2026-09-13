@@ -1,4 +1,5 @@
 "use client";
+import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
 
 import { useCallback, useRef, useState } from "react";
 import { GENRES, MOODS, NOTE_NAMES } from "@/lib/music/theory";
@@ -321,6 +322,8 @@ export default function MusicPage() {
             Finished
           </p>
           <h2 className="mt-1 text-lg text-[#f5eff6]">Track</h2>
+          <p className="text-xs text-[#b8aebb]">Zermo mode uses ACE, 10–90 seconds, FLAC. Select the provider in Settings.</p>
+          <ZermoJobStatus job={job} onResume={setJob} />
           {track?.url ? (
             <figure className="glass mt-4 min-w-0 rounded-[14px] p-5">
               <figcaption className="mb-3 text-sm font-bold text-[#f5eff6]">

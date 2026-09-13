@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { JobTool } from "@/lib/adapters/types";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
+import { ZermoJobStatus } from "./zermo-job-status";
 import { DREAM_PRESETS, FRAMINGS } from "@/lib/dream/presets";
 import type { BrandKit } from "@/lib/brand-kits/types";
 import { MediaLightbox } from "@/components/studio/media-lightbox";
@@ -285,6 +286,7 @@ export function JobRunner({
               {job.error ? (
                 <p className="mt-2 text-sm text-red-400">{job.error}</p>
               ) : null}
+              <ZermoJobStatus job={job} onResume={setJob} />
               {job.script ? (
                 <details className="mt-3">
                   <summary className="cursor-pointer list-none text-xs text-[#8d838f] [&::-webkit-details-marker]:hidden">

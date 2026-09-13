@@ -79,7 +79,7 @@ export async function GET(
   const refresh = _request.url.includes("refresh=1");
   const settings = await readSettings();
   const { mode } = await currentMode(settings);
-  const realBackend = mode === "local-studio" || mode === "comfyui";
+  const realBackend = mode === "local-studio" || mode === "comfyui" || mode === "zermo";
 
   const cached = await findCached(slug);
   const cachedEngine = cached ? await readCachedEngine(slug) : null;
@@ -113,7 +113,7 @@ export async function GET(
     .reverse()
     .find((o) => o.kind === "image" && o.url);
   if (!art?.url) {
-    if (shipped) return serve(shipped.data, shipped.ext, 86_400);
+    if (shipped && settings.generationMode !== "zermo") return serve(shipped.data, shipped.ext, 86_400);
     return NextResponse.json({ error: "no art produced" }, { status: 502 });
   }
 

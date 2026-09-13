@@ -122,6 +122,7 @@ export async function runDirectorAdapter(
       targetSec: Math.min(production.runtimeSec, 240),
       seedText: `${ctx.job.id}:score`,
     });
+  if (ctx.settings.generationMode !== "zermo") {
   const rendered = renderArrangement(score, `${ctx.job.id}:${production.title}`);
   const wav = encodeWav(rendered.left, rendered.right, rendered.sampleRate);
   const wavName = `${ctx.job.id}-${nanoid(8)}.wav`;
@@ -139,6 +140,10 @@ export async function runDirectorAdapter(
       .join(" · "),
     url: `/api/outputs/${wavName}`,
   });
+
+  } else {
+    outputs.push({ id: nanoid(8), kind: "text", label: "Zermo scope", text: "Generated keyframes only. No synthetic soundtrack or native long-form video is produced by Zermo in this slice." });
+  }
 
   // Key frames — live GPU when Studio/Comfy is up, otherwise local art.
   const size = ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];

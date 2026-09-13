@@ -23,6 +23,8 @@ const NAV = [
 ] as const;
 
 const ENGINE_LABEL: Record<string, string> = {
+  zermo: "Zermo",
+  "zermo-unreachable": "Zermo offline",
   "local-studio": "Studio",
   comfyui: "Comfy",
   mock: "Preview",
@@ -171,7 +173,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
 
   const anyUp =
     !!health &&
-    (health.studio || health.comfy || health.ollama || health.tts);
+    (health.effectiveMode === "zermo" || health.studio || health.comfy || health.ollama || health.tts);
 
   return (
     <div className="grid min-h-dvh w-full grid-cols-[4rem_minmax(0,1fr)] text-[#f5eff6] sm:grid-cols-[5.75rem_minmax(0,1fr)]">

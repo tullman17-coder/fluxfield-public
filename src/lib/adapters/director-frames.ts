@@ -12,6 +12,7 @@ import {
 } from "@/lib/adapters/local-studio";
 import { checkComfyHealth, runComfyAdapter } from "@/lib/adapters/comfyui";
 import { hueToHex, renderArt } from "@/lib/art/render";
+import { runZermoAdapter } from "./zermo";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -63,6 +64,7 @@ function withShotPrompt(ctx: AdapterContext, prompt: string): AdapterContext {
 
 async function resolveFrameMode(ctx: AdapterContext): Promise<ModeUsed> {
   const { settings } = ctx;
+  if (settings.generationMode === "zermo") return "zermo";
   const wantStudio = settings.generationMode !== "mock";
   const studioUp =
     wantStudio &&
@@ -103,6 +105,12 @@ export async function generateDirectorFrames(
   let liveSucceeded = 0;
 
   for (const shot of capped) {
+    if (modeUsed === "zermo") {
+      const result = await runZermoAdapter(withShotPrompt(ctx, shot.prompt), 1, `frame:${outputs.length}`);
+      outputs.push(...result.outputs.map((o) => ({ ...o, label: shot.label })));
+      liveSucceeded += 1;
+      continue;
+    }
     if (modeUsed === "local-studio") {
       try {
         const result = await runLocalStudioAdapter(
