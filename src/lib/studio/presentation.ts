@@ -43,6 +43,79 @@ export function musicSeconds(mode: string | undefined, value: string): string {
   return String(Number.isFinite(n) && value.trim() ? Math.max(10, Math.min(90, Math.round(n))) : 60);
 }
 
+export function preferredImproveProvider(settings: {
+  improveProvider?: "local" | "api";
+  hasImproveApiKey?: boolean;
+} | null): "local" | "api" {
+  return settings?.improveProvider === "api" && settings.hasImproveApiKey
+    ? "api"
+    : "local";
+}
+
+export function supercomputerReady(health: {
+  text?: { ready?: boolean };
+  image?: { ready?: boolean };
+  music?: { ready?: boolean };
+} | null): boolean {
+  return health?.text?.ready === true && health.image?.ready === true;
+}
+
+export function jobRunnerSupportsVisualQa(tool: string): boolean {
+  return ["workflow", "image2", "explainer"].includes(tool);
+}
+
+type MusicJob = {
+  zermoJobs?: Record<
+    string,
+    { effective?: Record<string, unknown> }
+  >;
+};
+
+function effectiveLabel(key: string): string {
+  if (key === "bpm") return "BPM";
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+export function musicEffectiveSettings(
+  job: MusicJob | null,
+): { label: string; value: string }[] {
+  const effective = job?.zermoJobs?.["music:track"]?.effective;
+  const settings = effective?.settings;
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    return [];
+  }
+  const values = settings as Record<string, unknown>;
+  const ordered = [
+    ...["duration", "key", "bpm"].filter((key) => key in values),
+    ...Object.keys(values).filter(
+      (key) => !["duration", "key", "bpm", "lyrics"].includes(key),
+    ),
+  ];
+  return ordered.flatMap((key) => {
+    const value = values[key];
+    if (!["string", "number", "boolean"].includes(typeof value)) return [];
+    const rendered =
+      key === "duration" && (typeof value === "number" || /^\d+(?:\.\d+)?$/.test(String(value)))
+        ? `${value} seconds`
+        : String(value);
+    return [{ label: effectiveLabel(key), value: rendered }];
+  });
+}
+
+export function visualQaSummary(
+  requested: string | undefined,
+  modeUsed: string,
+  checks: string[],
+): string {
+  if (requested !== "on") return "Skipped: opt-in is off.";
+  if (modeUsed === "mock") {
+    return "Skipped: preview mode does not run visual review.";
+  }
+  return checks.length ? checks.join("\n\n") : "Skipped: no compatible visual review was available.";
+}
+
 export function settingsWritePayload(settings: Record<string, unknown>): Record<string, unknown> {
   const payload = { ...settings };
   delete payload.hasStudioApiKey;

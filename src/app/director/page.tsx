@@ -112,7 +112,7 @@ export default function DirectorPage() {
         <p className="max-w-xl text-pretty text-[#b8aebb]">
           Plan a whole piece instead of a single clip — up to an hour of shots
           with timecodes and key frames. This is a plan, not a rendered film.
-          Zermo makes still frames and a 10–90 second score excerpt; native video and narration are not enabled.
+          Zermo makes still key frames only; native score, video, and narration are not enabled.
         </p>
       </header>
 

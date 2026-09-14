@@ -4,6 +4,7 @@ import type { StudioSettings } from "@/lib/adapters/types";
 import {
   reviewImageWithVision,
   type ImageReview,
+  type ImageReviewAttempt,
 } from "@/lib/adapters/ollama";
 import type { CampaignCopy } from "@/lib/compose/copy";
 import { promptHasFigure } from "@/lib/dream/presets";
@@ -40,9 +41,11 @@ export async function imageDataUriFromUrl(
 export async function verifySubject(
   settings: StudioSettings,
   args: { imageUrl?: string; prompt: string },
-): Promise<ImageReview | null> {
+): Promise<ImageReviewAttempt> {
   const image = await imageDataUriFromUrl(args.imageUrl);
-  if (!image) return null;
+  if (!image) {
+    return { status: "skipped", reason: "generated subject bytes were unavailable" };
+  }
   const figure = promptHasFigure(args.prompt);
   return reviewImageWithVision(settings, {
     imageDataUri: image,
@@ -61,9 +64,11 @@ ${REVIEW_SHAPE}`,
 export async function verifyCreative(
   settings: StudioSettings,
   args: { imageUrl?: string; prompt: string; copy: CampaignCopy },
-): Promise<ImageReview | null> {
+): Promise<ImageReviewAttempt> {
   const image = await imageDataUriFromUrl(args.imageUrl);
-  if (!image) return null;
+  if (!image) {
+    return { status: "skipped", reason: "finished layout bytes were unavailable" };
+  }
   return reviewImageWithVision(settings, {
     imageDataUri: image,
     prompt: `Check this finished campaign layout.
@@ -82,9 +87,12 @@ ${REVIEW_SHAPE}`,
 
 export function formatReviewNote(
   label: string,
-  review: ImageReview | null,
+  attempt: ImageReviewAttempt,
 ): string {
-  if (!review) return `${label}: skipped (no vision model)`;
+  if (attempt.status === "skipped") {
+    return `${label}: skipped (${attempt.reason})`;
+  }
+  const review: ImageReview = attempt.review;
   const issues = [
     ...review.anatomy.issues.map((item) => `anatomy: ${item}`),
     ...review.text.issues.map((item) => `text: ${item}`),

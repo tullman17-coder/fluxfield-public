@@ -1,6 +1,6 @@
 "use client";
 import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
-import { jobStatusLabel, exactSeed, ZERMO_IMAGE_PROFILES } from "@/lib/studio/presentation";
+import { jobStatusLabel, exactSeed, preferredImproveProvider, ZERMO_IMAGE_PROFILES } from "@/lib/studio/presentation";
 import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 
@@ -43,10 +43,13 @@ export default function CreatePage() {
   const [adultCategory, setAdultCategory] = useState(false);
   const steps = customSteps || (zermo ? "8" : "4");
   const [assist, setAssist] = useState(true);
+  const [visualQa, setVisualQa] = useState(false);
 
-  const [improveProvider, setImproveProvider] = useState<"local" | "api">(
-    "local",
-  );
+  const [improveProviderOverride, setImproveProviderOverride] = useState<
+    "local" | "api" | null
+  >(null);
+  const improveProvider =
+    improveProviderOverride ?? preferredImproveProvider(settings);
   const hasApiKey = !!settings?.hasImproveApiKey;
   const localModel = zermo ? health?.text?.model : settings?.ollamaModel;
   const unrestricted = !!settings?.unrestricted;
@@ -58,6 +61,7 @@ export default function CreatePage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
+
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const presets = visibleDreamPresets(unrestricted, adultCategory);
@@ -116,6 +120,7 @@ export default function CreatePage() {
               steps,
               cfg: zermo ? "1" : cfg,
               assist: assist ? "on" : "off",
+              visualQa: visualQa ? "on" : "off",
             },
           }),
         });
@@ -141,6 +146,7 @@ export default function CreatePage() {
     setSteps(i.steps || "8");
     setCfg(i.cfg || "1");
     setAssist(i.assist !== "off");
+    setVisualQa(i.visualQa === "on");
     promptRef.current?.focus();
   }, []);
 
@@ -182,6 +188,7 @@ export default function CreatePage() {
         o.url &&
         !/^Subject(\b| ·)/i.test(o.label),
     ) ?? [];
+  const visualQaStatus = job?.outputs.find((output) => output.label === "Visual QA");
 
   return (
     <div className="w-full min-w-0">
@@ -256,7 +263,7 @@ export default function CreatePage() {
                       key={p}
                       type="button"
                       aria-pressed={improveProvider === p}
-                      onClick={() => setImproveProvider(p)}
+                      onClick={() => setImproveProviderOverride(p)}
                       className={cn(
                         "min-h-11 px-3 text-xs font-semibold transition-colors",
                         improveProvider === p
@@ -341,6 +348,24 @@ export default function CreatePage() {
               </p>
             ) : null}
           </section>
+
+          <label className="mb-4 flex min-w-0 cursor-pointer items-start gap-3 rounded-[10px] border border-white/10 glass p-4">
+            <input
+              type="checkbox"
+              checked={visualQa}
+              onChange={(event) => setVisualQa(event.currentTarget.checked)}
+              className="mt-1 size-4 accent-[#d565d6]"
+            />
+            <span className="min-w-0">
+              <strong className="block text-sm text-[#f5eff6]">
+                Optional visual QA
+              </strong>
+              <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
+                Uses a compatible vision model when one is connected. The job
+                reports checked or skipped; this is off by default.
+              </small>
+            </span>
+          </label>
 
           <fieldset className="min-w-0 border-y border-white/10 py-5">
             <legend className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#b8aebb]">
@@ -583,6 +608,12 @@ export default function CreatePage() {
             {jobStatusLabel(job)}
           </p>
           <ZermoJobStatus job={job} onResume={setJob} />
+          {visualQaStatus?.text ? (
+            <pre className="mt-3 whitespace-pre-wrap rounded-[10px] bg-white/10 p-3 text-xs text-[#b8aebb]">
+              Visual QA{"\n"}
+              {visualQaStatus.text}
+            </pre>
+          ) : null}
           {connectionError ? <p role="alert" className="mt-3 text-sm text-[#ff8ea0]">{connectionError}</p> : null}
           {job ? <p className="mt-2 break-words text-xs text-[#8d838f]">Updated <time dateTime={job.updatedAt}>{new Date(job.updatedAt).toLocaleString()}</time></p> : null}
           <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-white/10 pt-4">

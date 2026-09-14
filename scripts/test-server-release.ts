@@ -15,6 +15,7 @@ async function main() {
   try {
     const { imageRequest, checkZermoHealth } = await import('../src/lib/adapters/zermo');
     const { generateWithOllamaOrThrow, generateMarketingCopy } = await import('../src/lib/adapters/ollama');
+    const { formatReviewNote } = await import('../src/lib/compose/verify');
     const { DEFAULT_SETTINGS, publicSettings, writeSettings } = await import('../src/lib/settings');
     const settings = { ...DEFAULT_SETTINGS, generationMode: 'zermo' as const };
     const job = { aspect: '1:1', prompt: 'teapot', negativePrompt: '', inputs: { seed: '18446744073709551615', steps: '4' } };
@@ -40,6 +41,8 @@ async function main() {
       return Response.json({ model: 'served-uncensored', choices: [{ message: { content: 'Real text' } }] });
     };
     assert.equal((await generateWithOllamaOrThrow(settings, 'test')).model, 'served-uncensored');
+    assert.equal(formatReviewNote('Subject', { status: 'skipped', reason: 'local vision server is unreachable' }), 'Subject: skipped (local vision server is unreachable)');
+    assert.equal(formatReviewNote('Subject', { status: 'checked', review: { ok: true, anatomy: { ok: true, issues: [] }, text: { ok: true, issues: [] }, repair: '', model: 'vision-model' } }), 'Subject: ok · vision-model');
     await writeSettings({ generationMode: 'zermo' });
     const { POST: improve } = await import('../src/app/api/improve/route');
     const response = await improve(new Request('http://studio.test/api/improve', { method: 'POST', body: JSON.stringify({ prompt: 'A red ceramic cup', provider: 'api' }) }));

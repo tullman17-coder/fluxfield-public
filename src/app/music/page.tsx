@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { GENRES, MOODS, NOTE_NAMES } from "@/lib/music/theory";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
-import { musicLengths, musicSeconds } from "@/lib/studio/presentation";
+import { musicEffectiveSettings, musicLengths, musicSeconds } from "@/lib/studio/presentation";
 import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +77,7 @@ export default function MusicPage() {
   const track = job?.outputs.find((o) => o.kind === "audio");
   const arrangement = job?.outputs.find((o) => o.kind === "storyboard");
   const lyricSheet = job?.outputs.find((o) => o.kind === "script");
+  const effectiveSettings = musicEffectiveSettings(job);
   const activeGenre = GENRES.find((g) => g.id === genre) ?? GENRES[0];
 
   return (
@@ -322,6 +323,26 @@ export default function MusicPage() {
           <h2 className="mt-1 text-lg text-[#f5eff6]">Track</h2>
           <p className="text-xs text-[#b8aebb]">Zermo mode uses ACE, 10–90 seconds, FLAC. Select the provider in Settings.</p>
           <ZermoJobStatus job={job} onResume={setJob} />
+          {effectiveSettings.length ? (
+            <div className="mt-4 rounded-[10px] border border-white/10 bg-white/5 p-4">
+              <h3 className="text-sm font-bold text-[#f5eff6]">
+                Effective Zermo settings
+              </h3>
+              <p className="mt-1 text-xs text-[#8d838f]">
+                Returned by Zermo. Requested key and BPM above are suggestions and may differ.
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {effectiveSettings.map((setting) => (
+                  <div key={setting.label} className="min-w-0">
+                    <dt className="text-xs text-[#8d838f]">{setting.label}</dt>
+                    <dd className="mt-1 break-words text-sm text-[#b8aebb]">
+                      {setting.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : null}
           {track?.url ? (
             <figure className="glass mt-4 min-w-0 rounded-[14px] p-5">
               <figcaption className="mb-3 text-sm font-bold text-[#f5eff6]">

@@ -61,6 +61,7 @@ import {
   enhancePrompt,
   stripContentFilters,
 } from "@/lib/dream/presets";
+import { visualQaSummary } from "@/lib/studio/presentation";
 import type { JobTool, ModeUsed, StudioJob } from "@/lib/adapters/types";
 import { nanoid } from "nanoid";
 
@@ -476,12 +477,17 @@ async function processJob(jobId: string) {
         imageUrl: subjectOut?.url,
         prompt: refreshed.prompt,
       });
-      if (modeUsed !== "zermo" && subjectCheck && !subjectCheck.anatomy.ok && subjectCheck.repair) {
+      if (
+        modeUsed !== "zermo" &&
+        subjectCheck.status === "checked" &&
+        !subjectCheck.review.anatomy.ok &&
+        subjectCheck.review.repair
+      ) {
         await updateJob(jobId, { phase: "subject", progress: 58 });
         try {
           result = await runWith(modeUsed, {
             ...refreshed,
-            prompt: `${refreshed.prompt}. ${subjectCheck.repair}`,
+            prompt: `${refreshed.prompt}. ${subjectCheck.review.repair}`,
           });
         } catch {
           // keep the first pass
@@ -516,15 +522,14 @@ async function processJob(jobId: string) {
       qc.push(formatReviewNote("Layout", layoutCheck));
     }
 
-    if (qc.length) {
-      result.outputs.push({
-        id: nanoid(8),
-        kind: "text",
-        label: "Check",
-        text: qc.join("\n\n"),
-      });
-      script = [script, "CHECK", qc.join("\n")].filter(Boolean).join("\n\n");
-    }
+    const qaSummary = visualQaSummary(current.inputs.visualQa, modeUsed, qc);
+    result.outputs.push({
+      id: nanoid(8),
+      kind: "text",
+      label: "Visual QA",
+      text: qaSummary,
+    });
+    script = [script, "VISUAL QA", qaSummary].filter(Boolean).join("\n\n");
 
     await updateJob(jobId, { progress: 75, outputs: result.outputs });
 

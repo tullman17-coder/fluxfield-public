@@ -7,7 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { JobTool } from "@/lib/adapters/types";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
-import { jobStatusLabel } from "@/lib/studio/presentation";
+import {
+  jobRunnerSupportsVisualQa,
+  jobStatusLabel,
+} from "@/lib/studio/presentation";
 import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import { ZermoJobStatus } from "./zermo-job-status";
 import { DREAM_PRESETS, FRAMINGS } from "@/lib/dream/presets";
@@ -48,6 +51,7 @@ export function JobRunner({
   const [values, setValues] = useState<Record<string, string>>({
     dreamStyle: tool === "explainer" ? "" : "photo",
     framing: "auto",
+    visualQa: "off",
   });
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,6 +59,7 @@ export function JobRunner({
   const [kits, setKits] = useState<BrandKit[]>([]);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const { job, setJob } = useJobWatch(`${tool}:${workflowSlug}`);
+  const supportsVisualQa = jobRunnerSupportsVisualQa(tool);
 
   useEffect(() => {
     let alive = true;
@@ -246,6 +251,31 @@ export function JobRunner({
             Palette from the kit lands in the finished layout.
           </p>
         </div>
+
+        {supportsVisualQa ? (
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+            <input
+              type="checkbox"
+              checked={values.visualQa === "on"}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  visualQa: event.currentTarget.checked ? "on" : "off",
+                }))
+              }
+              className="mt-1 size-4 accent-[#d565d6]"
+            />
+            <span>
+              <strong className="block text-sm text-[#f5eff6]">
+                Optional visual QA
+              </strong>
+              <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
+                Checks generated art when a compatible vision model is available.
+                The result reports checked or skipped; this is off by default.
+              </small>
+            </span>
+          </label>
+        ) : null}
 
         {fileField ? (
           <div className="space-y-2">

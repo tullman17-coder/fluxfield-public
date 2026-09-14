@@ -256,12 +256,16 @@
     "workflow_revision": "chroma-flash-q4-baseline:28b9ce1194dc3591",
     "source_sha256": "052b91d19265c63da68d3a37dd12f9f25bfe0e96ef20c42c9f2b4f532abf4f7b",
     "source_bytes": 354282,
-    "preview_sha256": "e50fc294107dc13e0ed9a5a612751d4c1b38937d8e7245122f4a1a6d9bc06797",
-    "preview_bytes": 25218,
+    "preview_sha256": "4391ae4e16ce7fcf6d813c5518c981d62fe297a142507dab3d5e1121d9bbd893",
+    "preview_bytes": 26444,
     "download_seconds": 0.061,
     "job_elapsed_seconds": 25.707,
     "preview_url": "/examples/explainer/pastel-flat-2d.webp",
     "kind": "generated still sample",
-    "preview_edit": "Removed bottom 32px signature-like generation artifact; centered fit to 16:9. Original PNG retained."
+    "preview_edit": "Cropped the visible bottom-right signature-like generation artifact, then resized to 16:9. Source generation metadata retained unchanged.",
+    "preview_crop": {
+      "source_box": [0, 20, 696, 411],
+      "output_size": [768, 432]
+    }
   }
 ]
