@@ -1,5 +1,7 @@
 "use client";
 
+import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
+import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 import { LOOKS, RUNTIMES } from "@/lib/director/plan";
@@ -13,7 +15,7 @@ const MODES = [
   {
     id: "music-video",
     label: "Music video",
-    blurb: "Writes the track first, then cuts every shot to the beat.",
+    blurb: "Plans a score and timed shots for a music video.",
   },
   {
     id: "film",
@@ -41,6 +43,7 @@ const selectClass =
 const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
 export default function DirectorPage() {
+  const { zermo } = useStudioConnection();
   const [mode, setMode] = useState<"music-video" | "film">("music-video");
   const [brief, setBrief] = useState("");
   const [runtime, setRuntime] = useState("180");
@@ -108,7 +111,8 @@ export default function DirectorPage() {
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
           Plan a whole piece instead of a single clip — up to an hour of shots
-          with timecodes, key frames, and a score underneath.
+          with timecodes and key frames. This is a plan, not a rendered film.
+          Zermo makes still frames and a 10–90 second score excerpt; native video and narration are not enabled.
         </p>
       </header>
 
@@ -339,6 +343,8 @@ export default function DirectorPage() {
           <h2 className="mt-1 text-lg text-[#f5eff6]">
             {frames.length ? `${frames.length} frames` : "Frames"}
           </h2>
+          <ZermoJobStatus job={job} onResume={setJob} />
+          {zermo ? <p className="mt-2 text-xs text-[#b8aebb]">Resume reconnects the same media jobs. Full storyboard orchestration is not a native durable video job.</p> : null}
           {frames.length ? (
             <ul className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {frames.map((f) => (

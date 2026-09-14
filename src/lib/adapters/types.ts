@@ -1,6 +1,8 @@
 export type GenerationMode = "auto" | "mock" | "comfyui" | "local-studio" | "zermo";
 
 export type StudioSettings = {
+  hasStudioApiKey?: boolean;
+  hasImproveApiKey?: boolean;
   comfyUrl: string;
   ollamaUrl: string;
   ollamaModel: string;

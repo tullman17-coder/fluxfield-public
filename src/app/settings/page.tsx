@@ -5,15 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { GenerationMode, StudioSettings } from "@/lib/adapters/types";
+import type { ManagedHealth } from "@/lib/studio/presentation";
+import { ManagedConnection } from "@/components/studio/managed-connection";
 
 async function loadHealth(force = false) {
-  const q = force ? "?refresh=1" : "";
-  const [h, m] = await Promise.all([
-    fetch(`/api/health${q}`).then((r) => r.json()),
-    fetch("/api/ollama-models")
-      .then((r) => r.json())
-      .catch(() => null),
-  ]);
+  const response = await fetch(`/api/health${force ? "?refresh=1" : ""}`, { cache: "no-store" });
+  if (!response.ok) throw new Error("Connection check failed");
+  const h = await response.json();
+  const m = h.settings?.generationMode === "zermo" ? null : await fetch("/api/ollama-models").then(r => r.json()).catch(() => null);
   return { h, m };
 }
 
@@ -33,7 +32,7 @@ type Probe = {
 };
 
 type Health = {
-  zermo?: { configured: boolean; ready: boolean };
+  zermo?: ManagedHealth;
   comfy: boolean;
   ollama: boolean;
   tts: boolean;
@@ -71,6 +70,8 @@ export default function SettingsPage() {
   const [health, setHealth] = useState<Health | null>(null);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [clearKeys, setClearKeys] = useState({ studio: false, improve: false });
   const [message, setMessage] = useState<string | null>(null);
 
   function applyHealth(
@@ -112,11 +113,15 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage(null);
     try {
-      await fetch("/api/settings", {
+      const response = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, clearStudioApiKey: clearKeys.studio, clearImproveApiKey: clearKeys.improve }),
       });
+      if (!response.ok) throw new Error("Settings save failed");
+      const saved = await response.json();
+      setSettings(saved.settings);
+      setClearKeys({ studio: false, improve: false });
       await refresh();
       setMessage("Saved.");
     } catch {
@@ -130,8 +135,22 @@ export default function SettingsPage() {
     return <p className="text-[#8d838f]">Loading…</p>;
   }
 
+  if (settings.generationMode === "zermo" && !showAdvanced) return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div><p className="text-xs uppercase tracking-wider text-[#e77ae6]">Connections</p><h1 className="mt-2 text-3xl text-white">Your Zermo studio</h1><p className="mt-2 text-[#b8aebb]">One managed connection. No local addresses or mesh setup needed in this browser.</p></div>
+      <ManagedConnection health={health?.zermo} />
+      <div className="flex flex-wrap gap-3"><Button onClick={() => void refresh(true).catch(() => setMessage("Connection check failed. Try again."))}>Check connection</Button><Button variant="outline" onClick={() => setShowAdvanced(true)}>Advanced / other providers</Button></div>
+      {message ? <p role="status">{message}</p> : null}
+    </div>
+  );
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
+      {settings.generationMode === "zermo" ? <Button variant="outline" onClick={() => setShowAdvanced(false)}>Back to managed Zermo connection</Button> : null}
+      {(settings.hasStudioApiKey || settings.hasImproveApiKey) ? <div className="flex flex-wrap gap-2">
+        {settings.hasStudioApiKey ? <Button variant="outline" onClick={() => { setClearKeys(v => ({ ...v, studio: true })); setSettings({ ...settings, studioApiKey: "" }); }}>Clear saved Studio key{clearKeys.studio ? " on Save" : ""}</Button> : null}
+        {settings.hasImproveApiKey ? <Button variant="outline" onClick={() => { setClearKeys(v => ({ ...v, improve: true })); setSettings({ ...settings, improveApiKey: "" }); }}>Clear saved rewrite key{clearKeys.improve ? " on Save" : ""}</Button> : null}
+      </div> : null}
       <div>
         <p className="text-xs uppercase tracking-[0.25em] text-[#e77ae6]">
           Connections
@@ -272,7 +291,7 @@ export default function SettingsPage() {
       ) : null}
 
       <div className="space-y-5 rounded-2xl border border-white/10 glass p-5">
-        <Field label="Generation source" hint="Zermo: Chroma images (8 steps, CFG 1, fitted within 1024px), ACE music (10–90s FLAC). No reference editing, TTS or native long video. Credentials: server-only ZERMO_API_KEY or ZERMO_API_KEY_FILE; optional ZERMO_API_BASE (default https://api.zermo.org).">
+        <Field label="Generation source" hint="Zermo: Chroma images (Fast 4 / Detail 8 steps, CFG 1, within 1024px), ACE music (10–90s FLAC). No reference editing, TTS or native long video. Credentials: server-only ZERMO_API_KEY or ZERMO_API_KEY_FILE; optional ZERMO_API_BASE (default https://api.zermo.org).">
           <select
             className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3 text-sm"
             value={settings.generationMode}
@@ -309,7 +328,7 @@ export default function SettingsPage() {
         >
           <Input
             type="password"
-            value={settings.studioApiKey}
+            value={settings.studioApiKey || ""}
             onChange={(e) =>
               setSettings({ ...settings, studioApiKey: e.target.value })
             }
@@ -510,7 +529,7 @@ export default function SettingsPage() {
         <Field label="Cloud key" hint="Only used when you pick Cloud above.">
           <Input
             type="password"
-            value={settings.improveApiKey}
+            value={settings.improveApiKey || ""}
             onChange={(e) =>
               setSettings({ ...settings, improveApiKey: e.target.value })
             }

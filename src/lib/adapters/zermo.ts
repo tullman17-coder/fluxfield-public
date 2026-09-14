@@ -29,7 +29,7 @@ export type ZermoRequest = {
   model: "chroma-flash-q4" | "ace-step-1.5-turbo";
   prompt: string;
   negative_prompt?: string;
-  seed?: number;
+  seed?: number | string;
   settings: { width?: number; height?: number; steps?: number; duration?: number; lyrics?: string };
 };
 export type ZermoIntent = {
@@ -56,26 +56,74 @@ async function credential() {
   if (!key || key.length > 4096 || /[\s\x00-\x1f\x7f]/.test(key)) throw new Error("Zermo server credential is not configured");
   return key;
 }
-async function request(route: string, init: RequestInit = {}) {
+async function request(route: string, init: RequestInit = {}, media = true) {
   const key = await credential();
   let response: Response;
   try {
-    response = await fetch(`${zermoBase()}/v1/media${route}`, {
+    response = await fetch(`${zermoBase()}/v1${media ? "/media" : ""}${route}`, {
       ...init, headers: { ...init.headers, Authorization: `Bearer ${key}` },
       redirect: "error", credentials: "omit", cache: "no-store",
-      signal: AbortSignal.timeout(30_000),
+      signal: init.signal ?? AbortSignal.timeout(30_000),
     });
   } catch { throw new Error("Zermo transport interrupted; resume the same job, do not regenerate"); }
-  if (!response.ok) throw new Error(`Zermo API returned HTTP ${response.status}; resume the same job`);
+  if (!response.ok) { await response.body?.cancel(); throw new Error(`Zermo API returned HTTP ${response.status}`); }
   return response;
 }
+export function exactSeed(value: unknown): number | string | undefined {
+  if (value === undefined || value === "") return undefined;
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return value;
+  if (typeof value === "string" && /^(?:0|[1-9]\d{0,19})$/.test(value) && BigInt(value) <= BigInt("18446744073709551615")) return value;
+  throw new Error("Zermo seed must be a safe integer or an exact unsigned 64-bit decimal string");
+}
+export async function generateZermoText(prompt: string) {
+  if (!prompt.trim() || prompt.length > 32000) throw new Error("Writing request must be 1–32000 characters");
+  const response = await request("/chat/completions", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "local-auto", messages: [{ role: "user", content: prompt }], max_tokens: 2048, temperature: 0.7, chat_template_kwargs: { enable_thinking: false } }),
+    signal: AbortSignal.timeout(120_000),
+  }, false);
+  let data;
+  try { data = JSON.parse((await boundedBytes(response, 1024 * 1024)).toString()); }
+  catch { throw new Error("Writing service returned an invalid response"); }
+  if (data?.choices?.[0]?.finish_reason === "length") throw new Error("Writing response was truncated; no partial result was accepted");
+  const text = data?.choices?.[0]?.message?.content;
+  if (typeof text !== "string" || !text.trim()) throw new Error("Writing service returned empty content");
+  const model = data.model;
+  if (typeof model !== "string" || !model.trim()) throw new Error("Writing service omitted served model metadata");
+  return { text: text.trim(), model, url: zermoBase() };
+}
 export async function checkZermoHealth() {
-  let configured = false;
-  try {
-    await credential(); configured = true;
-    await request("/capabilities");
-    return { configured, ready: true };
-  } catch { return { configured, ready: false }; }
+  const health = {
+    configured: false, ready: false, apiReachable: false, workerConfigured: false,
+    text: { ready: false, model: null as string | null },
+    image: { ready: false, model: null as string | null },
+    music: { ready: false, model: null as string | null },
+    error: undefined as string | undefined,
+  };
+  try { await credential(); health.configured = true; }
+  catch { health.error = "Zermo server credential is not configured"; return health; }
+  const [media, writing] = await Promise.allSettled([
+    request("/capabilities").then(async r => JSON.parse((await boundedBytes(r, 256 * 1024)).toString())),
+    request("/models", {}, false).then(async r => JSON.parse((await boundedBytes(r, 256 * 1024)).toString())),
+  ]);
+  if (media.status === "fulfilled") {
+    health.apiReachable = true;
+    health.workerConfigured = ["configured", "configured; polled on work"].includes(media.value?.worker_availability);
+    const models = Array.isArray(media.value?.models) ? media.value.models : [];
+    for (const [lane, id, operation] of [["image", "chroma-flash-q4", "image.generate"], ["music", "ace-step-1.5-turbo", "music.generate"]] as const) {
+      const allowed = models.some((m: { id?: string; operations?: string[] }) => m?.id === id && Array.isArray(m.operations) && m.operations.includes(operation));
+      health[lane] = { ready: allowed && health.workerConfigured, model: allowed ? id : null };
+    }
+  }
+  if (writing.status === "fulfilled") {
+    health.apiReachable = true;
+    const models = writing.value?.data;
+    const model = Array.isArray(models) ? models.find((m: { id?: string }) => m?.id === "local-auto") : null;
+    if (typeof model?.active_model === "string" && model.active_model.trim()) health.text = { ready: true, model: model.active_model };
+  }
+  health.ready = health.text.ready && health.image.ready && health.music.ready;
+  if (!health.ready) health.error = health.apiReachable ? "Some managed operations are not configured or entitled; no fallback will be used" : "Zermo API is unreachable";
+  return health;
 }
 function remoteId(value: string, prefix: "job" | "asset") {
   if (!new RegExp(`^${prefix}_[a-f0-9]{32}$`).test(value)) throw new Error(`Invalid Zermo ${prefix} ID`);
@@ -91,12 +139,12 @@ export function imageRequest(ctx: AdapterContext): ZermoRequest {
     [width, height] = size.slice(1).map(Number);
     if (![width, height].every((n) => Number.isInteger(n) && n >= 256 && n <= 1024 && n % 8 === 0)) throw new Error("Zermo dimensions must be 256–1024 and divisible by 8");
   }
-  if ((ctx.job.inputs.steps && Number(ctx.job.inputs.steps) !== 8) || (ctx.job.inputs.cfg && Number(ctx.job.inputs.cfg) !== 1)) throw new Error("This Zermo image profile uses fixed steps=8 and CFG=1");
-  const seed = ctx.job.inputs.seed ? Number(ctx.job.inputs.seed) : undefined;
-  if (seed !== undefined && (!Number.isSafeInteger(seed) || seed < 0)) throw new Error("Zermo seed must be a nonnegative safe integer");
+  const steps = Number(ctx.job.inputs.steps || 8);
+  if (![4, 8].includes(steps) || (ctx.job.inputs.cfg && Number(ctx.job.inputs.cfg) !== 1)) throw new Error("Zermo supports steps=4 (Fast draft) or 8 (Detail), with CFG=1");
+  const seed = exactSeed(ctx.job.inputs.seed);
   if (!ctx.job.prompt.trim() || ctx.job.prompt.length > 8000 || ctx.job.negativePrompt.length > 8000) throw new Error("Zermo prompts must be 1–8000 characters");
   // Chroma owns CFG=1; UI dimensions are fitted to its 1024px envelope.
-  return { operation: "image.generate", model: "chroma-flash-q4", prompt: ctx.job.prompt, negative_prompt: ctx.job.negativePrompt, ...(seed === undefined ? {} : { seed }), settings: { width, height, steps: 8 } };
+  return { operation: "image.generate", model: "chroma-flash-q4", prompt: ctx.job.prompt, negative_prompt: ctx.job.negativePrompt, ...(seed === undefined ? {} : { seed }), settings: { width, height, steps } };
 }
 export async function runZermoJob(job: StudioJob, purpose: string, proposed: ZermoRequest): Promise<AdapterResult> {
   const live = await getJob(job.id);
@@ -130,7 +178,7 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
     if (["failed", "cancelled", "recovery_unknown"].includes(remote.state) || (remote.state === "submission_unknown" && remote.error)) throw new Error(`Zermo ${remote.state}; remote ID retained, no replacement render submitted`);
     if (!["queued", "preparing", "submission_unknown", "running", "recovering_outputs"].includes(remote.state)) throw new Error("Unknown Zermo job state");
     if (Date.now() >= deadline) throw new Error("Zermo is still pending; resume this job to reconnect");
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, remote.state === "queued" ? 1500 : 750));
     remote = await (await request(`/jobs/${remoteId(remote.id, "job")}`)).json();
   }
   if (!Array.isArray(remote.outputs) || remote.outputs.length !== 1) throw new Error("Zermo returned an unexpected asset count");
@@ -150,7 +198,7 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
     const name = `${job.id}-${id}.${ext}`;
     await fs.writeFile(path.join(dir, `${name}.tmp`), bytes);
     await fs.rename(path.join(dir, `${name}.tmp`), path.join(dir, name));
-    outputs.push({ id, kind: music ? "audio" : "image", label: music ? "Zermo ACE · FLAC" : "Zermo Chroma · 8 steps · CFG 1", url: `/api/outputs/${name}` });
+    outputs.push({ id, kind: music ? "audio" : "image", label: music ? "Zermo ACE · FLAC" : `Zermo Chroma · ${intent.effective?.steps ?? intent.request.settings.steps} steps · CFG 1`, url: `/api/outputs/${name}` });
   }
   return { outputs, remotePromptId: intent.remoteId };
 }

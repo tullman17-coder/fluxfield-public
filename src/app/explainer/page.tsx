@@ -6,9 +6,11 @@ import {
   EXPLAINER_PRESETS,
   EXPLAINER_VOICES,
 } from "@/lib/explainer/presets";
+import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import { JobRunner } from "@/components/studio/job-runner";
 
 export default function ExplainerPage() {
+  const { settings, zermo, error } = useStudioConnection();
   const [presetId, setPresetId] = useState(EXPLAINER_PRESETS[0].id);
   const preset =
     EXPLAINER_PRESETS.find((p) => p.id === presetId) ?? EXPLAINER_PRESETS[0];
@@ -17,7 +19,7 @@ export default function ExplainerPage() {
     () => [
       {
         id: "topic",
-        label: "What should the video explain?",
+        label: "What should the story explain?",
         type: "textarea" as const,
         required: true,
         placeholder: "A topic, or the story you want told.",
@@ -34,7 +36,7 @@ export default function ExplainerPage() {
       },
       {
         id: "duration",
-        label: "Duration",
+        label: "Planned duration",
         type: "select" as const,
         options: EXPLAINER_DURATIONS.map((d) => ({
           label: d.label,
@@ -59,8 +61,8 @@ export default function ExplainerPage() {
           { label: "On", value: "on" },
         ],
       },
-    ],
-    [],
+    ].filter((field) => (settings && !zermo) || !["voice", "subtitles"].includes(field.id)),
+    [settings, zermo],
   );
 
   return (
@@ -70,14 +72,16 @@ export default function ExplainerPage() {
           Explainer
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-5xl">
-          Explain anything in a short video
+          Explain with a script and scene art
         </h1>
         <p className="mt-2 max-w-2xl text-[#b8aebb]">
-          Pick a look, say what the video should cover, and get a script, scene
-          art, and narration back in one pass.
+          Pick a look and describe your topic. Zermo writes the script and makes still scene art.
+          Narration and native video generation are not enabled in Zermo mode.
         </p>
       </div>
 
+      <p className="text-sm text-[#b8aebb]">Six styles of the same Chroma model, not six different models.</p>
+      {error ? <p role="alert" className="text-sm text-red-400">{error}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {EXPLAINER_PRESETS.map((p) => {
           const active = p.id === presetId;
@@ -86,17 +90,16 @@ export default function ExplainerPage() {
               key={p.id}
               type="button"
               onClick={() => setPresetId(p.id)}
+              aria-pressed={active}
               className="relative overflow-hidden rounded-2xl border text-left transition"
               style={{
                 borderColor: active ? "#a845b0" : "rgba(255,255,255,0.1)",
               }}
             >
-              <div
-                className="relative aspect-video"
-                style={{
-                  background: `linear-gradient(145deg, ${p.preview.join(",")})`,
-                }}
-              >
+              <div className="relative aspect-video bg-black/20">
+                {/* Static WebP samples are already downsized; preserve their provenance. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.previewImage} alt={`${p.name} — Chroma Flash Q4 generated still sample`} loading="lazy" decoding="async" width={640} height={360} className="h-full w-full object-cover" />
                 {active ? (
                   <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-[#d565d6] text-xs font-bold text-black">
                     ✓
@@ -107,8 +110,10 @@ export default function ExplainerPage() {
                 </span>
               </div>
               <div className="bg-white/15 p-3">
-                <div className="text-sm font-medium text-[#f5eff6]">{p.name}</div>
+                <div className="text-sm font-medium text-[#f5eff6]">{p.styleAlias}</div>
                 <div className="text-xs text-[#8d838f]">{p.blurb}</div>
+                <p className="mt-1 text-xs text-[#b8aebb]">Example: {p.example}</p>
+                <p className="mt-2 text-[10px] text-[#b8aebb]">Chroma Flash Q4 · generated still sample, not video</p>
               </div>
             </button>
           );
@@ -144,7 +149,8 @@ export default function ExplainerPage() {
             },
           ]}
           accent="#e77ae6"
-          submitLabel="Make the video"
+          disabled={!settings}
+          submitLabel={zermo || !settings ? "Make script + scene art" : "Make the explainer"}
         />
       </div>
     </div>

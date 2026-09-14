@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { JobTool } from "@/lib/adapters/types";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
+import { jobStatusLabel } from "@/lib/studio/presentation";
+import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import { ZermoJobStatus } from "./zermo-job-status";
 import { DREAM_PRESETS, FRAMINGS } from "@/lib/dream/presets";
 import type { BrandKit } from "@/lib/brand-kits/types";
@@ -22,13 +24,6 @@ type Field = {
   help?: string;
 };
 
-const RUN_LABEL: Record<string, string> = {
-  queued: "Starting",
-  running: "Making",
-  completed: "Done",
-  failed: "Stopped",
-};
-
 type Props = {
   tool: JobTool;
   workflowSlug: string;
@@ -36,6 +31,7 @@ type Props = {
   presets: { id: string; label: string; description?: string }[];
   accent?: string;
   submitLabel?: string;
+  disabled?: boolean;
 };
 
 export function JobRunner({
@@ -45,10 +41,12 @@ export function JobRunner({
   presets,
   accent = "#e77ae6",
   submitLabel = "Generate",
+  disabled = false,
 }: Props) {
+  const { zermo } = useStudioConnection();
   const [presetId, setPresetId] = useState(presets[0]?.id || "");
   const [values, setValues] = useState<Record<string, string>>({
-    dreamStyle: "photo",
+    dreamStyle: tool === "explainer" ? "" : "photo",
     framing: "auto",
   });
   const [file, setFile] = useState<File | null>(null);
@@ -80,6 +78,7 @@ export function JobRunner({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (disabled || busy || job?.status === "queued" || job?.status === "running") return;
     setBusy(true);
     setError(null);
     try {
@@ -87,7 +86,12 @@ export function JobRunner({
       form.set("tool", tool);
       form.set("workflowSlug", workflowSlug);
       form.set("presetId", presetId);
-      form.set("inputs", JSON.stringify(values));
+      const inputs = { ...values };
+      for (const field of fields) {
+        if (field.type === "select" && !inputs[field.id]) inputs[field.id] = field.options?.[0]?.value || "";
+      }
+      if (zermo) { delete inputs.voice; delete inputs.subtitles; }
+      form.set("inputs", JSON.stringify(inputs));
       if (file) form.set("referenceImage", file);
       const res = await fetch("/api/jobs", { method: "POST", body: form });
       const data = await res.json();
@@ -113,6 +117,7 @@ export function JobRunner({
                 key={p.id}
                 type="button"
                 onClick={() => setPresetId(p.id)}
+                aria-pressed={presetId === p.id}
                 className="rounded-xl border px-3 py-2 text-left transition-colors"
                 style={{
                   borderColor: presetId === p.id ? accent : "rgba(255,255,255,0.1)",
@@ -179,7 +184,7 @@ export function JobRunner({
           ))}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2">
+          {tool !== "explainer" ? <div className="space-y-2">
             <Label htmlFor="dreamStyle">Look</Label>
             <select
               id="dreamStyle"
@@ -191,14 +196,14 @@ export function JobRunner({
             >
               {DREAM_PRESETS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label}
+                  {zermo ? `Chroma · ${p.label}` : p.label}
                 </option>
               ))}
             </select>
             <p className="text-xs text-[#8d838f]">
-              Sets the overall finish of the art.
+              {zermo ? "Prompt styles of Chroma Flash Q4, not separate models." : "Sets the overall finish of the art."}
             </p>
-          </div>
+          </div> : null}
           <div className="space-y-2">
             <Label htmlFor="framing">Framing</Label>
             <select
@@ -259,7 +264,7 @@ export function JobRunner({
 
         <Button
           type="submit"
-          disabled={busy}
+          disabled={disabled || busy || job?.status === "queued" || job?.status === "running"}
           className="w-full font-semibold text-black"
           style={{ backgroundColor: accent }}
         >
@@ -280,7 +285,7 @@ export function JobRunner({
                   {job.workflowName} · {job.presetLabel}
                 </span>
                 <span style={{ color: accent }}>
-                  {RUN_LABEL[job.status] ?? job.status} · {job.progress}%
+                  {jobStatusLabel(job)}
                 </span>
               </div>
               {job.error ? (
@@ -350,6 +355,8 @@ export function JobRunner({
                       <img
                         src={o.url}
                         alt={o.label}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full object-cover"
                       />
                     </button>

@@ -1,3 +1,4 @@
+import { generateZermoText } from "./zermo";
 import type { StudioSettings } from "@/lib/adapters/types";
 import {
   pickPreferredModel,
@@ -69,6 +70,7 @@ async function ollamaGenerate(
   settings: StudioSettings,
   prompt: string,
 ): Promise<string | undefined> {
+  if (settings.generationMode === "zermo") return (await generateZermoText(prompt)).text;
   const target = await resolveOllamaTarget(settings);
   if (!target) return undefined;
   try {
@@ -100,6 +102,7 @@ export async function generateWithOllamaOrThrow(
   settings: StudioSettings,
   prompt: string,
 ): Promise<{ text: string; model: string; url: string }> {
+  if (settings.generationMode === "zermo") return generateZermoText(prompt);
   const probe = await probeOllama(settings.ollamaUrl);
   if (!probe.reachable) {
     throw new Error(
@@ -302,6 +305,7 @@ export async function reviewImageWithVision(
   settings: StudioSettings,
   args: { imageDataUri: string; prompt: string },
 ): Promise<ImageReview | null> {
+  if (settings.generationMode === "zermo") return null; // Managed visual review is not enabled; do not add blocking QA calls.
   const probe = await probeOllama(settings.ollamaUrl);
   const model = pickPreferredVisionModel(probe.models || []);
   if (!probe.reachable || !model) return null;

@@ -71,10 +71,8 @@ async function improveWithApi(
     signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(
-      `The cloud model answered ${res.status}: ${body.slice(0, 160)}`,
-    );
+    await res.body?.cancel();
+    throw new Error(`The cloud model answered HTTP ${res.status}`);
   }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
@@ -98,7 +96,7 @@ export async function POST(request: Request) {
   }
 
   const settings = await readSettings();
-  const provider = body.provider ?? settings.improveProvider;
+  const provider = settings.generationMode === "zermo" ? "local" : body.provider ?? settings.improveProvider;
 
   try {
     if (provider === "api") {

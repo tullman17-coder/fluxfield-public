@@ -232,6 +232,8 @@ export async function resumeJob(jobId: string) {
 }
 
 async function processJob(jobId: string) {
+  const existing = await getJob(jobId);
+  if (!existing || existing.status === "completed") return;
   const settings = await readSettings();
   await updateJob(jobId, { status: "running", progress: 12, error: undefined });
 
@@ -243,7 +245,9 @@ async function processJob(jobId: string) {
   try {
     let script: string | undefined;
 
-    if (current.tool === "explainer") {
+    if (current.script && settings.generationMode === "zermo") {
+      script = current.script;
+    } else if (current.tool === "explainer") {
       const preset = getExplainerPreset(current.presetId);
       const beats = Number(current.inputs.beats || 6);
       script =
@@ -466,7 +470,7 @@ async function processJob(jobId: string) {
     if (!result) throw lastError ?? new Error("Could not make the art");
 
     const qc: string[] = [];
-    if (modeUsed !== "mock") {
+    if (modeUsed !== "mock" && current.inputs.visualQa === "on") {
       const subjectOut = result.outputs.find((o) => o.kind === "image" && o.url);
       const subjectCheck = await verifySubject(settings, {
         imageUrl: subjectOut?.url,
@@ -500,7 +504,7 @@ async function processJob(jobId: string) {
       outputs: await finalizeStills(live, result.outputs, modeUsed),
     };
 
-    if (modeUsed !== "mock") {
+    if (modeUsed !== "mock" && current.inputs.visualQa === "on") {
       const creative = [...result.outputs]
         .reverse()
         .find((o) => o.kind === "image" && /creative/i.test(o.label));
@@ -590,13 +594,19 @@ async function processJob(jobId: string) {
   }
 }
 
-async function imageDataUri(url?: string): Promise<string | undefined> {
-  if (!url) return undefined;
+export async function imageDataUri(url?: string, required = false): Promise<string | undefined> {
+  if (!url) {
+    if (required) throw new Error("Generated subject is missing; remote render retained");
+    return undefined;
+  }
   try {
     const name = url.split("/").pop()!;
+    if (!name || name.includes("..") || name.includes("\\") || name.includes("\0")) throw new Error("Invalid subject path");
     const file = path.join(process.cwd(), ".data", "outputs", name);
+    const info = await fs.stat(file);
+    if (!info.isFile() || info.size > 8 * 1024 * 1024) throw new Error("Subject exceeds composition byte limit");
     const buf = await fs.readFile(file);
-    if (buf.byteLength >= 8 * 1024 * 1024) return undefined;
+    if (!buf.byteLength || buf.byteLength > 8 * 1024 * 1024) throw new Error("Invalid subject size");
     const mime = name.endsWith(".webp")
       ? "image/webp"
       : name.endsWith(".jpg") || name.endsWith(".jpeg")
@@ -604,6 +614,7 @@ async function imageDataUri(url?: string): Promise<string | undefined> {
         : "image/png";
     return `data:${mime};base64,${buf.toString("base64")}`;
   } catch {
+    if (required) throw new Error("Generated subject could not be read or exceeds 8 MiB; remote render retained");
     return undefined;
   }
 }
@@ -629,7 +640,10 @@ async function finalizeStills(
 
   const brand = await brandPaletteFor(job);
   const images = outputs.filter((o) => o.kind === "image" && o.url);
-  if (!images.length) return outputs;
+  if (!images.length) {
+    if (modeUsed !== "mock") throw new Error("Generated subject is missing; remote render retained");
+    return outputs;
+  }
 
   if (wrapImage2) {
     const wrapper = getImage2Wrapper(job.workflowSlug);
@@ -643,7 +657,7 @@ async function finalizeStills(
       aspect: job.aspect,
       jobId: job.id,
       subjectHint: job.inputs.productDescription || job.prompt,
-      subjectImageDataUri: await imageDataUri(subject?.url),
+      subjectImageDataUri: await imageDataUri(subject?.url, true),
       brand,
       outfitThumbs: (
         await Promise.all(images.slice(1, 5).map((o) => imageDataUri(o.url)))
@@ -689,7 +703,7 @@ async function finalizeStills(
       aspect: job.aspect,
       jobId: job.id,
       subjectHint: job.prompt,
-      subjectImageDataUri: await imageDataUri(image.url),
+      subjectImageDataUri: await imageDataUri(image.url, modeUsed !== "mock"),
       brand,
     });
     extras.push({

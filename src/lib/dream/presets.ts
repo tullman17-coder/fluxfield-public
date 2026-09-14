@@ -34,61 +34,67 @@ export const DREAM_PRESETS: {
   id: DreamPresetId;
   label: string;
   suffix: string;
+  example: string;
 }[] = [
-  { id: "dream", label: "Dream", suffix: "soft dreamlike atmosphere, luminous details" },
-  { id: "photo", label: "Photo", suffix: "natural light, realistic texture, photographic composition" },
-  { id: "anime", label: "Anime", suffix: "expressive anime illustration, clean cel shading" },
-  { id: "fantasy", label: "Fantasy", suffix: "mythic fantasy art, intricate worldbuilding" },
-  { id: "cinematic", label: "Cinematic", suffix: "cinematic lighting, dramatic composition, rich color grading" },
-  { id: "pixel", label: "Pixel", suffix: "pixel art, crisp clusters, limited color palette" },
-  { id: "line", label: "Line", suffix: "refined line art, confident contours, minimal shading" },
-  { id: "vaporwave", label: "Vaporwave", suffix: "vaporwave palette, retro-futurist atmosphere, geometric accents" },
-  { id: "documentary", label: "Documentary", suffix: "observational documentary photography, candid naturalism" },
-  { id: "editorial", label: "Editorial", suffix: "polished editorial photography, magazine composition" },
-  { id: "noir", label: "Film Noir", suffix: "film noir, hard chiaroscuro, deep shadows, monochrome mood" },
-  { id: "watercolor", label: "Watercolor", suffix: "expressive watercolor, translucent washes, textured paper" },
-  { id: "gouache", label: "Gouache", suffix: "hand-painted gouache, opaque color shapes, tactile brushwork" },
-  { id: "concept", label: "Concept Art", suffix: "production concept art, readable silhouettes" },
-  { id: "product", label: "Product", suffix: "premium product photography, controlled studio light" },
-  { id: "surreal", label: "Surreal", suffix: "surreal visual logic, unexpected scale, coherent impossible scene" },
+  { id: "dream", example: "A moonlit observatory above a quiet sea", label: "Dream", suffix: "soft dreamlike atmosphere, luminous details" },
+  { id: "photo", example: "A ceramic cup beside a sunlit window", label: "Photo", suffix: "natural light, realistic texture, photographic composition" },
+  { id: "anime", example: "A traveler at a rain-lit train station", label: "Anime", suffix: "expressive anime illustration, clean cel shading" },
+  { id: "fantasy", example: "A stone bridge over a dragon valley", label: "Fantasy", suffix: "mythic fantasy art, intricate worldbuilding" },
+  { id: "cinematic", example: "A coastal workshop lit by molten glass", label: "Cinematic", suffix: "cinematic lighting, dramatic composition, rich color grading" },
+  { id: "pixel", example: "A tiny arcade beside a night market", label: "Pixel", suffix: "pixel art, crisp clusters, limited color palette" },
+  { id: "line", example: "An ink city scene with clean contours", label: "Line", suffix: "refined line art, confident contours, minimal shading" },
+  { id: "vaporwave", example: "A pink sunset over a retro arcade", label: "Vaporwave", suffix: "vaporwave palette, retro-futurist atmosphere, geometric accents" },
+  { id: "documentary", example: "A baker opening a neighborhood shop", label: "Documentary", suffix: "observational documentary photography, candid naturalism" },
+  { id: "editorial", example: "A sculptural chair on a magazine set", label: "Editorial", suffix: "polished editorial photography, magazine composition" },
+  { id: "noir", example: "A detective under a streetlamp", label: "Film Noir", suffix: "film noir, hard chiaroscuro, deep shadows, monochrome mood" },
+  { id: "watercolor", example: "A harbor painted in translucent washes", label: "Watercolor", suffix: "expressive watercolor, translucent washes, textured paper" },
+  { id: "gouache", example: "A fruit market in opaque painted shapes", label: "Gouache", suffix: "hand-painted gouache, opaque color shapes, tactile brushwork" },
+  { id: "concept", example: "A research outpost on an icy moon", label: "Concept Art", suffix: "production concept art, readable silhouettes" },
+  { id: "product", example: "A studio product photograph of a watch", label: "Product", suffix: "premium product photography, controlled studio light" },
+  { id: "surreal", example: "A staircase floating above a still lake", label: "Surreal", suffix: "surreal visual logic, unexpected scale, coherent impossible scene" },
 ];
 
 /**
- * Extra looks for openweight models that take a prompt as written. They stay
- * hidden until unrestricted mode is on, because a filtered model will refuse
- * most of them.
+ * Adult style descriptions, shown only after explicit category opt-in.
+ * These are prompt styles, not separate models or capability guarantees.
  */
 export const MATURE_PRESETS: {
   id: string;
   label: string;
   suffix: string;
+  example: string;
 }[] = [
   {
     id: "boudoir",
+    example: "An adult portrait in a softly lit dressing room",
     label: "Boudoir",
     suffix:
       "boudoir photography, low warm light, intimate interior, shallow depth of field",
   },
   {
     id: "figure",
+    example: "An adult pose study with sculptural lighting",
     label: "Figure study",
     suffix:
       "classical figure study, sculptural form, single directional light, art academy tone",
   },
   {
     id: "pinup",
+    example: "An adult in a vintage fashion illustration",
     label: "Pin-up",
     suffix:
       "mid-century pin-up illustration, bold flat colour, playful posing, painted highlights",
   },
   {
     id: "grindhouse",
+    example: "A weathered midnight cinema poster",
     label: "Grindhouse",
     suffix:
       "grindhouse film still, heavy grain, blown highlights, scratched print, lurid colour",
   },
   {
     id: "body-horror",
+    example: "An unsettling practical-effects creature silhouette",
     label: "Body horror",
     suffix:
       "practical-effects body horror, latex and resin texture, clinical light, unsettling anatomy",
@@ -124,6 +130,10 @@ export function stripContentFilters(negative: string): string {
 
 export function dreamPresets(unrestricted: boolean) {
   return unrestricted ? [...DREAM_PRESETS, ...MATURE_PRESETS] : DREAM_PRESETS;
+}
+
+export function visibleDreamPresets(unrestricted: boolean, adult = false) {
+  return unrestricted && adult ? MATURE_PRESETS : DREAM_PRESETS;
 }
 
 export const FRAMINGS: {

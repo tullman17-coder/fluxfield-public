@@ -43,7 +43,8 @@ async function studioKeyFromDisk(): Promise<string> {
     process.env.LOCAL_STUDIO_API_KEY_FILE ||
     path.join(os.homedir(), ".hermes", "secrets", "local-studio-api-key");
   try {
-    const value = (await fs.readFile(file, "utf8")).trim();
+    // Operator secret stays outside the build; read it only at runtime.
+    const value = (await fs.readFile(/* turbopackIgnore: true */ file, "utf8")).trim();
     return value;
   } catch {
     return "";
@@ -87,7 +88,7 @@ export async function readSettings(): Promise<StudioSettings> {
 }
 
 export async function writeSettings(
-  next: Partial<StudioSettings>,
+  next: Partial<StudioSettings> & { clearStudioApiKey?: boolean; clearImproveApiKey?: boolean },
 ): Promise<StudioSettings> {
   await ensureDataDir();
   let persisted: Partial<StudioSettings> = {};
@@ -96,6 +97,15 @@ export async function writeSettings(
   } catch {
     persisted = {};
   }
+  next = { ...next };
+  if (!next.studioApiKey?.trim() && !next.clearStudioApiKey) delete next.studioApiKey;
+  if (!next.improveApiKey?.trim() && !next.clearImproveApiKey) delete next.improveApiKey;
+  if (next.clearStudioApiKey) next.studioApiKey = "";
+  if (next.clearImproveApiKey) next.improveApiKey = "";
+  delete next.clearStudioApiKey;
+  delete next.clearImproveApiKey;
+  delete next.hasStudioApiKey;
+  delete next.hasImproveApiKey;
   const merged: StudioSettings = {
     ...DEFAULT_SETTINGS,
     ...persisted,
@@ -110,4 +120,9 @@ export async function writeSettings(
   }
   await fs.writeFile(SETTINGS_PATH, JSON.stringify(merged, null, 2));
   return readSettings();
+}
+
+export function publicSettings(settings: StudioSettings) {
+  const { studioApiKey, improveApiKey, ...safe } = settings;
+  return { ...safe, hasStudioApiKey: Boolean(studioApiKey), hasImproveApiKey: Boolean(improveApiKey) };
 }

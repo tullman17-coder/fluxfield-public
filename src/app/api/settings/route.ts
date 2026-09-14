@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { readSettings, writeSettings } from "@/lib/settings";
+import { readSettings, writeSettings, publicSettings } from "@/lib/settings";
 import type { GenerationMode } from "@/lib/adapters/types";
 
 export async function GET() {
   const settings = await readSettings();
-  return NextResponse.json({ settings });
+  return NextResponse.json({ settings: publicSettings(settings) });
 }
 
 export async function PUT(request: Request) {
@@ -26,9 +26,13 @@ export async function PUT(request: Request) {
     improveApiKey: string;
     improveApiModel: string;
     unrestricted: boolean;
+    clearStudioApiKey: boolean;
+    clearImproveApiKey: boolean;
   }>;
 
   const settings = await writeSettings({
+    clearStudioApiKey: body.clearStudioApiKey === true,
+    clearImproveApiKey: body.clearImproveApiKey === true,
     ...(body.comfyUrl !== undefined ? { comfyUrl: body.comfyUrl.trim() } : {}),
     ...(body.ollamaUrl !== undefined
       ? { ollamaUrl: body.ollamaUrl.trim() }
@@ -74,5 +78,5 @@ export async function PUT(request: Request) {
       : {}),
   });
 
-  return NextResponse.json({ settings });
+  return NextResponse.json({ settings: publicSettings(settings) });
 }

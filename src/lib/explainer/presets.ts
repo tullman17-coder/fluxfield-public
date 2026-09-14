@@ -6,21 +6,25 @@ export type ExplainerPreset = {
   stylePrompt: string;
   negativePrompt: string;
   accent: string;
-  /** Preview gradient for the preset card */
-  preview: [string, string, string];
+  /** Static, generated still; never generate media while reading a card. */
+  previewImage: string;
+  styleAlias: string;
+  example: string;
   overlayHint: string;
 };
 
 export const EXPLAINER_PRESETS: ExplainerPreset[] = [
   {
     id: "editorial-motion",
-    name: "Editorial Motion Graphics",
+    name: "Soft 3D Editorial",
     blurb: "Panel frames, soft 3D characters, magazine pacing.",
     stylePrompt:
       "editorial motion graphics still, framed panel composition, soft stylized 3D character, clean graphic design, tasteful type space",
     negativePrompt: "messy collage, low contrast, watermark",
     accent: "#e77ae6",
-    preview: ["#1f2937", "#334155", "#e77ae6"],
+    previewImage: "/examples/explainer/editorial-motion.webp",
+    styleAlias: "Chroma · Soft 3D",
+    example: "A clay-like guide beside editorial panels",
     overlayHint: "Panel frame",
   },
   {
@@ -31,7 +35,9 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
       "stickman cartoon explainer frame, bold ink outlines, flat color fills, humorous educational illustration",
     negativePrompt: "photoreal, oily paint, watermark",
     accent: "#86efac",
-    preview: ["#14532d", "#166534", "#bbf7d0"],
+    previewImage: "/examples/explainer/stickman-cartoon.webp",
+    styleAlias: "Chroma · Stickman",
+    example: "An ink character explaining a simple idea",
     overlayHint: "Gag caption",
   },
   {
@@ -42,7 +48,9 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
       "watercolor chronicle illustration, wet-on-wet pigment, documentary explainer keyframe, paper tooth visible",
     negativePrompt: "vector flat, neon UI, watermark",
     accent: "#93c5fd",
-    preview: ["#1e3a5f", "#64748b", "#e2e8f0"],
+    previewImage: "/examples/explainer/watercolor-chronicle.webp",
+    styleAlias: "Chroma · Watercolor",
+    example: "A harbor story in translucent watercolor",
     overlayHint: "Documentary wash",
   },
   {
@@ -53,7 +61,9 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
       "fairy tale mythic explainer frame, storybook lighting, epic landscape, illustrated fable energy",
     negativePrompt: "modern office, UI chrome, watermark",
     accent: "#fcd34d",
-    preview: ["#3b2f1c", "#78716c", "#fde68a"],
+    previewImage: "/examples/explainer/fairy-tale-myth.webp",
+    styleAlias: "Chroma · Storybook",
+    example: "A lantern-lit castle in a painted valley",
     overlayHint: "Storybook beat",
   },
   {
@@ -64,7 +74,9 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
       "paper diorama explainer scene, layered cardboard depth, craft lighting, miniature stage set",
     negativePrompt: "photoreal skin, glossy CGI, watermark",
     accent: "#fdba74",
-    preview: ["#44403c", "#a8a29e", "#ffedd5"],
+    previewImage: "/examples/explainer/paper-diorama.webp",
+    styleAlias: "Chroma · Paper Diorama",
+    example: "A paper-cut forest on a miniature stage",
     overlayHint: "Stage card",
   },
   {
@@ -75,7 +87,9 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
       "pastel flat 2d explainer illustration, architectural geometry, soft pastel palette, clean vector shading",
     negativePrompt: "gritty texture, horror, watermark",
     accent: "#e9d5ff",
-    preview: ["#4c1d95", "#a78bfa", "#f5f3ff"],
+    previewImage: "/examples/explainer/pastel-flat-2d.webp",
+    styleAlias: "Chroma · Pastel 2D",
+    example: "A calm city in flat pastel shapes",
     overlayHint: "Flat geometry",
   },
 ];

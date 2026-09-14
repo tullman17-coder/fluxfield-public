@@ -116,8 +116,6 @@ export default function SupercomputerPage() {
             ratio,
             framing: "auto",
             count: "1",
-            steps: "4",
-            cfg: "1",
             assist: "on",
             productName: brand.trim() || "Key art",
           },

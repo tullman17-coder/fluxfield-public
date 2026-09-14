@@ -26,8 +26,10 @@ export async function POST(request: Request) {
   };
 
   const settings = await readSettings();
-  const copy =
-    (await generateMarketingCopy(settings, args)) ?? fallbackMarketingCopy(args);
-
-  return NextResponse.json({ copy });
+  try {
+    const copy = (await generateMarketingCopy(settings, args)) ?? fallbackMarketingCopy(args);
+    return NextResponse.json({ copy });
+  } catch {
+    return NextResponse.json({ error: "Writing service failed; no replacement copy was generated." }, { status: 502 });
+  }
 }
