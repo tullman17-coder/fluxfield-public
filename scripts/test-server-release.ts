@@ -40,6 +40,11 @@ async function main() {
       return Response.json({ model: 'served-uncensored', choices: [{ message: { content: 'Real text' } }] });
     };
     assert.equal((await generateWithOllamaOrThrow(settings, 'test')).model, 'served-uncensored');
+    await writeSettings({ generationMode: 'zermo' });
+    const { POST: improve } = await import('../src/app/api/improve/route');
+    const response = await improve(new Request('http://studio.test/api/improve', { method: 'POST', body: JSON.stringify({ prompt: 'A red ceramic cup', provider: 'api' }) }));
+    const rewritten = await response.json();
+    assert.equal(response.status, 200); assert.equal(rewritten.provider, 'zermo'); assert.equal(rewritten.model, 'served-uncensored');
     globalThis.fetch = async () => new Response('secret upstream body', { status: 503 });
     await assert.rejects(generateMarketingCopy(settings, { wrapperName: 'a', presetLabel: 'b', brandName: 'c', productName: 'd', productDescription: 'e' }), /HTTP 503/);
     globalThis.fetch = async () => Response.json({ choices: [{ message: { content: '' } }] });

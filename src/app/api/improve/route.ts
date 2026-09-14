@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({
       prompt: improved.text,
-      provider: "local",
+      provider: settings.generationMode === "zermo" ? "zermo" : "local",
       model: improved.model,
     });
   } catch (error) {
