@@ -213,7 +213,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       },
     ],
     promptTemplate:
-      "Authentic UGC smartphone video still for {{productName}}, {{productDescription}}, {{preset}} style, casual bathroom or desk lighting, natural skin texture, vertical social ad frame, realistic phone footage look",
+      "Full-bleed candid creator photograph featuring {{productName}}, {{productDescription}}, {{preset}} style, casual bathroom or desk scene, natural skin texture, authentic available-light photography, edge-to-edge composition",
     negativePrompt:
       "studio softbox, cinematic anamorphic, celebrity face, heavy makeup glam, CGI plastic look",
     aspectDefault: "9:16",
