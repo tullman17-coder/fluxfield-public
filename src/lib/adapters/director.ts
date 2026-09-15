@@ -73,16 +73,17 @@ export async function runDirectorAdapter(
   const inputs = ctx.job.inputs;
   const mode = inputs.mode === "film" ? "film" : "music-video";
   const runtimeSec = Math.max(30, Math.min(3600, Number(inputs.runtime || 180)));
+  const brief = inputs.brief?.trim() || ctx.job.prompt.trim();
 
   const production = planProduction({
     mode,
-    brief: inputs.brief || ctx.job.prompt,
+    brief,
     runtimeSec,
     look: inputs.look || "cinematic",
     pacing: (inputs.pacing as Pacing) || "steady",
     genre: inputs.genre || "synthwave",
     mood: inputs.mood || "neutral",
-    seedText: `${ctx.job.id}:${inputs.brief || ctx.job.prompt}`,
+    seedText: `${ctx.job.id}:${brief}`,
   });
 
   await fs.mkdir(OUT_DIR, { recursive: true });
@@ -158,7 +159,15 @@ export async function runDirectorAdapter(
     const drift = Math.sin(progress * Math.PI * 2) * 20 + (shot.index % 3) * 5;
     return {
       label: `${shot.timecode} · ${shot.size} · ${shot.section}`,
-      prompt: `${production.title} ${shot.section} ${shot.size} ${shot.move} ${shot.action}`,
+      prompt: [
+        brief,
+        `Scene: ${shot.section}.`,
+        `Shot: ${shot.size}, ${shot.move}.`,
+        `Action: ${shot.action}.`,
+        `Visual look: ${production.look}.`,
+      ]
+        .filter(Boolean)
+        .join(" "),
       style: production.look,
       hue: baseHue + drift,
       seed: hash32(`${production.title}:${shot.index}:${shot.move}`),
