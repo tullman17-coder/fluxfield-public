@@ -16,12 +16,14 @@ export const SHIPPED_EXAMPLES_DIR = path.join(
 export const SHIPPED_EXTS = ["webp", "png", "jpg", "jpeg"] as const;
 
 export type CardEngine =
+  | "zermo"
   | "mock"
   | "comfyui"
   | "local-studio"
   | "shipped";
 
 export const ENGINE_LABEL: Record<CardEngine, string> = {
+  zermo: "Zermo",
   "local-studio": "Studio",
   comfyui: "Comfy",
   mock: "Preview art",

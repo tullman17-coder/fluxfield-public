@@ -1,3 +1,4 @@
+import { generateZermoText } from "./zermo";
 import type { StudioSettings } from "@/lib/adapters/types";
 import {
   pickPreferredModel,
@@ -69,6 +70,7 @@ async function ollamaGenerate(
   settings: StudioSettings,
   prompt: string,
 ): Promise<string | undefined> {
+  if (settings.generationMode === "zermo") return (await generateZermoText(prompt)).text;
   const target = await resolveOllamaTarget(settings);
   if (!target) return undefined;
   try {
@@ -100,6 +102,7 @@ export async function generateWithOllamaOrThrow(
   settings: StudioSettings,
   prompt: string,
 ): Promise<{ text: string; model: string; url: string }> {
+  if (settings.generationMode === "zermo") return generateZermoText(prompt);
   const probe = await probeOllama(settings.ollamaUrl);
   if (!probe.reachable) {
     throw new Error(
@@ -268,6 +271,10 @@ export type ImageReview = {
   model?: string;
 };
 
+export type ImageReviewAttempt =
+  | { status: "checked"; review: ImageReview }
+  | { status: "skipped"; reason: string };
+
 function reviewFromRecord(raw: Record<string, unknown>): ImageReview {
   const anatomy = raw.anatomy;
   const text = raw.text;
@@ -296,18 +303,27 @@ function stripDataUri(image: string): string {
 
 /**
  * Ask a pulled VL model to check anatomy and readable copy.
- * Returns null when no vision model is available.
+ * Returns an explicit checked/skipped outcome so callers do not misreport
+ * transport or response failures as a missing model.
  */
 export async function reviewImageWithVision(
   settings: StudioSettings,
   args: { imageDataUri: string; prompt: string },
-): Promise<ImageReview | null> {
+): Promise<ImageReviewAttempt> {
+  if (settings.generationMode === "zermo") {
+    return { status: "skipped", reason: "managed visual review is not enabled" };
+  }
   const probe = await probeOllama(settings.ollamaUrl);
   const model = pickPreferredVisionModel(probe.models || []);
-  if (!probe.reachable || !model) return null;
+  if (!probe.reachable) {
+    return { status: "skipped", reason: "local vision server is unreachable" };
+  }
+  if (!model) {
+    return { status: "skipped", reason: "no compatible vision model is connected" };
+  }
   const url = (probe.url || settings.ollamaUrl).replace(/\/$/, "");
   const image = stripDataUri(args.imageDataUri);
-  if (!image) return null;
+  if (!image) return { status: "skipped", reason: "image bytes were unavailable" };
 
   try {
     const res = await fetch(`${url}/api/chat`, {
@@ -327,15 +343,19 @@ export async function reviewImageWithVision(
       }),
       signal: AbortSignal.timeout(90_000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      return { status: "skipped", reason: `vision model returned HTTP ${res.status}` };
+    }
     const data = (await res.json()) as {
       message?: { content?: string };
     };
     const raw = extractJsonObject(data.message?.content || "");
-    if (!raw) return null;
-    return { ...reviewFromRecord(raw), model };
+    if (!raw) {
+      return { status: "skipped", reason: "vision model returned invalid review data" };
+    }
+    return { status: "checked", review: { ...reviewFromRecord(raw), model } };
   } catch {
-    return null;
+    return { status: "skipped", reason: "vision review transport failed" };
   }
 }
 

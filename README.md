@@ -47,6 +47,16 @@ The Create workbench **Improve prompt** button rewrites your idea into a full ge
 
 Pick the provider per-click on the workbench, or set the default under Connections. Env overrides: `IMPROVE_API_BASE`, `IMPROVE_API_KEY`, `IMPROVE_API_MODEL`.
 
+## Zermo owner API connection
+
+Set `ZERMO_API_BASE` (default `https://api.zermo.org`) and either `ZERMO_API_KEY` or `ZERMO_API_KEY_FILE` on the **server**, then select **Zermo** under Settings → Connections. The UI receives only configuration/health status, not this credential. Never use a `NEXT_PUBLIC_` key, commit a real `.env`, or publish a credential file.
+
+This branch connects the existing image flows and Music desk to durable `/v1/media/jobs`. Explicit Zermo mode does **not** fall back to preview art, Comfy, Local Studio or synthesized music when a request fails. The remote job ID, effective settings and idempotent request are saved with the local job. Reconnect/resume keeps that request identity instead of submitting a new creative attempt. The existing local library receives authenticated output downloads; ACE audio remains `.flac` with its correct MIME type.
+
+Current slice: Chroma text-to-image and ACE music (10–90 seconds). Director can use generated keyframes but does not fabricate a soundtrack or claim native long-form video in Zermo mode. References/edit masks, native video integration and full storyboard lifecycle are not yet wired into this provider. The underlying Zermo API supports more operations than this initial app integration. Chroma's workbench displays aspect-fitted dimensions, Detail (8-step default) / Fast (4-step draft) profiles and fixed CFG1. Both profiles retain the selected resolution; fewer steps change the image, not just latency. Explicit unsupported steps/CFG/dimensions are rejected rather than silently changed; valid explicit image sizes are honored. Saved remote effective settings remain attached to the job. Downloads enforce one output and a streaming byte cap; resumed music displays the original saved lyrics. Zermo never calls legacy TTS, and any retained FFmpeg assembly is labeled as a local slideshow.
+
+Run `npm run test:zermo` for the explicit mocked-transport contract tests, and `npm run build` for the production build. Live app acceptance and review are tracked separately; a mocked test is not a generated asset. This remains an owner-only studio integration, not a tenant-isolated paid signup service.
+
 ## Run locally
 
 ```bash
@@ -273,3 +283,10 @@ Anyone Authelia authenticates for this client may use the studio. `/api/health` 
 ## Notes
 
 This is a steal-the-UX local studio, not a pixel-perfect Higgsfield clone and not affiliated with Higgsfield. Connect your own models; no cloud API keys required.
+
+
+Managed Zermo mode also routes rewriting, copy, lyrics and scripts through the authenticated `local-auto` writing route; Connections displays the served model identity separately from Chroma and ACE. No text fallback is fabricated on failure. Legacy endpoint setup is under Advanced, and browser settings contain only credential-presence flags.
+
+Explainer cards use six generated WebP still samples in `public/examples/explainer/`, with their prompts, remote job IDs and hashes in `provenance.json`. They are not GIFs or video demos. Adult / NSFW style selection is a separate 18+ opt-in gated by the owner setting, not a claim of universal non-refusal.
+
+Media output and library routes stream private responses and support single byte ranges and HEAD. Exact seeds travel as decimal strings; unsafe numeric seeds are rejected. Run `npx tsx scripts/test-server-release.ts` and `npx tsx scripts/test-studio-ui.ts` alongside the provider/copy checks before release.

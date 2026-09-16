@@ -1,6 +1,8 @@
-export type GenerationMode = "auto" | "mock" | "comfyui" | "local-studio";
+export type GenerationMode = "auto" | "mock" | "comfyui" | "local-studio" | "zermo";
 
 export type StudioSettings = {
+  hasStudioApiKey?: boolean;
+  hasImproveApiKey?: boolean;
   comfyUrl: string;
   ollamaUrl: string;
   ollamaModel: string;
@@ -57,7 +59,7 @@ export type JobOutput = {
   text?: string;
 };
 
-export type ModeUsed = "mock" | "comfyui" | "local-studio";
+export type ModeUsed = "mock" | "comfyui" | "local-studio" | "zermo";
 
 export type StudioJob = {
   id: string;
@@ -74,6 +76,9 @@ export type StudioJob = {
   inputs: Record<string, string>;
   modeUsed: ModeUsed;
   remotePromptId?: string;
+  generationMode?: GenerationMode;
+  referenceImagePath?: string;
+  zermoJobs?: Record<string, import("./zermo").ZermoIntent>;
   error?: string;
   outputs: JobOutput[];
   script?: string;

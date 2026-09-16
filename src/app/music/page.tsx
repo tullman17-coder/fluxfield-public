@@ -1,18 +1,13 @@
 "use client";
+import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
 
 import { useCallback, useRef, useState } from "react";
 import { GENRES, MOODS, NOTE_NAMES } from "@/lib/music/theory";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
+import { musicEffectiveSettings, musicLengths, musicSeconds } from "@/lib/studio/presentation";
+import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import { cn } from "@/lib/utils";
-
-const LENGTHS = [
-  { id: "30", label: "30 sec" },
-  { id: "60", label: "1 min" },
-  { id: "120", label: "2 min" },
-  { id: "180", label: "3 min" },
-  { id: "300", label: "5 min" },
-];
 
 const LYRIC_MODES = [
   { id: "instrumental", label: "No words", blurb: "Just the music" },
@@ -25,6 +20,7 @@ const selectClass =
 const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
 export default function MusicPage() {
+  const { settings, zermo, error: connectionError } = useStudioConnection();
   const [brief, setBrief] = useState("");
   const [trackName, setTrackName] = useState("");
   const [genre, setGenre] = useState("synthwave");
@@ -37,6 +33,9 @@ export default function MusicPage() {
   const { job, setJob } = useJobWatch("music");
   const [error, setError] = useState<string | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
+
+  const effectiveSeconds = musicSeconds(settings?.generationMode, seconds);
+  const lengths = musicLengths(settings?.generationMode);
 
   const compose = useCallback(async () => {
     if (!brief.trim()) {
@@ -58,7 +57,7 @@ export default function MusicPage() {
             trackName,
             genre,
             mood,
-            seconds,
+            seconds: effectiveSeconds,
             key,
             bpm,
             lyricMode,
@@ -72,12 +71,13 @@ export default function MusicPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the track");
     }
-  }, [brief, trackName, genre, mood, seconds, key, bpm, lyricMode, lyrics, setJob]);
+  }, [brief, trackName, genre, mood, effectiveSeconds, key, bpm, lyricMode, lyrics, setJob]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const track = job?.outputs.find((o) => o.kind === "audio");
   const arrangement = job?.outputs.find((o) => o.kind === "storyboard");
   const lyricSheet = job?.outputs.find((o) => o.kind === "script");
+  const effectiveSettings = musicEffectiveSettings(job);
   const activeGenre = GENRES.find((g) => g.id === genre) ?? GENRES[0];
 
   return (
@@ -90,8 +90,7 @@ export default function MusicPage() {
           Music
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
-          Write a track with a real arrangement — intro, verses, a hook, an
-          outro — and use it as the bed for a video.
+          Describe a track, suggest its mood and structure, then listen and download the result.
         </p>
       </header>
 
@@ -176,15 +175,15 @@ export default function MusicPage() {
             </div>
             <div className="min-w-0">
               <label htmlFor="seconds" className={labelClass}>
-                Length
+                Length {zermo ? "(10–90 seconds)" : ""}
               </label>
               <select
                 id="seconds"
-                value={seconds}
+                value={effectiveSeconds}
                 onChange={(e) => setSeconds(e.currentTarget.value)}
                 className={selectClass}
               >
-                {LENGTHS.map((l) => (
+                {lengths.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.label}
                   </option>
@@ -194,7 +193,7 @@ export default function MusicPage() {
             <div className="grid min-w-0 grid-cols-2 gap-3">
               <div className="min-w-0">
                 <label htmlFor="key" className={labelClass}>
-                  Key
+                  Key {zermo ? "suggestion" : ""}
                 </label>
                 <select
                   id="key"
@@ -212,7 +211,7 @@ export default function MusicPage() {
               </div>
               <div className="min-w-0">
                 <label htmlFor="bpm" className={labelClass}>
-                  Tempo
+                  Tempo {zermo ? "suggestion" : ""}
                 </label>
                 <input
                   id="bpm"
@@ -226,6 +225,7 @@ export default function MusicPage() {
             </div>
           </div>
 
+          {zermo ? <p className="mb-4 text-xs text-[#b8aebb]">Key and BPM are prompt suggestions, not fixed model controls. The result shows the effective settings returned by Zermo.</p> : null}
           <fieldset className="min-w-0 border-t border-white/10 py-5">
             <legend className="text-sm font-medium text-[#b8aebb]">Words</legend>
             <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
@@ -262,12 +262,12 @@ export default function MusicPage() {
               </div>
             ) : lyricMode === "write" ? (
               <p className="mt-3 text-sm text-[#8d838f]">
-                Your model writes them when one is connected, and they get timed
-                to the section map either way.
+                {zermo ? "Zermo writes the lyrics for ACE. Timing and lyric adherence are generated, not guaranteed." : "Your connected writing model writes the lyrics."}
               </p>
             ) : null}
           </fieldset>
 
+          {connectionError ? <p role="alert" className="text-sm text-red-400">{connectionError}</p> : null}
           {error ? (
             <p
               role="alert"
@@ -280,7 +280,7 @@ export default function MusicPage() {
           <div className="grid sm:justify-items-end">
             <button
               type="submit"
-              disabled={running}
+              disabled={running || !settings}
               className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/5 disabled:text-[#6e6570] sm:w-48"
             >
               {running ? "Writing" : "Write the track"}
@@ -321,6 +321,28 @@ export default function MusicPage() {
             Finished
           </p>
           <h2 className="mt-1 text-lg text-[#f5eff6]">Track</h2>
+          <p className="text-xs text-[#b8aebb]">Zermo mode uses ACE, 10–90 seconds, FLAC. Select the provider in Settings.</p>
+          <ZermoJobStatus job={job} onResume={setJob} />
+          {effectiveSettings.length ? (
+            <div className="mt-4 rounded-[10px] border border-white/10 bg-white/5 p-4">
+              <h3 className="text-sm font-bold text-[#f5eff6]">
+                Effective Zermo settings
+              </h3>
+              <p className="mt-1 text-xs text-[#8d838f]">
+                Returned by Zermo. Requested key and BPM above are suggestions and may differ.
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {effectiveSettings.map((setting) => (
+                  <div key={setting.label} className="min-w-0">
+                    <dt className="text-xs text-[#8d838f]">{setting.label}</dt>
+                    <dd className="mt-1 break-words text-sm text-[#b8aebb]">
+                      {setting.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : null}
           {track?.url ? (
             <figure className="glass mt-4 min-w-0 rounded-[14px] p-5">
               <figcaption className="mb-3 text-sm font-bold text-[#f5eff6]">

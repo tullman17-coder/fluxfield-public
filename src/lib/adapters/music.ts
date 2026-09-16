@@ -19,6 +19,7 @@ import {
   type LyricSheet,
 } from "@/lib/music/lyrics";
 import { generateLyrics } from "@/lib/adapters/ollama";
+import { runZermoJob } from "./zermo";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -163,8 +164,22 @@ export async function runMusicAdapter(
   const outputs: JobOutput[] = [];
 
   const title = inputs.trackName?.trim() || "Untitled";
-  const sheet = await buildLyrics(ctx, arrangement, title);
+  if (ctx.settings.generationMode === "zermo") {
+    const saved = ctx.job.zermoJobs?.["music:track"]?.request;
+    const duration = saved?.settings.duration ?? Number(inputs.seconds || 60);
+    if (!Number.isFinite(duration) || duration < 10 || duration > 90) throw new Error("Zermo ACE supports 10–90 seconds; choose a shorter track");
+    const sheet = saved ? null : await buildLyrics(ctx, arrangement, title);
+    const requested = saved ?? {
+      operation: "music.generate" as const, model: "ace-step-1.5-turbo" as const,
+      prompt: `${inputs.brief || ctx.job.prompt}. ${inputs.genre || ""} ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
+      settings: { duration, lyrics: sheet ? lyricPlainText(sheet) : "" },
+    };
+    const result = await runZermoJob(ctx.job, "music:track", requested);
+    if (requested.settings.lyrics) result.outputs.push({ id: nanoid(8), kind: "script", label: "Lyrics requested", text: requested.settings.lyrics });
+    return { ...result, arrangement, usedServer: true, lyrics: sheet };
+  }
 
+  const sheet = await buildLyrics(ctx, arrangement, title);
   let audio: Buffer | null = null;
 
   if (ctx.settings.musicUrl) {

@@ -1,11 +1,16 @@
 "use client";
+import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
+import { jobStatusLabel, exactSeed, preferredImproveProvider, ZERMO_IMAGE_PROFILES } from "@/lib/studio/presentation";
+import { useStudioConnection } from "@/lib/studio/use-studio-connection";
+import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
-  dreamPresets,
+  visibleDreamPresets,
+  MATURE_PRESETS,
   DREAM_RATIOS,
   FRAMINGS,
-  dreamRatio,
+
   enhancePrompt,
 } from "@/lib/dream/presets";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
@@ -15,7 +20,7 @@ import { MediaLightbox } from "@/components/studio/media-lightbox";
 
 type ImproveResult = {
   prompt: string;
-  provider: "local" | "api";
+  provider: "local" | "api" | "zermo";
   model: string;
 };
 
@@ -32,16 +37,22 @@ export default function CreatePage() {
   const [framing, setFraming] = useState("auto");
   const [count, setCount] = useState("1");
   const [seed, setSeed] = useState("");
-  const [steps, setSteps] = useState("4");
+  const [customSteps, setSteps] = useState("");
   const [cfg, setCfg] = useState("1");
+  const { settings, health, zermo, error: connectionError } = useStudioConnection();
+  const [adultCategory, setAdultCategory] = useState(false);
+  const steps = customSteps || (zermo ? "8" : "4");
   const [assist, setAssist] = useState(true);
+  const [visualQa, setVisualQa] = useState(false);
 
-  const [improveProvider, setImproveProvider] = useState<"local" | "api">(
-    "local",
-  );
-  const [hasApiKey, setHasApiKey] = useState(false);
-  const [localModel, setLocalModel] = useState("");
-  const [unrestricted, setUnrestricted] = useState(false);
+  const [improveProviderOverride, setImproveProviderOverride] = useState<
+    "local" | "api" | null
+  >(null);
+  const improveProvider =
+    improveProviderOverride ?? preferredImproveProvider(settings);
+  const hasApiKey = !!settings?.hasImproveApiKey;
+  const localModel = zermo ? health?.text?.model : settings?.ollamaModel;
+  const unrestricted = !!settings?.unrestricted;
   const [improving, setImproving] = useState(false);
   const [improved, setImproved] = useState<ImproveResult | null>(null);
   const [improveError, setImproveError] = useState<string | null>(null);
@@ -51,27 +62,14 @@ export default function CreatePage() {
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((d) => {
-        const s = d.settings;
-        if (s?.improveProvider === "api" && s?.improveApiKey) {
-          setImproveProvider("api");
-        }
-        setHasApiKey(Boolean(s?.improveApiKey));
-        setLocalModel(s?.ollamaModel || "");
-        setUnrestricted(Boolean(s?.unrestricted));
-      })
-      .catch(() => undefined);
-  }, []);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
-  const presets = dreamPresets(unrestricted);
+  const presets = visibleDreamPresets(unrestricted, adultCategory);
   const activePreset = presets.find((p) => p.id === preset) ?? presets[0];
-  const activeRatio = dreamRatio(ratio);
+  const ratios = DREAM_RATIOS.map((r) => zermo ? { ...r, ...fitZermoSize(r.width, r.height) } : r);
+  const activeRatio = ratios.find((r) => r.id === ratio) ?? ratios[0];
   const assistedPrompt =
-    assist && prompt.trim() ? enhancePrompt(prompt, preset, framing, true) : "";
+    prompt.trim() ? enhancePrompt(prompt, activePreset.id, framing, assist) : "";
 
   const improve = useCallback(async () => {
     if (!prompt.trim() || improving) return;
@@ -96,8 +94,7 @@ export default function CreatePage() {
     }
   }, [prompt, improving, improveProvider]);
 
-  const generate = useCallback(
-    async (seedOverride?: string) => {
+  async function generate(seedOverride?: string) {
       if (!prompt.trim()) {
         setSubmitError("Describe the image you want first.");
         promptRef.current?.focus();
@@ -112,7 +109,7 @@ export default function CreatePage() {
           body: JSON.stringify({
             tool: "dream",
             workflowSlug: "dream",
-            presetId: preset,
+            presetId: activePreset.id,
             inputs: {
               prompt,
               negativePrompt,
@@ -121,8 +118,9 @@ export default function CreatePage() {
               count,
               seed: seedOverride ?? seed,
               steps,
-              cfg,
+              cfg: zermo ? "1" : cfg,
               assist: assist ? "on" : "off",
+              visualQa: visualQa ? "on" : "off",
             },
           }),
         });
@@ -132,22 +130,23 @@ export default function CreatePage() {
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : "Failed");
       }
-    },
-    [prompt, negativePrompt, preset, ratio, framing, count, seed, steps, cfg, assist, setJob],
-  );
+  }
 
   const reuseFromJob = useCallback((j: StudioJob) => {
     const i = j.inputs;
     setPrompt(i.prompt || "");
     setNegativePrompt(i.negativePrompt || "");
     setPreset(j.presetId || "dream");
+    setAdultCategory(MATURE_PRESETS.some((p) => p.id === j.presetId));
     setRatio(i.ratio || "square");
     setFraming(i.framing || "auto");
     setCount(i.count || "1");
-    setSeed(i.seed || "");
-    setSteps(i.steps || "4");
+    const effectiveSeed = Object.values(j.zermoJobs || {}).find((r) => r.effective?.seed !== undefined)?.effective?.seed;
+    setSeed(exactSeed(effectiveSeed) || exactSeed(i.seed));
+    setSteps(i.steps || "8");
     setCfg(i.cfg || "1");
     setAssist(i.assist !== "off");
+    setVisualQa(i.visualQa === "on");
     promptRef.current?.focus();
   }, []);
 
@@ -189,6 +188,7 @@ export default function CreatePage() {
         o.url &&
         !/^Subject(\b| ·)/i.test(o.label),
     ) ?? [];
+  const visualQaStatus = job?.outputs.find((output) => output.label === "Visual QA");
 
   return (
     <div className="w-full min-w-0">
@@ -253,7 +253,7 @@ export default function CreatePage() {
                 </p>
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <div
+                {zermo ? <span className="text-xs text-[#b8aebb]">Zermo · {localModel || "Checking writing model…"}</span> : <div
                   role="group"
                   aria-label="Rewrite with"
                   className="flex overflow-hidden rounded-[10px] border border-white/10"
@@ -263,7 +263,7 @@ export default function CreatePage() {
                       key={p}
                       type="button"
                       aria-pressed={improveProvider === p}
-                      onClick={() => setImproveProvider(p)}
+                      onClick={() => setImproveProviderOverride(p)}
                       className={cn(
                         "min-h-11 px-3 text-xs font-semibold transition-colors",
                         improveProvider === p
@@ -274,18 +274,18 @@ export default function CreatePage() {
                       {p === "local" ? "My model" : "Cloud"}
                     </button>
                   ))}
-                </div>
+                </div>}
                 <button
                   type="button"
                   onClick={() => void improve()}
-                  disabled={improving || !prompt.trim()}
+                  disabled={improving || !prompt.trim() || !settings}
                   className="min-h-11 rounded-[10px] border border-white/15 bg-[#2c162f] px-4 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
                 >
                   {improving ? "Rewriting…" : "Rewrite"}
                 </button>
               </div>
             </div>
-            {improveProvider === "api" && !hasApiKey ? (
+            {!zermo && improveProvider === "api" && !hasApiKey ? (
               <p className="text-xs text-[#ff8ea0]">
                 No cloud key saved yet. Add one in Settings, or switch to My
                 model.
@@ -301,6 +301,7 @@ export default function CreatePage() {
                 <p className="text-sm leading-normal text-[#b8aebb]">
                   <strong className="text-[#f5eff6]">Rewritten:</strong>{" "}
                   {improved.prompt}
+                <small className="block">Returned by {improved.model}</small>
                 </p>
                 <div>
                   <button
@@ -348,16 +349,37 @@ export default function CreatePage() {
             ) : null}
           </section>
 
+          <label className="mb-4 flex min-w-0 cursor-pointer items-start gap-3 rounded-[10px] border border-white/10 glass p-4">
+            <input
+              type="checkbox"
+              checked={visualQa}
+              onChange={(event) => setVisualQa(event.currentTarget.checked)}
+              className="mt-1 size-4 accent-[#d565d6]"
+            />
+            <span className="min-w-0">
+              <strong className="block text-sm text-[#f5eff6]">
+                Optional visual QA
+              </strong>
+              <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
+                Uses a compatible vision model when one is connected. The job
+                reports checked or skipped; this is off by default.
+              </small>
+            </span>
+          </label>
+
           <fieldset className="min-w-0 border-y border-white/10 py-5">
             <legend className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#b8aebb]">
-              Preset
-              {unrestricted ? (
-                <span className="rounded-full border border-[#d565d6] px-2 py-0.5 text-[11px] text-[#e77ae6]">
-                  Prompts go through as written
-                </span>
-              ) : null}
+              Style
             </legend>
-            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 2xl:grid-cols-8">
+            <p className="mb-3 text-xs text-[#8d838f]">{zermo ? "Chroma Flash Q4 · one model, different prompt styles." : "Prompt styles for the selected image provider."}</p>
+            <label className="mb-3 flex min-h-11 items-center gap-3 text-sm text-[#b8aebb]">
+              <input type="checkbox" checked={adultCategory && unrestricted} disabled={!unrestricted}
+                onChange={(e) => { setAdultCategory(e.target.checked); setPreset(e.target.checked ? "boudoir" : "dream"); }} />
+              Adult / NSFW (18+) — opt in to adult styles
+            </label>
+            {!unrestricted ? <p className="mb-3 text-xs text-[#8d838f]">Adult styles are off. Enable Adult styles in <a href="/settings" className="underline">Connections</a>, then opt in here.</p> : null}
+            <p className="mb-2 text-sm text-[#b8aebb]">{adultCategory && unrestricted ? "Adult / NSFW (18+)" : "General"}</p>
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
               {presets.map((p) => (
                 <button
                   key={p.id}
@@ -365,13 +387,14 @@ export default function CreatePage() {
                   aria-pressed={preset === p.id}
                   onClick={() => setPreset(p.id)}
                   className={cn(
-                    "grid min-h-11 min-w-0 place-content-center rounded-[10px] border px-2 py-1 text-center text-sm whitespace-nowrap transition-colors",
+                    "grid min-h-11 min-w-0 place-content-center rounded-[10px] border px-2 py-1 text-center text-sm transition-colors",
                     preset === p.id
                       ? "border-[#d565d6] bg-[#2c162f] text-[#e77ae6]"
                       : "border-white/10 glass text-[#b8aebb] hover:border-white/15 hover:bg-white/15 hover:text-[#f5eff6]",
                   )}
                 >
-                  {p.label}
+                  <span>{zermo ? `Chroma · ${p.label}` : p.label}</span>
+                  <small className="mt-1 block text-xs font-normal text-[#b8aebb]">{p.example}</small>
                 </button>
               ))}
             </div>
@@ -386,7 +409,7 @@ export default function CreatePage() {
                 Aspect ratio
               </legend>
               <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
-                {DREAM_RATIOS.map((r) => (
+                {ratios.map((r) => (
                   <button
                     key={r.id}
                     type="button"
@@ -448,6 +471,11 @@ export default function CreatePage() {
             </div>
           </div>
 
+          {zermo ? <fieldset className="mb-4 border-y border-white/10 py-4">
+            <legend className={labelClass}>Image profile</legend>
+            <div className="flex flex-wrap gap-2">{ZERMO_IMAGE_PROFILES.map((profile) => <button key={profile.steps} type="button" aria-pressed={steps === profile.steps} onClick={() => setSteps(profile.steps)} className={cn("min-h-11 rounded-[10px] border px-4 text-sm", steps === profile.steps ? "border-[#d565d6] text-[#e77ae6]" : "border-white/15 text-[#b8aebb]")}>{profile.label}</button>)}</div>
+            <p className="mt-2 text-xs text-[#8d838f]">Same {activeRatio.width} × {activeRatio.height} output, fitted within 1024px. CFG 1 fixed. Detail is the default; Fast uses fewer sampling steps, not a smaller image.</p>
+          </fieldset> : null}
           <details className="min-w-0 border-b border-white/10">
             <summary className="grid min-h-11 cursor-pointer list-none content-center gap-1 py-3 font-medium text-[#f5eff6] [&::-webkit-details-marker]:hidden">
               <span>Advanced settings</span>
@@ -483,6 +511,7 @@ export default function CreatePage() {
                   min={1}
                   max={50}
                   value={steps}
+                  disabled={zermo}
                   onChange={(e) => setSteps(e.currentTarget.value)}
                   className={inputClass}
                 />
@@ -494,7 +523,8 @@ export default function CreatePage() {
                   min={0}
                   max={20}
                   step={0.1}
-                  value={cfg}
+                  value={zermo ? "1" : cfg}
+                  disabled={zermo}
                   onChange={(e) => setCfg(e.currentTarget.value)}
                   className={inputClass}
                 />
@@ -513,7 +543,7 @@ export default function CreatePage() {
                 </p>
                 <p className="text-sm text-[#f5eff6]">{job.error}</p>
                 <p className="mt-1 text-sm text-[#b8aebb]">
-                  Try again, or check your connections in Settings.
+                  {zermo ? "Resume the same job below to recover completed media. A new attempt creates new work." : "Try again, or check your connections in Settings."}
                 </p>
               </div>
               <div className="flex min-w-0 flex-wrap gap-2">
@@ -522,7 +552,7 @@ export default function CreatePage() {
                   onClick={() => void generate()}
                   className="min-h-11 rounded-[10px] border border-white/15 bg-[#2c162f] px-4 text-sm font-bold text-[#e77ae6] hover:border-[#d565d6]"
                 >
-                  Try again
+                  {zermo ? "Start a new attempt" : "Try again"}
                 </button>
                 <a
                   href="/settings"
@@ -537,7 +567,7 @@ export default function CreatePage() {
           <div className="grid pt-5 sm:justify-items-end">
             <button
               type="submit"
-              disabled={running}
+              disabled={running || !settings}
               className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570] sm:w-48"
             >
               {running ? "Making it" : "Make it"}
@@ -555,7 +585,7 @@ export default function CreatePage() {
                 Now
               </p>
               <h2 id="job-heading" className="mt-1 text-lg text-[#f5eff6]">
-                In progress
+                Job status
               </h2>
             </div>
             <span
@@ -575,61 +605,17 @@ export default function CreatePage() {
             aria-live="polite"
             className="mt-5 font-bold text-[#f5eff6]"
           >
-            {!job
-              ? "Ready for a prompt"
-              : job.status === "queued"
-                ? "Starting"
-                : job.status === "running"
-                  ? "Making it"
-                  : job.status === "completed"
-                    ? `Done — ${images.length} ${images.length === 1 ? "image" : "images"}`
-                    : "Stopped"}
+            {jobStatusLabel(job)}
           </p>
-          <ol aria-label="Progress" className="mt-5 grid gap-3">
-            {[
-              ["queued", "Starting"],
-              ["running", "Making"],
-              ["completed", "Saving"],
-            ].map(([stage, label]) => {
-              const order = { queued: 0, running: 1, completed: 2 };
-              const current = !job
-                ? -1
-                : job.status === "failed"
-                  ? 2
-                  : (order[job.status as keyof typeof order] ?? -1);
-              const target = order[stage as keyof typeof order];
-              const state =
-                target < current
-                  ? "done"
-                  : target === current
-                    ? "current"
-                    : "waiting";
-              return (
-                <li
-                  key={stage}
-                  data-state={state}
-                  className={cn(
-                    "flex min-w-0 items-center gap-2 text-sm",
-                    state === "current"
-                      ? "text-[#e77ae6]"
-                      : state === "done"
-                        ? "text-[#b8aebb]"
-                        : "text-[#8d838f]",
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "size-2 shrink-0 rounded-full border border-white/15",
-                      state === "current" && "border-[#d565d6] bg-[#d565d6]",
-                      state === "done" && "border-[#b94ebc] bg-[#2c162f]",
-                    )}
-                  />
-                  {label}
-                </li>
-              );
-            })}
-          </ol>
+          <ZermoJobStatus job={job} onResume={setJob} />
+          {visualQaStatus?.text ? (
+            <pre className="mt-3 whitespace-pre-wrap rounded-[10px] bg-white/10 p-3 text-xs text-[#b8aebb]">
+              Visual QA{"\n"}
+              {visualQaStatus.text}
+            </pre>
+          ) : null}
+          {connectionError ? <p role="alert" className="mt-3 text-sm text-[#ff8ea0]">{connectionError}</p> : null}
+          {job ? <p className="mt-2 break-words text-xs text-[#8d838f]">Updated <time dateTime={job.updatedAt}>{new Date(job.updatedAt).toLocaleString()}</time></p> : null}
           <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
             <div className="min-w-0">
               <dt className="text-xs text-[#8d838f]">Output</dt>
@@ -659,7 +645,7 @@ export default function CreatePage() {
             </details>
           ) : null}
           <p className="mt-4 text-xs text-[#8d838f]">
-            Saved to your library
+            {job?.status === "completed" && images.length ? "Saved to your library" : "Results are saved after generation completes."}
           </p>
         </aside>
 
@@ -699,6 +685,8 @@ export default function CreatePage() {
                       <img
                         src={o.url}
                         alt={o.label}
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                       />
                       <span className="absolute right-2 bottom-2 rounded-full border border-white/15 glass px-2 py-1 text-xs text-[#b8aebb]">
@@ -731,7 +719,7 @@ export default function CreatePage() {
                     </button>
                     <button
                       type="button"
-                      disabled={running}
+                      disabled={running || !settings}
                       onClick={() => varyFromJob(job)}
                       className="min-h-11 flex-1 rounded-[10px] border border-white/15 bg-[#2c162f] px-3 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
                     >

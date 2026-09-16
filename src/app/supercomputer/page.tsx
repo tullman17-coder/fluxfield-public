@@ -1,23 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   DREAM_PRESETS,
   DREAM_RATIOS,
   dreamRatio,
 } from "@/lib/dream/presets";
-import type { StudioJob } from "@/lib/adapters/types";
+import {
+  preferredImproveProvider,
+  supercomputerReady,
+} from "@/lib/studio/presentation";
+import {
+  runSupercomputerPipeline,
+  type SupercomputerResult,
+} from "@/lib/studio/supercomputer";
+import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import { cn } from "@/lib/utils";
 
 type Stage = "idle" | "improve" | "generate" | "copy" | "done" | "error";
-
-type RunResult = {
-  improvedPrompt: string;
-  improveProvider: string;
-  artUrl?: string;
-  copy?: string;
-  script?: string;
-};
 
 const selectClass =
   "h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/10 px-3 text-sm text-[#f5eff6] transition-colors hover:border-white/15 focus-visible:outline-2 focus-visible:outline-[#f2a1ed]";
@@ -51,23 +51,21 @@ function stageState(
 export default function SupercomputerPage() {
   const [brief, setBrief] = useState("");
   const [brand, setBrand] = useState("");
-  const [provider, setProvider] = useState<"local" | "api">("local");
+  const [providerOverride, setProviderOverride] = useState<"local" | "api" | null>(null);
   const [style, setStyle] = useState("cinematic");
   const [ratio, setRatio] = useState("landscape");
   const [stage, setStage] = useState<Stage>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<RunResult | null>(null);
+  const [result, setResult] = useState<SupercomputerResult | null>(null);
+  const [visualQa, setVisualQa] = useState(false);
   const briefRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.settings?.improveProvider === "api" && d.settings?.improveApiKey)
-          setProvider("api");
-      })
-      .catch(() => undefined);
-  }, []);
+  const {
+    settings,
+    health,
+    zermo,
+    error: connectionError,
+  } = useStudioConnection();
+  const provider = providerOverride ?? preferredImproveProvider(settings);
 
   const run = useCallback(async () => {
     const text = brief.trim();
@@ -79,113 +77,26 @@ export default function SupercomputerPage() {
     setError(null);
     setResult(null);
 
-    // 1 — improve the brief
-    setStage("improve");
-    let improved = text;
-    let usedProvider: string = provider;
     try {
-      const res = await fetch("/api/improve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: text, provider }),
-      });
-      const data = await res.json();
-      if (res.ok && data.prompt) {
-        improved = data.prompt;
-        usedProvider = data.provider;
-      }
-    } catch {
-      // improvement is best-effort; the raw brief still drives the run
-    }
-
-    // 2 — dream key art through the adapter chain
-    setStage("generate");
-    let job: StudioJob;
-    try {
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool: "dream",
-          workflowSlug: "dream",
-          presetId: style,
-          inputs: {
-            prompt: improved,
-            negativePrompt:
-              "extra limbs, missing limbs, fused fingers, crossed eyes, collapsed face, watermark",
-            ratio,
-            framing: "auto",
-            count: "1",
-            steps: "4",
-            cfg: "1",
-            assist: "on",
-            productName: brand.trim() || "Key art",
-          },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Job failed");
-      job = data.job as StudioJob;
+      const completed = await runSupercomputerPipeline(
+        {
+          brief: text,
+          brand,
+          provider,
+          style,
+          ratio,
+          managed: zermo,
+          visualQa,
+        },
+        { onStage: setStage },
+      );
+      setResult(completed);
+      setStage("done");
     } catch (err) {
       setStage("error");
-      setError(err instanceof Error ? err.message : "Could not make the art");
-      return;
+      setError(err instanceof Error ? err.message : "The run stopped before completion");
     }
-
-    let done: StudioJob | null = null;
-    const start = Date.now();
-    while (Date.now() - start < 180_000) {
-      await new Promise((r) => setTimeout(r, 1200));
-      const res = await fetch(`/api/jobs/${job.id}`);
-      if (!res.ok) continue;
-      const data = (await res.json()) as { job: StudioJob };
-      if (data.job.status === "completed") {
-        done = data.job;
-        break;
-      }
-      if (data.job.status === "failed") {
-        setStage("error");
-        setError(data.job.error || "Could not make the art");
-        return;
-      }
-    }
-    if (!done) {
-      setStage("error");
-      setError("This is taking too long. Check your connections in Settings.");
-      return;
-    }
-
-    // 3 — campaign copy
-    setStage("copy");
-    let copy: string | undefined;
-    try {
-      const res = await fetch("/api/copy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brandName: brand,
-          productName: "Key art",
-          productDescription: improved,
-          wrapperName: "superComputer",
-          presetLabel:
-            DREAM_PRESETS.find((p) => p.id === style)?.label || style,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) copy = data.copy;
-    } catch {
-      // copy is best-effort
-    }
-
-    setResult({
-      improvedPrompt: improved,
-      improveProvider: usedProvider,
-      artUrl: done.outputs.find((o) => o.kind === "image" && o.url)?.url,
-      copy,
-      script: done.script,
-    });
-    setStage("done");
-  }, [brief, brand, provider, style, ratio]);
+  }, [brief, brand, provider, style, ratio, visualQa, zermo]);
 
   const running = stage === "improve" || stage === "generate" || stage === "copy";
   const activeRatio = dreamRatio(ratio);
@@ -262,28 +173,39 @@ export default function SupercomputerPage() {
             </div>
             <div className="min-w-0">
               <span className={labelClass}>Sharpen with</span>
-              <div
-                role="group"
-                aria-label="Sharpen with"
-                className="flex overflow-hidden rounded-[10px] border border-white/10"
-              >
-                {(["local", "api"] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    aria-pressed={provider === p}
-                    onClick={() => setProvider(p)}
-                    className={cn(
-                      "min-h-11 flex-1 px-3 text-xs font-semibold transition-colors",
-                      provider === p
-                        ? "bg-[#2c162f] text-[#e77ae6]"
-                        : "text-[#8d838f] hover:text-[#f5eff6]",
-                    )}
-                  >
-                    {p === "local" ? "My model" : "Cloud"}
-                  </button>
-                ))}
-              </div>
+              {zermo ? (
+                <div className="grid min-h-11 content-center rounded-[10px] border border-white/10 bg-[#2c162f] px-3">
+                  <span className="text-xs font-semibold text-[#e77ae6]">
+                    Zermo managed writing
+                  </span>
+                  <span className="truncate text-xs text-[#b8aebb]">
+                    {health?.text.model || "Checking active model…"}
+                  </span>
+                </div>
+              ) : (
+                <div
+                  role="group"
+                  aria-label="Sharpen with"
+                  className="flex overflow-hidden rounded-[10px] border border-white/10"
+                >
+                  {(["local", "api"] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      aria-pressed={provider === p}
+                      onClick={() => setProviderOverride(p)}
+                      className={cn(
+                        "min-h-11 flex-1 px-3 text-xs font-semibold transition-colors",
+                        provider === p
+                          ? "bg-[#2c162f] text-[#e77ae6]"
+                          : "text-[#8d838f] hover:text-[#f5eff6]",
+                      )}
+                    >
+                      {p === "local" ? "My model" : "Cloud"}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="min-w-0">
               <label htmlFor="style" className={labelClass}>
@@ -321,6 +243,29 @@ export default function SupercomputerPage() {
             </div>
           </div>
 
+          <label className="mt-5 flex min-w-0 cursor-pointer items-start gap-3 border-t border-white/10 pt-4">
+            <input
+              type="checkbox"
+              checked={visualQa}
+              onChange={(event) => setVisualQa(event.currentTarget.checked)}
+              className="mt-1 size-4 accent-[#d565d6]"
+            />
+            <span className="min-w-0">
+              <strong className="block text-sm text-[#f5eff6]">
+                Optional visual QA
+              </strong>
+              <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
+                Checks the generated image when a compatible vision model is available.
+                Otherwise the result reports why the check was skipped.
+              </small>
+            </span>
+          </label>
+
+          {connectionError ? (
+            <p role="alert" className="mt-4 text-sm text-[#ff8ea0]">
+              {connectionError}
+            </p>
+          ) : null}
           {error ? (
             <p
               role="alert"
@@ -333,7 +278,7 @@ export default function SupercomputerPage() {
           <div className="grid pt-5 sm:justify-items-end">
             <button
               type="submit"
-              disabled={running}
+              disabled={running || !settings || (zermo && !supercomputerReady(health))}
               className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/5 disabled:text-[#6e6570] sm:w-56"
             >
               {running ? "Working" : "Run superComputer"}
@@ -418,7 +363,11 @@ export default function SupercomputerPage() {
             <div className="min-w-0">
               <dt className="text-xs text-[#8d838f]">Sharpen</dt>
               <dd className="mt-1 text-sm text-[#b8aebb]">
-                {provider === "local" ? "My model" : "Cloud"}
+                {zermo
+                  ? health?.text.model || "Checking"
+                  : provider === "local"
+                    ? "My model"
+                    : "Cloud"}
               </dd>
             </div>
           </dl>
@@ -463,12 +412,23 @@ export default function SupercomputerPage() {
                     <p className="mt-1 text-sm text-pretty text-[#b8aebb]">
                       {result.improvedPrompt}
                     </p>
+                    {result.improveModel ? (
+                      <p className="mt-1 text-xs text-[#8d838f]">
+                        Rewritten by {result.improveModel}
+                      </p>
+                    ) : null}
                   </figcaption>
                 </figure>
               ) : null}
               {result.copy ? (
                 <pre className="glass min-w-0 whitespace-pre-wrap rounded-[14px] p-4 font-mono text-xs leading-relaxed text-[#f5eff6]">
                   {result.copy}
+                </pre>
+              ) : null}
+              {result.visualQa ? (
+                <pre className="glass min-w-0 whitespace-pre-wrap rounded-[14px] p-4 text-xs leading-relaxed text-[#b8aebb]">
+                  Visual QA{"\n"}
+                  {result.visualQa}
                 </pre>
               ) : null}
             </div>

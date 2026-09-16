@@ -18,6 +18,8 @@ import {
 } from "@/lib/adapters/local-studio";
 import { runMockAdapter } from "@/lib/adapters/mock";
 import { runMusicAdapter } from "@/lib/adapters/music";
+import { runZermoAdapter } from "@/lib/adapters/zermo";
+import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 import { runDirectorAdapter } from "@/lib/adapters/director";
 import { runVideoWorkflowAdapter } from "@/lib/adapters/video-workflow";
 import {
@@ -59,6 +61,7 @@ import {
   enhancePrompt,
   stripContentFilters,
 } from "@/lib/dream/presets";
+import { visualQaSummary } from "@/lib/studio/presentation";
 import type { JobTool, ModeUsed, StudioJob } from "@/lib/adapters/types";
 import { nanoid } from "nanoid";
 
@@ -74,7 +77,7 @@ export async function createAndRunJob(
   input: CreateJobInput,
 ): Promise<StudioJob> {
   const now = new Date().toISOString();
-  const { unrestricted } = await readSettings();
+  const { unrestricted, generationMode } = await readSettings();
   let workflowName = input.workflowSlug;
   let presetLabel = input.presetId;
   let prompt = "";
@@ -93,7 +96,12 @@ export async function createAndRunJob(
     workflowName = "Dream Studio";
     presetLabel = preset.label;
     aspect = ratio.aspect;
-    input.inputs.size = `${ratio.width}x${ratio.height}`;
+    if (generationMode === "zermo") {
+      const size = fitZermoSize(ratio.width, ratio.height);
+      input.inputs.size ||= `${size.width}x${size.height}`;
+      input.inputs.steps ||= "20";
+      input.inputs.cfg ||= "1";
+    } else input.inputs.size = `${ratio.width}x${ratio.height}`;
     prompt = enhancePrompt(base, preset.id, framing, assist);
     negativePrompt = enhanceNegativePrompt(
       base,
@@ -201,7 +209,9 @@ export async function createAndRunJob(
     negativePrompt,
     aspect,
     inputs: input.inputs,
-    modeUsed: "mock",
+    modeUsed: generationMode === "zermo" ? "zermo" : "mock",
+    generationMode,
+    referenceImagePath: input.referenceImagePath,
     outputs: [],
     phase: "intake",
     brandKitId: input.inputs.brandKitId || undefined,
@@ -210,21 +220,35 @@ export async function createAndRunJob(
   };
 
   await saveJob(job);
-  void processJob(job.id, input.referenceImagePath);
+  void resumeJob(job.id);
   return job;
 }
 
-async function processJob(jobId: string, referenceImagePath?: string) {
+// ponytail: one runner per job in this server process; use DB leases for multi-process hosting.
+const activeJobs = new Set<string>();
+export async function resumeJob(jobId: string) {
+  if (activeJobs.has(jobId)) return;
+  activeJobs.add(jobId);
+  try { await processJob(jobId); } finally { activeJobs.delete(jobId); }
+}
+
+async function processJob(jobId: string) {
+  const existing = await getJob(jobId);
+  if (!existing || existing.status === "completed") return;
   const settings = await readSettings();
-  await updateJob(jobId, { status: "running", progress: 12 });
+  await updateJob(jobId, { status: "running", progress: 12, error: undefined });
 
   const current = await getJob(jobId);
   if (!current) return;
+  if (current.generationMode) settings.generationMode = current.generationMode;
+  const referenceImagePath = current.referenceImagePath;
 
   try {
     let script: string | undefined;
 
-    if (current.tool === "explainer") {
+    if (current.script && settings.generationMode === "zermo") {
+      script = current.script;
+    } else if (current.tool === "explainer") {
       const preset = getExplainerPreset(current.presetId);
       const beats = Number(current.inputs.beats || 6);
       script =
@@ -292,7 +316,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       await updateJob(jobId, {
         status: "completed",
         progress: 100,
-        modeUsed: music.usedServer ? "local-studio" : "mock",
+        modeUsed: settings.generationMode === "zermo" ? "zermo" : music.usedServer ? "local-studio" : "mock",
         outputs: music.outputs,
         script: music.outputs.find((o) => o.kind === "storyboard")?.text,
       });
@@ -344,17 +368,18 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       return;
     }
 
-    const wantStudio = settings.generationMode !== "mock";
+    const wantStudio = settings.generationMode !== "mock" && settings.generationMode !== "zermo";
     const studioUp =
       wantStudio &&
       Boolean(settings.studioUrl && settings.studioApiKey) &&
       (await checkLocalStudioHealth(settings));
     const comfyUp =
+      settings.generationMode !== "zermo" &&
       settings.generationMode !== "mock" &&
       settings.generationMode !== "local-studio" &&
       (await checkComfyHealth(settings.comfyUrl));
 
-    let modeUsed: ModeUsed = "mock";
+    let modeUsed: ModeUsed = settings.generationMode === "zermo" ? "zermo" : "mock";
     if (settings.generationMode === "local-studio") {
       if (!studioUp) {
         throw new Error(
@@ -421,6 +446,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
 
     const runWith = (mode: ModeUsed, job = refreshed) => {
       const next = { ...ctx, job };
+      if (mode === "zermo") return runZermoAdapter(next, packCount);
       return mode === "local-studio"
         ? runLocalStudioAdapter(next, packCount)
         : mode === "comfyui"
@@ -445,18 +471,23 @@ async function processJob(jobId: string, referenceImagePath?: string) {
     if (!result) throw lastError ?? new Error("Could not make the art");
 
     const qc: string[] = [];
-    if (modeUsed !== "mock") {
+    if (modeUsed !== "mock" && current.inputs.visualQa === "on") {
       const subjectOut = result.outputs.find((o) => o.kind === "image" && o.url);
       const subjectCheck = await verifySubject(settings, {
         imageUrl: subjectOut?.url,
         prompt: refreshed.prompt,
       });
-      if (subjectCheck && !subjectCheck.anatomy.ok && subjectCheck.repair) {
+      if (
+        modeUsed !== "zermo" &&
+        subjectCheck.status === "checked" &&
+        !subjectCheck.review.anatomy.ok &&
+        subjectCheck.review.repair
+      ) {
         await updateJob(jobId, { phase: "subject", progress: 58 });
         try {
           result = await runWith(modeUsed, {
             ...refreshed,
-            prompt: `${refreshed.prompt}. ${subjectCheck.repair}`,
+            prompt: `${refreshed.prompt}. ${subjectCheck.review.repair}`,
           });
         } catch {
           // keep the first pass
@@ -479,7 +510,7 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       outputs: await finalizeStills(live, result.outputs, modeUsed),
     };
 
-    if (modeUsed !== "mock") {
+    if (modeUsed !== "mock" && current.inputs.visualQa === "on") {
       const creative = [...result.outputs]
         .reverse()
         .find((o) => o.kind === "image" && /creative/i.test(o.label));
@@ -491,15 +522,14 @@ async function processJob(jobId: string, referenceImagePath?: string) {
       qc.push(formatReviewNote("Layout", layoutCheck));
     }
 
-    if (qc.length) {
-      result.outputs.push({
-        id: nanoid(8),
-        kind: "text",
-        label: "Check",
-        text: qc.join("\n\n"),
-      });
-      script = [script, "CHECK", qc.join("\n")].filter(Boolean).join("\n\n");
-    }
+    const qaSummary = visualQaSummary(current.inputs.visualQa, modeUsed, qc);
+    result.outputs.push({
+      id: nanoid(8),
+      kind: "text",
+      label: "Visual QA",
+      text: qaSummary,
+    });
+    script = [script, "VISUAL QA", qaSummary].filter(Boolean).join("\n\n");
 
     await updateJob(jobId, { progress: 75, outputs: result.outputs });
 
@@ -569,13 +599,19 @@ async function processJob(jobId: string, referenceImagePath?: string) {
   }
 }
 
-async function imageDataUri(url?: string): Promise<string | undefined> {
-  if (!url) return undefined;
+export async function imageDataUri(url?: string, required = false): Promise<string | undefined> {
+  if (!url) {
+    if (required) throw new Error("Generated subject is missing; remote render retained");
+    return undefined;
+  }
   try {
     const name = url.split("/").pop()!;
+    if (!name || name.includes("..") || name.includes("\\") || name.includes("\0")) throw new Error("Invalid subject path");
     const file = path.join(process.cwd(), ".data", "outputs", name);
+    const info = await fs.stat(file);
+    if (!info.isFile() || info.size > 8 * 1024 * 1024) throw new Error("Subject exceeds composition byte limit");
     const buf = await fs.readFile(file);
-    if (buf.byteLength >= 8 * 1024 * 1024) return undefined;
+    if (!buf.byteLength || buf.byteLength > 8 * 1024 * 1024) throw new Error("Invalid subject size");
     const mime = name.endsWith(".webp")
       ? "image/webp"
       : name.endsWith(".jpg") || name.endsWith(".jpeg")
@@ -583,6 +619,7 @@ async function imageDataUri(url?: string): Promise<string | undefined> {
         : "image/png";
     return `data:${mime};base64,${buf.toString("base64")}`;
   } catch {
+    if (required) throw new Error("Generated subject could not be read or exceeds 8 MiB; remote render retained");
     return undefined;
   }
 }
@@ -608,7 +645,10 @@ async function finalizeStills(
 
   const brand = await brandPaletteFor(job);
   const images = outputs.filter((o) => o.kind === "image" && o.url);
-  if (!images.length) return outputs;
+  if (!images.length) {
+    if (modeUsed !== "mock") throw new Error("Generated subject is missing; remote render retained");
+    return outputs;
+  }
 
   if (wrapImage2) {
     const wrapper = getImage2Wrapper(job.workflowSlug);
@@ -622,7 +662,7 @@ async function finalizeStills(
       aspect: job.aspect,
       jobId: job.id,
       subjectHint: job.inputs.productDescription || job.prompt,
-      subjectImageDataUri: await imageDataUri(subject?.url),
+      subjectImageDataUri: await imageDataUri(subject?.url, true),
       brand,
       outfitThumbs: (
         await Promise.all(images.slice(1, 5).map((o) => imageDataUri(o.url)))
@@ -668,7 +708,7 @@ async function finalizeStills(
       aspect: job.aspect,
       jobId: job.id,
       subjectHint: job.prompt,
-      subjectImageDataUri: await imageDataUri(image.url),
+      subjectImageDataUri: await imageDataUri(image.url, modeUsed !== "mock"),
       brand,
     });
     extras.push({

@@ -1,5 +1,7 @@
 "use client";
 
+import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
+import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 import { LOOKS, RUNTIMES } from "@/lib/director/plan";
@@ -13,12 +15,12 @@ const MODES = [
   {
     id: "music-video",
     label: "Music video",
-    blurb: "Writes the track first, then cuts every shot to the beat.",
+    blurb: "ACE score + lyrics, Flux.1 stills, WAN 5B clips per key shot.",
   },
   {
     id: "film",
     label: "Short film",
-    blurb: "Walks six acts, tightening the framing as the tension climbs.",
+    blurb: "Six acts, WAN clips per window, ACE bed.",
   },
 ] as const;
 
@@ -27,6 +29,12 @@ const PACES = [
   { id: "steady", label: "Steady", blurb: "Even cuts, conversational" },
   { id: "fast", label: "Fast", blurb: "Short holds, forward drive" },
   { id: "frantic", label: "Frantic", blurb: "Rapid cuts, high pressure" },
+];
+
+const LYRIC_MODES = [
+  { id: "instrumental", label: "No words", blurb: "Just the music" },
+  { id: "write", label: "Write them", blurb: "Words to match the brief" },
+  { id: "own", label: "Use mine", blurb: "Paste your own" },
 ];
 
 const ASPECTS = [
@@ -41,6 +49,7 @@ const selectClass =
 const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
 export default function DirectorPage() {
+  const { zermo } = useStudioConnection();
   const [mode, setMode] = useState<"music-video" | "film">("music-video");
   const [brief, setBrief] = useState("");
   const [runtime, setRuntime] = useState("180");
@@ -49,6 +58,8 @@ export default function DirectorPage() {
   const [aspect, setAspect] = useState("16:9");
   const [genre, setGenre] = useState("synthwave");
   const [mood, setMood] = useState("neutral");
+  const [lyricMode, setLyricMode] = useState("write");
+  const [lyrics, setLyrics] = useState("");
   const { job, setJob } = useJobWatch("director", 1500);
   const [error, setError] = useState<string | null>(null);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
@@ -78,6 +89,9 @@ export default function DirectorPage() {
             aspect,
             genre,
             mood,
+            lyricMode,
+            lyrics,
+            seconds: String(Math.min(90, Math.max(10, Number(runtime) || 180))),
           },
         }),
       });
@@ -87,14 +101,16 @@ export default function DirectorPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the plan");
     }
-  }, [brief, mode, runtime, look, pacing, aspect, genre, mood, setJob]);
+  }, [brief, mode, runtime, look, pacing, aspect, genre, mood, lyricMode, lyrics, setJob]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const shotList = job?.outputs.find((o) => o.kind === "storyboard");
   const windows = job?.outputs.find((o) => o.kind === "text" && o.text);
   const listFile = job?.outputs.find((o) => o.kind === "text" && o.url);
   const soundtrack = job?.outputs.find((o) => o.kind === "audio");
+  const lyricSheet = job?.outputs.find((o) => o.kind === "script");
   const frames = job?.outputs.filter((o) => o.kind === "image" && o.url) ?? [];
+  const clips = job?.outputs.filter((o) => o.kind === "video" && o.url) ?? [];
   const activeMode = MODES.find((m) => m.id === mode)!;
 
   return (
@@ -108,7 +124,8 @@ export default function DirectorPage() {
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
           Plan a whole piece instead of a single clip — up to an hour of shots
-          with timecodes, key frames, and a score underneath.
+          with timecodes and key frames. This is a plan, not a rendered film.
+          Zermo makes still key frames only; native score, video, and narration are not enabled.
         </p>
       </header>
 
@@ -280,6 +297,36 @@ export default function DirectorPage() {
                 </div>
               </div>
             ) : null}
+            <fieldset className="min-w-0 border-t border-white/10 py-4">
+              <legend className="text-sm font-medium text-[#b8aebb]">Words</legend>
+              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+                {LYRIC_MODES.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    aria-pressed={lyricMode === m.id}
+                    onClick={() => setLyricMode(m.id)}
+                    className={cn(
+                      "grid min-h-11 min-w-0 gap-0.5 rounded-[10px] border px-3 py-2 text-left transition-colors",
+                      lyricMode === m.id
+                        ? "border-[#d565d6] bg-[#2c162f] text-[#e77ae6]"
+                        : "border-white/10 bg-white/5 text-[#b8aebb] hover:border-white/15 hover:text-[#f5eff6]",
+                    )}
+                  >
+                    <span className="text-sm font-bold">{m.label}</span>
+                    <span className="text-sm text-[#8d838f]">{m.blurb}</span>
+                  </button>
+                ))}
+              </div>
+              {lyricMode === "own" ? (
+                <textarea
+                  className="mt-3 min-h-28 w-full rounded-[10px] border border-white/10 bg-white/10 p-3 text-sm text-[#f5eff6]"
+                  value={lyrics}
+                  onChange={(e) => setLyrics(e.currentTarget.value)}
+                  placeholder="Verse / chorus — blank line between parts"
+                />
+              ) : null}
+            </fieldset>
           </div>
 
           {error ? (
@@ -330,6 +377,19 @@ export default function DirectorPage() {
               />
             </div>
           ) : null}
+          {lyricSheet?.text ? (
+            <pre className="mt-4 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono text-xs text-[#b8aebb]">{lyricSheet.text}</pre>
+          ) : null}
+          {clips.length ? (
+            <ul className="mt-4 grid gap-3">
+              {clips.map((c) => (
+                <li key={c.id}>
+                  <p className="text-xs text-[#b8aebb]">{c.label}</p>
+                  <video src={c.url} controls preload="none" className="mt-1 w-full rounded-[10px]" />
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </aside>
 
         <section className="min-w-0 pt-3 xl:col-start-1">
@@ -339,6 +399,8 @@ export default function DirectorPage() {
           <h2 className="mt-1 text-lg text-[#f5eff6]">
             {frames.length ? `${frames.length} frames` : "Frames"}
           </h2>
+          <ZermoJobStatus job={job} onResume={setJob} />
+          {zermo ? <p className="mt-2 text-xs text-[#b8aebb]">Director cut: Flux.1 stills → WAN 2.2 5B I2V (17f/8step) per key shot, ACE score + lyrics. FastWan-QAD is FastVideo, not this Comfy worker.</p> : null}
           {frames.length ? (
             <ul className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {frames.map((f) => (

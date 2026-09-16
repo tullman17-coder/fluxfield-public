@@ -12,6 +12,9 @@ import {
 } from "@/lib/adapters/local-studio";
 import { checkComfyHealth, runComfyAdapter } from "@/lib/adapters/comfyui";
 import { hueToHex, renderArt } from "@/lib/art/render";
+import { applyDreamPreset } from "@/lib/dream/presets";
+import { runZermoAdapter } from "./zermo";
+import { fitZermoSize } from "./zermo-image-size";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -51,18 +54,32 @@ async function writeMockFrame(
   };
 }
 
-function withShotPrompt(ctx: AdapterContext, prompt: string): AdapterContext {
+function withShotContext(
+  ctx: AdapterContext,
+  shot: DirectorFrameShot,
+  size: { w: number; h: number },
+): AdapterContext {
+  const fitted = fitZermoSize(size.w, size.h);
   return {
     ...ctx,
     job: {
       ...ctx.job,
-      prompt,
+      prompt: applyDreamPreset(shot.prompt, shot.style),
+      inputs: {
+        ...ctx.job.inputs,
+        size:
+          ctx.job.inputs.size || `${fitted.width}x${fitted.height}`,
+        seed:
+          ctx.job.inputs.seed ||
+          (shot.seed === undefined ? "" : String(shot.seed)),
+      },
     },
   };
 }
 
 async function resolveFrameMode(ctx: AdapterContext): Promise<ModeUsed> {
   const { settings } = ctx;
+  if (settings.generationMode === "zermo") return "zermo";
   const wantStudio = settings.generationMode !== "mock";
   const studioUp =
     wantStudio &&
@@ -103,10 +120,20 @@ export async function generateDirectorFrames(
   let liveSucceeded = 0;
 
   for (const shot of capped) {
+    if (modeUsed === "zermo") {
+      const result = await runZermoAdapter(
+        withShotContext(ctx, shot, size),
+        1,
+        `frame:${outputs.length}`,
+      );
+      outputs.push(...result.outputs.map((o) => ({ ...o, label: shot.label })));
+      liveSucceeded += 1;
+      continue;
+    }
     if (modeUsed === "local-studio") {
       try {
         const result = await runLocalStudioAdapter(
-          withShotPrompt(ctx, shot.prompt),
+          withShotContext(ctx, shot, size),
           1,
         );
         const frame = result.outputs.find((o) => o.kind === "image");
@@ -120,7 +147,7 @@ export async function generateDirectorFrames(
       }
     } else if (modeUsed === "comfyui") {
       try {
-        const result = await runComfyAdapter(withShotPrompt(ctx, shot.prompt));
+        const result = await runComfyAdapter(withShotContext(ctx, shot, size));
         const frame = result.outputs.find((o) => o.kind === "image");
         if (frame) {
           outputs.push({ ...frame, label: shot.label, id: nanoid(8) });

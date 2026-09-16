@@ -22,6 +22,9 @@ import {
   generateDirectorFrames,
   MAX_DIRECTOR_FRAMES,
 } from "@/lib/adapters/director-frames";
+import { runMusicAdapter } from "@/lib/adapters/music";
+import { runZermoVideoAdapter } from "@/lib/adapters/zermo";
+import { concatClips } from "@/lib/adapters/ffmpeg";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -73,16 +76,17 @@ export async function runDirectorAdapter(
   const inputs = ctx.job.inputs;
   const mode = inputs.mode === "film" ? "film" : "music-video";
   const runtimeSec = Math.max(30, Math.min(3600, Number(inputs.runtime || 180)));
+  const brief = inputs.brief?.trim() || ctx.job.prompt.trim();
 
   const production = planProduction({
     mode,
-    brief: inputs.brief || ctx.job.prompt,
+    brief,
     runtimeSec,
     look: inputs.look || "cinematic",
     pacing: (inputs.pacing as Pacing) || "steady",
     genre: inputs.genre || "synthwave",
     mood: inputs.mood || "neutral",
-    seedText: `${ctx.job.id}:${inputs.brief || ctx.job.prompt}`,
+    seedText: `${ctx.job.id}:${brief}`,
   });
 
   await fs.mkdir(OUT_DIR, { recursive: true });
@@ -122,6 +126,7 @@ export async function runDirectorAdapter(
       targetSec: Math.min(production.runtimeSec, 240),
       seedText: `${ctx.job.id}:score`,
     });
+  if (ctx.settings.generationMode !== "zermo") {
   const rendered = renderArrangement(score, `${ctx.job.id}:${production.title}`);
   const wav = encodeWav(rendered.left, rendered.right, rendered.sampleRate);
   const wavName = `${ctx.job.id}-${nanoid(8)}.wav`;
@@ -140,8 +145,18 @@ export async function runDirectorAdapter(
     url: `/api/outputs/${wavName}`,
   });
 
+  } else {
+    ctx.job.inputs.seconds = String(Math.min(90, Math.max(10, runtimeSec)));
+    if (!ctx.job.inputs.lyricMode) ctx.job.inputs.lyricMode = mode === "music-video" ? "write" : "instrumental";
+    const music = await runMusicAdapter(ctx);
+    outputs.push(...music.outputs);
+  }
+
   // Key frames — live GPU when Studio/Comfy is up, otherwise local art.
-  const size = ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];
+  const size = ctx.settings.generationMode === "zermo"
+    ? { w: 640, h: 352 }
+    : ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];
+  if (ctx.settings.generationMode === "zermo") ctx.job.inputs.size = "640x352";
   const keyShots = pickKeyShots(production);
   // One palette for the whole piece. Without this each frame picks its own hue
   // from its own prompt and a storyboard reads like twelve unrelated films.
@@ -153,7 +168,15 @@ export async function runDirectorAdapter(
     const drift = Math.sin(progress * Math.PI * 2) * 20 + (shot.index % 3) * 5;
     return {
       label: `${shot.timecode} · ${shot.size} · ${shot.section}`,
-      prompt: `${production.title} ${shot.section} ${shot.size} ${shot.move} ${shot.action}`,
+      prompt: [
+        brief,
+        `Scene: ${shot.section}.`,
+        `Shot: ${shot.size}, ${shot.move}.`,
+        `Action: ${shot.action}.`,
+        `Visual look: ${production.look}.`,
+      ]
+        .filter(Boolean)
+        .join(" "),
       style: production.look,
       hue: baseHue + drift,
       seed: hash32(`${production.title}:${shot.index}:${shot.move}`),
@@ -161,6 +184,21 @@ export async function runDirectorAdapter(
   });
   const frames = await generateDirectorFrames(ctx, frameShots, size);
   outputs.push(...frames.outputs);
+
+  if (ctx.settings.generationMode === "zermo") {
+    const clipUrls: string[] = [];
+    const stills = frames.outputs.filter((o) => o.kind === "image" && o.url);
+    for (let i = 0; i < stills.length; i++) {
+      const imagePath = path.join(OUT_DIR, path.basename(stills[i]!.url!));
+      await fs.access(imagePath);
+      const clip = await runZermoVideoAdapter(ctx, imagePath, frameShots[i]?.prompt || brief, `video:wan:${i}`);
+      outputs.push(...clip.outputs);
+      for (const o of clip.outputs) if (o.kind === "video" && o.url) clipUrls.push(o.url);
+    }
+    const audioUrl = outputs.find((o) => o.kind === "audio")?.url;
+    const cut = await concatClips({ jobId: ctx.job.id, videoUrls: clipUrls, audioUrl });
+    if (cut) outputs.push(cut);
+  }
 
   // Window plan — what is rendered and what is still queued.
   const windowLines = production.windows.map((w) => {

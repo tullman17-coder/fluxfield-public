@@ -1,4 +1,5 @@
 import { checkComfyHealth } from "@/lib/adapters/comfyui";
+import { checkZermoHealth } from "./zermo";
 import { checkLocalStudioHealth } from "@/lib/adapters/local-studio";
 import type { ModeUsed, StudioSettings } from "@/lib/adapters/types";
 
@@ -11,8 +12,9 @@ import type { ModeUsed, StudioSettings } from "@/lib/adapters/types";
  */
 export function pickMode(
   settings: StudioSettings,
-  reach: { studioReady: boolean; comfy: boolean },
-): ModeUsed | "local-studio-unreachable" | "comfyui-unreachable" {
+  reach: { studioReady: boolean; comfy: boolean; zermoReady?: boolean },
+): ModeUsed | "local-studio-unreachable" | "comfyui-unreachable" | "zermo-unreachable" {
+  if (settings.generationMode === "zermo") return reach.zermoReady ? "zermo" : "zermo-unreachable";
   if (settings.generationMode === "mock") return "mock";
   if (settings.generationMode === "local-studio") {
     return reach.studioReady ? "local-studio" : "local-studio-unreachable";
@@ -27,6 +29,10 @@ export function pickMode(
 
 /** Probes the configured machines and reports which one would be used. */
 export async function currentMode(settings: StudioSettings) {
+  if (settings.generationMode === "zermo") {
+    const zermo = await checkZermoHealth();
+    return { comfy: false, studio: false, studioReady: false, zermo, mode: pickMode(settings, { comfy: false, studioReady: false, zermoReady: zermo.ready }) };
+  }
   const [comfy, studio] = await Promise.all([
     checkComfyHealth(settings.comfyUrl),
     checkLocalStudioHealth(settings),
