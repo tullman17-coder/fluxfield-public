@@ -80,13 +80,13 @@ export async function generateZermoText(prompt: string) {
   if (!prompt.trim() || prompt.length > 32000) throw new Error("Writing request must be 1–32000 characters");
   const response = await request("/chat/completions", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "local-auto", messages: [{ role: "user", content: prompt }], max_tokens: 2048, temperature: 0.7, chat_template_kwargs: { enable_thinking: false } }),
+    body: JSON.stringify({ model: "local-auto", messages: [{ role: "user", content: prompt }], max_tokens: 4096, temperature: 0.7, chat_template_kwargs: { enable_thinking: false } }),
     signal: AbortSignal.timeout(120_000),
   }, false);
   let data;
   try { data = JSON.parse((await boundedBytes(response, 1024 * 1024)).toString()); }
   catch { throw new Error("Writing service returned an invalid response"); }
-  if (data?.choices?.[0]?.finish_reason === "length") throw new Error("Writing response was truncated; no partial result was accepted");
+  if (data?.choices?.[0]?.finish_reason === "length" && !(typeof data?.choices?.[0]?.message?.content === "string" && data.choices[0].message.content.trim())) throw new Error("Writing response was truncated; no partial result was accepted");
   const text = data?.choices?.[0]?.message?.content;
   if (typeof text !== "string" || !text.trim()) throw new Error("Writing service returned empty content");
   const model = data.model;

@@ -75,8 +75,7 @@ export default function ExplainerPage() {
           Explain with a script and scene art
         </h1>
         <p className="mt-2 max-w-2xl text-[#b8aebb]">
-          Pick a look and describe your topic. Zermo writes the script and makes still scene art.
-          Narration and native video generation are not enabled in Zermo mode.
+          Script, Flux.1 stills, WAN 49f last-frame chain, and VO when TTS is up.
         </p>
       </div>
 

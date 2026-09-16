@@ -199,18 +199,20 @@ export async function generateExplainerScript(
     duration: string;
   },
 ): Promise<string | undefined> {
-  return ollamaGenerate(
-    settings,
-    `Write an explainer video script in style "${args.presetName}" about: ${args.topic}
-Duration target: ${args.duration}
-Produce exactly ${args.beats} numbered beats.
+  try {
+    return await ollamaGenerate(
+      settings,
+      `Write an explainer script, style "${args.presetName}", topic: ${args.topic.slice(0, 500)}
+Duration ${args.duration}. Exactly ${Math.min(args.beats, 12)} beats.
+Each beat: one short visual + one VO sentence under 18 words.
 Format:
 TITLE:
 BEAT 1: [visual] | [VO]
-BEAT 2: ...
-...
 END CARD:`,
-  );
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 /**

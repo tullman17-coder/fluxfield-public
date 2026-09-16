@@ -19,7 +19,8 @@ import {
 } from "@/lib/adapters/local-studio";
 import { runMockAdapter } from "@/lib/adapters/mock";
 import { runMusicAdapter } from "@/lib/adapters/music";
-import { runZermoAdapter } from "@/lib/adapters/zermo";
+import { runZermoAdapter, runChainedWanClips, WAN_FAST } from "@/lib/adapters/zermo";
+import { assembleExplainerVideo, concatClips, checkFfmpeg } from "@/lib/adapters/ffmpeg";
 import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 import { runDirectorAdapter } from "@/lib/adapters/director";
 import { runVideoWorkflowAdapter } from "@/lib/adapters/video-workflow";
@@ -35,7 +36,6 @@ import {
   generateMarketingCopy,
 } from "@/lib/adapters/ollama";
 import { synthesizeSpeech } from "@/lib/adapters/tts";
-import { assembleExplainerVideo } from "@/lib/adapters/ffmpeg";
 import { composeCreative } from "@/lib/compose/engine";
 import {
   applyMarketingCopy,
@@ -429,6 +429,12 @@ async function processJob(jobId: string) {
       packCount = 1;
     } else if (current.tool === "dream") {
       packCount = Math.min(4, Math.max(1, Number(current.inputs.count || 1)));
+    } else if (current.tool === "explainer") {
+      packCount = Math.min(12, Math.max(1, Number(current.inputs.beats || 6)));
+      if (settings.generationMode === "zermo") {
+        refreshed.inputs.size = "640x352";
+        ctx.job.inputs.size = "640x352";
+      }
     } else {
       packCount = Number(current.inputs.beats || 6);
     }
@@ -556,9 +562,29 @@ async function processJob(jobId: string) {
         .filter((o) => o.kind === "image" && o.url)
         .map((o) => o.url!);
 
-      let video;
-      if (settings.ffmpegEnabled) {
-        video = await assembleExplainerVideo({
+      const extras: NonNullable<typeof audio>[] = [];
+      if (audio) extras.push(audio);
+
+      if (modeUsed === "zermo") {
+        const outDir = path.join(process.cwd(), ".data", "outputs");
+        const chained = await runChainedWanClips(
+          { settings, job: (await getJob(jobId)) ?? current, referenceImagePath: undefined },
+          imageUrls.map((url) => ({
+            imagePath: path.join(outDir, path.basename(url)),
+            prompt: current.prompt,
+          })),
+        );
+        extras.push(...chained.outputs.filter((o) => o.kind === "video" || o.kind === "audio"));
+        const cut = await concatClips({
+          jobId,
+          videoUrls: chained.clipUrls,
+          audioUrl: audio?.url,
+          clipSec: WAN_FAST.frames / WAN_FAST.fps,
+          xfade: WAN_FAST.xfade,
+        });
+        if (cut) extras.push(cut);
+      } else if (await checkFfmpeg()) {
+        const video = await assembleExplainerVideo({
           jobId,
           imageUrls,
           audioUrl: audio?.url,
@@ -566,11 +592,9 @@ async function processJob(jobId: string) {
             getDurationSeconds(current.inputs.duration || "1m") /
             Math.max(1, imageUrls.length),
         });
+        if (video) extras.push(video);
       }
 
-      const extras = [audio, video].filter(
-        (o): o is NonNullable<typeof o> => Boolean(o),
-      );
       result = {
         ...result,
         outputs: [...result.outputs, ...extras],
