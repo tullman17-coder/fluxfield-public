@@ -1,12 +1,5 @@
-import { createRequire } from "node:module";
 import path from "path";
-
-type ResvgCtor = typeof import("@resvg/resvg-js").Resvg;
-
-function loadResvg(): ResvgCtor {
-  const require = createRequire(path.join(process.cwd(), "package.json"));
-  return require("@resvg/resvg-js").Resvg as ResvgCtor;
-}
+import { Resvg } from "@resvg/resvg-js";
 
 const FONT_DIR = path.join(process.cwd(), "public", "fonts");
 
@@ -51,7 +44,6 @@ export function measureSvgText(
   if (cached !== undefined) return cached;
 
   const size = Math.max(1, options.size);
-  const Resvg = loadResvg();
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100000" height="${Math.ceil(size * 4)}"><text x="0" y="${Math.ceil(size * 2)}" font-family="${escapeSvgText(options.family)}" font-size="${size}" font-weight="${options.weight ?? 400}"${options.letterSpacing === undefined ? "" : ` letter-spacing="${options.letterSpacing}"`}>${escapeSvgText(text)}</text></svg>`;
   const bbox = new Resvg(svg, {
     font: {
@@ -73,7 +65,6 @@ export function measureSvgText(
 
 /** Bake an SVG string to PNG bytes using bundled Fluxfield fonts. */
 export async function bakeSvgToPng(svg: string): Promise<Buffer> {
-  const Resvg = loadResvg();
   const resvg = new Resvg(svg, {
     fitTo: { mode: "original" },
     font: {
