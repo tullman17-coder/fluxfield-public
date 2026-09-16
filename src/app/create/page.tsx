@@ -371,7 +371,7 @@ export default function CreatePage() {
             <legend className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#b8aebb]">
               Style
             </legend>
-            <p className="mb-3 text-xs text-[#8d838f]">{zermo ? "Chroma Flash Q4 · one model, different prompt styles." : "Prompt styles for the selected image provider."}</p>
+            <p className="mb-3 text-xs text-[#8d838f]">{zermo ? "Flux.1-dev Q4 · one model, different prompt styles." : "Prompt styles for the selected image provider."}</p>
             <label className="mb-3 flex min-h-11 items-center gap-3 text-sm text-[#b8aebb]">
               <input type="checkbox" checked={adultCategory && unrestricted} disabled={!unrestricted}
                 onChange={(e) => { setAdultCategory(e.target.checked); setPreset(e.target.checked ? "boudoir" : "dream"); }} />
@@ -393,7 +393,7 @@ export default function CreatePage() {
                       : "border-white/10 glass text-[#b8aebb] hover:border-white/15 hover:bg-white/15 hover:text-[#f5eff6]",
                   )}
                 >
-                  <span>{zermo ? `Chroma · ${p.label}` : p.label}</span>
+                  <span>{zermo ? `Flux.1 · ${p.label}` : p.label}</span>
                   <small className="mt-1 block text-xs font-normal text-[#b8aebb]">{p.example}</small>
                 </button>
               ))}

@@ -73,7 +73,7 @@ assert.equal(
   visualQaSummary("on", "zermo", ["Subject: skipped (no vision model)"]),
   "Subject: skipped (no vision model)",
 );
-assert.deepEqual(ZERMO_IMAGE_PROFILES.map((x) => x.steps), ["4", "8"]);
+assert.deepEqual(ZERMO_IMAGE_PROFILES.map((x) => x.steps), ["8", "20"]);
 assert.deepEqual(settingsWritePayload({ generationMode: "zermo", studioApiKey: "", improveApiKey: "  ", hasStudioApiKey: true }), { generationMode: "zermo" });
 assert.deepEqual(settingsWritePayload({ studioApiKey: "replacement" }), { studioApiKey: "replacement" });
 assert(visibleDreamPresets(true).every((p) => !MATURE_PRESETS.some((m) => m.id === p.id)));
@@ -84,7 +84,7 @@ const ids = ["editorial-motion", "stickman-cartoon", "watercolor-chronicle", "fa
 assert.deepEqual(EXPLAINER_PRESETS.map((p) => p.id), ids);
 for (const p of EXPLAINER_PRESETS) {
   assert.equal(p.previewImage, `/examples/explainer/${p.id}.webp`);
-  assert(p.styleAlias.startsWith("Chroma · "));
+  assert(p.styleAlias.startsWith("Flux.1 · "));
   assert(p.example.length > 5);
 }
 const provenance = JSON.parse(
@@ -102,8 +102,4 @@ assert.equal(
   pastel.preview_sha256,
   createHash("sha256").update(pastelBytes).digest("hex"),
 );
-assert.deepEqual(pastel.preview_crop, {
-  source_box: [0, 20, 696, 411],
-  output_size: [768, 432],
-});
 console.log("Studio UI behavior checks passed");

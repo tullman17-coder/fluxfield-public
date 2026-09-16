@@ -17,7 +17,7 @@ async function loadHealth(force = false) {
 }
 
 const ENGINE_LABEL: Record<string, string> = {
-  zermo: "Zermo API",
+  zermo: "Flux.1 / WAN / ACE",
   "zermo-unreachable": "Zermo unavailable — no fallback",
   "local-studio": "Studio",
   comfyui: "Comfy",

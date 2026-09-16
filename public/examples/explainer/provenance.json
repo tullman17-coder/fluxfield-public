@@ -4,268 +4,245 @@
     "title": "Editorial Motion",
     "request": {
       "operation": "image.generate",
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "prompt": "Editorial motion graphics still, elegant framed panels showing a sunny mountain river, clouds and lake; one friendly adult scientist pointing to the water cycle; soft stylized 3D clay character, sophisticated magazine composition, teal and coral accents. No words, letters, labels, watermark or logo.",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "seed": 2026091401,
       "settings": {
         "width": 768,
         "height": 432,
-        "steps": 8
+        "steps": 20
       }
     },
-    "job_id": "job_8c8c11a8a4d44811e29706e336ad9cfc",
-    "started_wall": 1789355851.236953,
-    "asset_id": "asset_309aa2ce293b097c1c304d117c446edc",
+    "job_id": "job_211d16488eedf1866da54d6e151a9b11",
+    "asset_id": "asset_ebf26be8f001d142ee0763ba8cacb9cd",
     "effective": {
       "inputs": {},
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "operation": "image.generate",
-      "prompt": "Editorial motion graphics still, elegant framed panels showing a sunny mountain river, clouds and lake; one friendly adult scientist pointing to the water cycle; soft stylized 3D clay character, sophisticated magazine composition, teal and coral accents. No words, letters, labels, watermark or logo.",
-      "seed": 2026091401,
+      "prompt": "Editorial motion graphics still, elegant framed panels showing a sunny mountain river, clouds and lake; one friendly adult scientist pointing to the water cycle; soft stylized 3D clay character, sophisticated magazine composition, teal and coral accents. No words, letters, labels, watermark or logo., correct human anatomy, two arms, two legs, five fingers per hand, no extra limbs",
+      "seed": "2026091401",
       "settings": {
         "cfg": 1,
         "count": 1,
         "height": 432,
-        "sampler": "heun",
-        "steps": 8,
+        "sampler": "euler",
+        "steps": 20,
         "width": 768
       }
     },
-    "workflow_revision": "chroma-flash-q4-baseline:28b9ce1194dc3591",
-    "source_sha256": "db2e38ce88495bdf64a1c09ee633771edf7772d8ccb73d6df06ac58e6b3f2afd",
-    "source_bytes": 480419,
-    "preview_sha256": "01a84b015c53a5cf32ad0c88f33b0592e08b3cddb995f31f0a7b10ce6e405195",
-    "preview_bytes": 47438,
-    "download_seconds": 0.048,
-    "job_elapsed_seconds": 31.089,
+    "source_sha256": "98d0a1711a87562d0cf96833064af47b5bad7597bf157cfddb97f4138d7d4c97",
+    "source_bytes": 393699,
+    "preview_sha256": "becacbd6489ff335ddd51b1635aadc060806d82f10175113a1d179720705f3c1",
+    "preview_bytes": 13922,
     "preview_url": "/examples/explainer/editorial-motion.webp",
-    "kind": "generated still sample"
+    "kind": "generated still sample",
+    "model": "flux1-dev-q4"
   },
   {
     "slug": "stickman-cartoon",
     "title": "Stickman Cartoon",
     "request": {
       "operation": "image.generate",
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "prompt": "A cheerful hand-drawn stick figure holding an umbrella beside a simple mountain river and lake, smiling rain cloud and bright sun above, educational water cycle illustration, bold black ink outlines, sparse flat pastel fills on warm cream paper, clever clean comic composition. No words, letters, labels, watermark or logo.",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "seed": 2026091402,
       "settings": {
         "width": 768,
         "height": 432,
-        "steps": 8
+        "steps": 20
       }
     },
-    "job_id": "job_eb6b9d0b89cc8f54b6cc2964891814e8",
-    "started_wall": 1789355883.163275,
-    "asset_id": "asset_352ec02ba046416ee3b32771ef6d28aa",
+    "job_id": "job_b2b530cfedaff5c8bfc0c99499c7c50e",
+    "asset_id": "asset_22863404a049743362b5f02e8d395977",
     "effective": {
       "inputs": {},
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "operation": "image.generate",
-      "prompt": "A cheerful hand-drawn stick figure holding an umbrella beside a simple mountain river and lake, smiling rain cloud and bright sun above, educational water cycle illustration, bold black ink outlines, sparse flat pastel fills on warm cream paper, clever clean comic composition. No words, letters, labels, watermark or logo.",
-      "seed": 2026091402,
+      "prompt": "A cheerful hand-drawn stick figure holding an umbrella beside a simple mountain river and lake, smiling rain cloud and bright sun above, educational water cycle illustration, bold black ink outlines, sparse flat pastel fills on warm cream paper, clever clean comic composition. No words, letters, labels, watermark or logo., correct human anatomy, two arms, two legs, five fingers per hand, no extra limbs",
+      "seed": "2026091402",
       "settings": {
         "cfg": 1,
         "count": 1,
         "height": 432,
-        "sampler": "heun",
-        "steps": 8,
+        "sampler": "euler",
+        "steps": 20,
         "width": 768
       }
     },
-    "workflow_revision": "chroma-flash-q4-baseline:28b9ce1194dc3591",
-    "source_sha256": "667e6c83e93500f86c268c6817c30ee804d336a05b9e41e38d985902a0cd83d1",
-    "source_bytes": 480507,
-    "preview_sha256": "164051bb68b662d1210c79fbd4c8631aa82ed1dd7de95214485b1b9a42a48920",
-    "preview_bytes": 59632,
-    "download_seconds": 0.04,
-    "job_elapsed_seconds": 25.442,
+    "source_sha256": "1a31da7f67392aab290574251bff718739d4f03f7ae635533ac3790f3be752f4",
+    "source_bytes": 377634,
+    "preview_sha256": "db3d8b2376ae0f95b0d8c5cd7cc94342312c1fced428203e9544f123fe54559f",
+    "preview_bytes": 17712,
     "preview_url": "/examples/explainer/stickman-cartoon.webp",
-    "kind": "generated still sample"
+    "kind": "generated still sample",
+    "model": "flux1-dev-q4"
   },
   {
     "slug": "watercolor-chronicle",
     "title": "Watercolor Chronicle",
     "request": {
       "operation": "image.generate",
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "prompt": "A watercolor illustration of a hillside village, old watermill and river flowing into a lake, rain clouds parting for golden sunlight, educational water cycle scene, wet-on-wet blue and green pigment, documentary landscape, visible cotton paper tooth, beautiful loose painterly washes. No words, letters, labels, watermark or logo.",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "seed": 2026091403,
       "settings": {
         "width": 768,
         "height": 432,
-        "steps": 8
+        "steps": 20
       }
     },
-    "job_id": "job_8bf427799f130f0facabbda674579e1b",
-    "started_wall": 1789355909.363432,
-    "asset_id": "asset_f27b3dbf66f213d718de638c78de0b34",
+    "job_id": "job_368a6f0f21b340ade6424f9f701bd632",
+    "asset_id": "asset_e1eed037c4f38eb5630f69feebffec88",
     "effective": {
       "inputs": {},
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "operation": "image.generate",
-      "prompt": "A watercolor illustration of a hillside village, old watermill and river flowing into a lake, rain clouds parting for golden sunlight, educational water cycle scene, wet-on-wet blue and green pigment, documentary landscape, visible cotton paper tooth, beautiful loose painterly washes. No words, letters, labels, watermark or logo.",
-      "seed": 2026091403,
+      "prompt": "A watercolor illustration of a hillside village, old watermill and river flowing into a lake, rain clouds parting for golden sunlight, educational water cycle scene, wet-on-wet blue and green pigment, documentary landscape, visible cotton paper tooth, beautiful loose painterly washes. No words, letters, labels, watermark or logo., correct human anatomy, two arms, two legs, five fingers per hand, no extra limbs",
+      "seed": "2026091403",
       "settings": {
         "cfg": 1,
         "count": 1,
         "height": 432,
-        "sampler": "heun",
-        "steps": 8,
+        "sampler": "euler",
+        "steps": 20,
         "width": 768
       }
     },
-    "workflow_revision": "chroma-flash-q4-baseline:28b9ce1194dc3591",
-    "source_sha256": "5c6f328310de2d927989a9120ea8ae39f56abb37f54731fee29c8f5f899af928",
-    "source_bytes": 577400,
-    "preview_sha256": "2fb596357bdfdbb060189e57732cffed6efddfc12b67b61e728aebfdaf942418",
-    "preview_bytes": 68680,
-    "download_seconds": 0.034,
-    "job_elapsed_seconds": 25.541,
+    "source_sha256": "2ddbcfe93f25062975fe92e5ca3047d56116559d880dfdc795bfea3181ecff2f",
+    "source_bytes": 615076,
+    "preview_sha256": "4ca98aed8fd8e12090b92d31896a0a23ff1cf059fc951004742acca65c119886",
+    "preview_bytes": 27454,
     "preview_url": "/examples/explainer/watercolor-chronicle.webp",
-    "kind": "generated still sample"
+    "kind": "generated still sample",
+    "model": "flux1-dev-q4"
   },
   {
     "slug": "fairy-tale-myth",
     "title": "Fairy Tale & Myth",
     "request": {
       "operation": "image.generate",
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "prompt": "A storybook landscape explaining the water cycle through a magical mountain kingdom: castle above a waterfall, winding river flowing into a blue lake, luminous clouds and warm sunbeams, whimsical hand-painted fable illustration, layered epic landscape, golden and emerald colors. No words, letters, labels, watermark or logo.",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "seed": 2026091404,
       "settings": {
         "width": 768,
         "height": 432,
-        "steps": 8
+        "steps": 20
       }
     },
-    "job_id": "job_c9748062ef7f6fff83316f32534e7fe2",
-    "started_wall": 1789355935.5557508,
-    "asset_id": "asset_353f6902cd380746396c0d9fc7d5dbf0",
+    "job_id": "job_81e2a41004337fc61066ca0189776844",
+    "asset_id": "asset_5ae8b33f0f9ad802c8817e8150423bcf",
     "effective": {
       "inputs": {},
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "operation": "image.generate",
-      "prompt": "A storybook landscape explaining the water cycle through a magical mountain kingdom: castle above a waterfall, winding river flowing into a blue lake, luminous clouds and warm sunbeams, whimsical hand-painted fable illustration, layered epic landscape, golden and emerald colors. No words, letters, labels, watermark or logo.",
-      "seed": 2026091404,
+      "prompt": "A storybook landscape explaining the water cycle through a magical mountain kingdom: castle above a waterfall, winding river flowing into a blue lake, luminous clouds and warm sunbeams, whimsical hand-painted fable illustration, layered epic landscape, golden and emerald colors. No words, letters, labels, watermark or logo., correct human anatomy, two arms, two legs, five fingers per hand, no extra limbs",
+      "seed": "2026091404",
       "settings": {
         "cfg": 1,
         "count": 1,
         "height": 432,
-        "sampler": "heun",
-        "steps": 8,
+        "sampler": "euler",
+        "steps": 20,
         "width": 768
       }
     },
-    "workflow_revision": "chroma-flash-q4-baseline:28b9ce1194dc3591",
-    "source_sha256": "4d92c9ab33c7089350cb15ad4928661c76492949ed33eb9cd8fe82ba8fbd58c7",
-    "source_bytes": 549873,
-    "preview_sha256": "61eb4801ce0a8b39bd2c17e2adc2903865aa2fbb5906adf9674e5a6c7e77b9dc",
-    "preview_bytes": 66498,
-    "download_seconds": 0.044,
-    "job_elapsed_seconds": 25.662,
+    "source_sha256": "395b7a783f687a8b8c6312a3617d4ec040980db0a5c96c8ebdf9aca18be7ca92",
+    "source_bytes": 572440,
+    "preview_sha256": "ce211bb2be0c8089c54c0ee2b94fca4e24e5e35211fa1e5de775881f007771f2",
+    "preview_bytes": 24634,
     "preview_url": "/examples/explainer/fairy-tale-myth.webp",
-    "kind": "generated still sample"
+    "kind": "generated still sample",
+    "model": "flux1-dev-q4"
   },
   {
     "slug": "paper-diorama",
     "title": "Paper Diorama",
     "request": {
       "operation": "image.generate",
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "prompt": "A handmade paper diorama of the water cycle: layered cut-paper blue river, lake, green mountains, folded white clouds and a golden paper sun, visible cardboard edges, tactile paper grain, miniature theater stage, soft studio lighting and convincing layered shadows. No words, letters, labels, watermark or logo.",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "seed": 2026091405,
       "settings": {
         "width": 768,
         "height": 432,
-        "steps": 8
+        "steps": 20
       }
     },
-    "job_id": "job_8373c7c89007488cd5de67d9f4709a07",
-    "started_wall": 1789355961.873714,
-    "asset_id": "asset_6bddcd00545c41a0444bb04c1b9933b4",
+    "job_id": "job_1474d30bbc15eafee7de674029594aab",
+    "asset_id": "asset_49ad0345945cb52b59ffdc4b4bd031ac",
     "effective": {
       "inputs": {},
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "operation": "image.generate",
-      "prompt": "A handmade paper diorama of the water cycle: layered cut-paper blue river, lake, green mountains, folded white clouds and a golden paper sun, visible cardboard edges, tactile paper grain, miniature theater stage, soft studio lighting and convincing layered shadows. No words, letters, labels, watermark or logo.",
-      "seed": 2026091405,
+      "prompt": "A handmade paper diorama of the water cycle: layered cut-paper blue river, lake, green mountains, folded white clouds and a golden paper sun, visible cardboard edges, tactile paper grain, miniature theater stage, soft studio lighting and convincing layered shadows. No words, letters, labels, watermark or logo., correct human anatomy, two arms, two legs, five fingers per hand, no extra limbs",
+      "seed": "2026091405",
       "settings": {
         "cfg": 1,
         "count": 1,
         "height": 432,
-        "sampler": "heun",
-        "steps": 8,
+        "sampler": "euler",
+        "steps": 20,
         "width": 768
       }
     },
-    "workflow_revision": "chroma-flash-q4-baseline:28b9ce1194dc3591",
-    "source_sha256": "0590d96d25ac0148e400bf63b147939d995908ab64007a495dc536ac698e837f",
-    "source_bytes": 498456,
-    "preview_sha256": "9211f5f4c183aab5196d4dc616ebcce53a3b4f77802b4adb9525d243f0de2f08",
-    "preview_bytes": 43404,
-    "download_seconds": 0.042,
-    "job_elapsed_seconds": 25.642,
+    "source_sha256": "ed4f3a258a1d27ed994886fd438b3d23b1f2e56eb3a708c43396ad72618d4888",
+    "source_bytes": 477352,
+    "preview_sha256": "8d00d0259ef3bd8aad589c003db1198bfb022a93581a10e3736b49a022dbf1c9",
+    "preview_bytes": 17768,
     "preview_url": "/examples/explainer/paper-diorama.webp",
-    "kind": "generated still sample"
+    "kind": "generated still sample",
+    "model": "flux1-dev-q4"
   },
   {
     "slug": "pastel-flat-2d",
     "title": "Pastel Flat 2D",
     "request": {
       "operation": "image.generate",
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "prompt": "Minimal pastel flat vector illustration of a city park lake with geometric mountains, simplified rain clouds, a coral sun and a winding mint river, an educational water cycle composition, clean architectural shapes, calm lavender peach and teal palette, flat graphic shading, generous negative space. No words, letters, labels, watermark or logo.",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "seed": 2026091406,
       "settings": {
         "width": 768,
         "height": 432,
-        "steps": 8
+        "steps": 20
       }
     },
-    "job_id": "job_6728570b54960f595a5b63428e537f37",
-    "started_wall": 1789355988.091541,
-    "asset_id": "asset_2cf2b30231a74b840e88a2fbe5a6d4a4",
+    "job_id": "job_c93cb55b9c13668d816314d8aed323ce",
+    "asset_id": "asset_3bd1fa7382aff57adf2025b17457df4b",
     "effective": {
       "inputs": {},
-      "model": "chroma-flash-q4",
+      "model": "flux1-dev-q4",
       "negative_prompt": "text, letters, logos, watermark, blurry, cropped scene",
       "operation": "image.generate",
-      "prompt": "Minimal pastel flat vector illustration of a city park lake with geometric mountains, simplified rain clouds, a coral sun and a winding mint river, an educational water cycle composition, clean architectural shapes, calm lavender peach and teal palette, flat graphic shading, generous negative space. No words, letters, labels, watermark or logo.",
-      "seed": 2026091406,
+      "prompt": "Minimal pastel flat vector illustration of a city park lake with geometric mountains, simplified rain clouds, a coral sun and a winding mint river, an educational water cycle composition, clean architectural shapes, calm lavender peach and teal palette, flat graphic shading, generous negative space. No words, letters, labels, watermark or logo., correct human anatomy, two arms, two legs, five fingers per hand, no extra limbs",
+      "seed": "2026091406",
       "settings": {
         "cfg": 1,
         "count": 1,
         "height": 432,
-        "sampler": "heun",
-        "steps": 8,
+        "sampler": "euler",
+        "steps": 20,
         "width": 768
       }
     },
-    "workflow_revision": "chroma-flash-q4-baseline:28b9ce1194dc3591",
-    "source_sha256": "052b91d19265c63da68d3a37dd12f9f25bfe0e96ef20c42c9f2b4f532abf4f7b",
-    "source_bytes": 354282,
-    "preview_sha256": "4391ae4e16ce7fcf6d813c5518c981d62fe297a142507dab3d5e1121d9bbd893",
-    "preview_bytes": 26444,
-    "download_seconds": 0.061,
-    "job_elapsed_seconds": 25.707,
+    "source_sha256": "8aff529288d5492b6ab94d1ec4754452baddc5085c8c92174b6a3f7e3aac0ea9",
+    "source_bytes": 254788,
+    "preview_sha256": "4b67409d855c4a990c627aacac5538d3604089a280815e4c4c1ea52f92aa7ef2",
+    "preview_bytes": 7716,
     "preview_url": "/examples/explainer/pastel-flat-2d.webp",
     "kind": "generated still sample",
-    "preview_edit": "Cropped the visible bottom-right signature-like generation artifact, then resized to 16:9. Source generation metadata retained unchanged.",
-    "preview_crop": {
-      "source_box": [0, 20, 696, 411],
-      "output_size": [768, 432]
-    }
+    "model": "flux1-dev-q4"
   }
 ]

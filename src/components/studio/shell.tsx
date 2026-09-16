@@ -23,7 +23,7 @@ const NAV = [
 ] as const;
 
 const ENGINE_LABEL: Record<string, string> = {
-  zermo: "Zermo",
+  zermo: "Flux.1 Q4",
   "zermo-unreachable": "Zermo offline",
   "local-studio": "Studio",
   comfyui: "Comfy",
