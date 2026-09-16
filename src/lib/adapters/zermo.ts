@@ -119,9 +119,12 @@ export async function checkZermoHealth() {
   }
   if (writing.status === "fulfilled") {
     health.apiReachable = true;
-    const models = writing.value?.data;
-    const model = Array.isArray(models) ? models.find((m: { id?: string }) => m?.id === "local-auto") : null;
-    if (typeof model?.active_model === "string" && model.active_model.trim()) health.text = { ready: true, model: model.active_model };
+    const models = Array.isArray(writing.value?.data) ? writing.value.data : [];
+    const model = models.find((m: { id?: string }) => m?.id === "local-auto")
+      || models.find((m: { active_model?: string }) => typeof m?.active_model === "string" && m.active_model.trim())
+      || models[0];
+    const served = (typeof model?.active_model === "string" && model.active_model.trim()) || (typeof model?.id === "string" && model.id.trim()) || "";
+    if (served) health.text = { ready: true, model: served };
   }
   health.ready = health.text.ready && health.image.ready && health.music.ready;
   if (!health.ready) health.error = health.apiReachable ? "Some managed operations are not configured or entitled; no fallback will be used" : "Zermo API is unreachable";

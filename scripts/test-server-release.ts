@@ -29,6 +29,9 @@ async function main() {
     globalThis.fetch = async url => Response.json(String(url).endsWith('/capabilities') ? media : { data: [{ id: 'local-auto', active_model: 'served-uncensored' }] });
     let health = await checkZermoHealth();
     assert.equal(health.ready, true); assert.equal(health.text.model, 'served-uncensored');
+    globalThis.fetch = async url => Response.json(String(url).endsWith('/capabilities') ? media : { data: [{ id: 'unfabled', object: 'model', active_model: 'unfabled' }] });
+    health = await checkZermoHealth();
+    assert.equal(health.ready, true); assert.equal(health.text.model, 'unfabled');
     media.worker_availability = 'unconfigured';
     health = await checkZermoHealth(); assert.equal(health.ready, false); assert.equal(health.image.ready, false); assert.equal(health.text.ready, true);
     globalThis.fetch = async () => Response.json({});
