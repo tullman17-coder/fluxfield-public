@@ -257,12 +257,10 @@ export function JobRunner({
             <input
               type="checkbox"
               checked={values.visualQa === "on"}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  visualQa: event.currentTarget.checked ? "on" : "off",
-                }))
-              }
+              onChange={(event) => {
+                const on = event.currentTarget.checked;
+                setValues((current) => ({ ...current, visualQa: on ? "on" : "off" }));
+              }}
               className="mt-1 size-4 accent-[#d565d6]"
             />
             <span>
