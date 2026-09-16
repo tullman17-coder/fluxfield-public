@@ -206,7 +206,7 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
     await fs.writeFile(path.join(dir, `${name}.tmp`), bytes);
     await fs.rename(path.join(dir, `${name}.tmp`), path.join(dir, name));
     const model = String(intent.request.model);
-    outputs.push({ id, kind: music ? "audio" : video ? "video" : "image", label: music ? "Zermo ACE · FLAC" : video ? "Zermo WAN 5B · 17f" : `Zermo ${model} · ${intent.effective?.steps ?? intent.request.settings.steps} steps`, url: `/api/outputs/${name}` });
+    outputs.push({ id, kind: music ? "audio" : video ? "video" : "image", label: music ? "Zermo ACE · FLAC" : video ? "Zermo WAN 5B · 49f chain" : `Zermo ${model} · ${intent.effective?.steps ?? intent.request.settings.steps} steps`, url: `/api/outputs/${name}` });
   }
   return { outputs, remotePromptId: intent.remoteId };
 }
@@ -222,7 +222,9 @@ export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = 
   return { outputs, remotePromptId };
 }
 
-/** Fast I2V on Boop WAN 2.2 5B: 17 frames / 8 steps (~1s at 16fps). Not MiniMax-H3. */
+/** Fast I2V on Boop WAN 2.2 5B: 49 frames / 8 steps (~3s at 16fps). Last-frame chain, not FastWan-QAD. */
+export const WAN_FAST = { frames: 49, steps: 8, fps: 16, xfade: 0.25 } as const;
+
 export async function runZermoVideoAdapter(ctx: AdapterContext, imagePath: string, prompt: string, purpose = "video:wan") {
   const png = await fs.readFile(imagePath);
   const upload = await (await request("/assets", {
@@ -237,7 +239,30 @@ export async function runZermoVideoAdapter(ctx: AdapterContext, imagePath: strin
     model: "wan2.2-5b-fp8",
     prompt,
     inputs: { image: upload.id },
-    settings: { frames: 17, steps: 8 },
+    settings: { frames: WAN_FAST.frames, steps: WAN_FAST.steps },
   };
   return runZermoJob(ctx.job, purpose, body);
+}
+
+export async function runChainedWanClips(
+  ctx: AdapterContext,
+  shots: { imagePath: string; prompt: string }[],
+) {
+  const outputs: AdapterResult["outputs"] = [];
+  const clipUrls: string[] = [];
+  if (!shots.length) return { outputs, clipUrls };
+  const dir = path.join(process.cwd(), ".data", "outputs");
+  let start = shots[0]!.imagePath;
+  const { extractLastFrame } = await import("./ffmpeg");
+  for (let i = 0; i < shots.length; i++) {
+    const clip = await runZermoVideoAdapter(ctx, start, shots[i]!.prompt, `video:wan:${i}`);
+    outputs.push(...clip.outputs);
+    const vid = clip.outputs.find((o) => o.kind === "video" && o.url);
+    if (!vid?.url) continue;
+    clipUrls.push(vid.url);
+    const tail = path.join(dir, `${ctx.job.id}-tail-${i}.png`);
+    await extractLastFrame(path.join(dir, path.basename(vid.url)), tail);
+    start = tail;
+  }
+  return { outputs, clipUrls };
 }

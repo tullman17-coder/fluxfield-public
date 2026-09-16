@@ -23,7 +23,7 @@ import {
   MAX_DIRECTOR_FRAMES,
 } from "@/lib/adapters/director-frames";
 import { runMusicAdapter } from "@/lib/adapters/music";
-import { runZermoVideoAdapter } from "@/lib/adapters/zermo";
+import { runChainedWanClips, WAN_FAST } from "@/lib/adapters/zermo";
 import { concatClips } from "@/lib/adapters/ffmpeg";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
@@ -186,17 +186,23 @@ export async function runDirectorAdapter(
   outputs.push(...frames.outputs);
 
   if (ctx.settings.generationMode === "zermo") {
-    const clipUrls: string[] = [];
     const stills = frames.outputs.filter((o) => o.kind === "image" && o.url);
-    for (let i = 0; i < stills.length; i++) {
-      const imagePath = path.join(OUT_DIR, path.basename(stills[i]!.url!));
-      await fs.access(imagePath);
-      const clip = await runZermoVideoAdapter(ctx, imagePath, frameShots[i]?.prompt || brief, `video:wan:${i}`);
-      outputs.push(...clip.outputs);
-      for (const o of clip.outputs) if (o.kind === "video" && o.url) clipUrls.push(o.url);
-    }
+    const chained = await runChainedWanClips(
+      ctx,
+      stills.map((s, i) => ({
+        imagePath: path.join(OUT_DIR, path.basename(s.url!)),
+        prompt: frameShots[i]?.prompt || brief,
+      })),
+    );
+    outputs.push(...chained.outputs);
     const audioUrl = outputs.find((o) => o.kind === "audio")?.url;
-    const cut = await concatClips({ jobId: ctx.job.id, videoUrls: clipUrls, audioUrl });
+    const cut = await concatClips({
+      jobId: ctx.job.id,
+      videoUrls: chained.clipUrls,
+      audioUrl,
+      clipSec: WAN_FAST.frames / WAN_FAST.fps,
+      xfade: WAN_FAST.xfade,
+    });
     if (cut) outputs.push(cut);
   }
 

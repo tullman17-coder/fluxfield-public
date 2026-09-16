@@ -400,7 +400,7 @@ export default function DirectorPage() {
             {frames.length ? `${frames.length} frames` : "Frames"}
           </h2>
           <ZermoJobStatus job={job} onResume={setJob} />
-          {zermo ? <p className="mt-2 text-xs text-[#b8aebb]">Director cut: Flux.1 stills → WAN 2.2 5B I2V (17f/8step) per key shot, ACE score + lyrics. FastWan-QAD is FastVideo, not this Comfy worker.</p> : null}
+          {zermo ? <p className="mt-2 text-xs text-[#b8aebb]">Director cut: Flux.1 still → WAN 5B 49f/8step, last-frame chain + 0.25s xfade, ACE score. Same Boop fast lane, not FastWan-QAD.</p> : null}
           {frames.length ? (
             <ul className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {frames.map((f) => (

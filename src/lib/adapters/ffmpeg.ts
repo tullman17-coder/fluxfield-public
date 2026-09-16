@@ -99,11 +99,17 @@ export async function assembleExplainerVideo(args: {
   }
 }
 
-/** Concat WAN clips + optional ACE bed. Soft-fails if ffmpeg is missing. */
+export async function extractLastFrame(videoPath: string, pngPath: string) {
+  await execFileAsync("ffmpeg", ["-y", "-sseof", "-0.05", "-i", videoPath, "-frames:v", "1", pngPath], { timeout: 30_000 });
+}
+
+/** Concat WAN clips with a short xfade. Soft-fails if ffmpeg is missing. */
 export async function concatClips(args: {
   jobId: string;
   videoUrls: string[];
   audioUrl?: string;
+  clipSec?: number;
+  xfade?: number;
 }): Promise<JobOutput | undefined> {
   if (!(await checkFfmpeg()) || !args.videoUrls.length) return undefined;
   const outDir = path.join(process.cwd(), ".data", "outputs");
@@ -117,17 +123,47 @@ export async function concatClips(args: {
     try { await fs.access(abs); files.push(abs); } catch { /* skip */ }
   }
   if (!files.length) return undefined;
-  const listPath = path.join(workDir, "clips.txt");
-  await fs.writeFile(listPath, files.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join("\n"));
   const id = nanoid(8);
   const filename = `${args.jobId}-${id}.mp4`;
   const outPath = path.join(outDir, filename);
-  const ffmpegArgs = ["-y", "-f", "concat", "-safe", "0", "-i", listPath];
-  if (args.audioUrl) {
-    const audioName = args.audioUrl.split("/").pop();
-    if (audioName) ffmpegArgs.push("-i", path.join(outDir, audioName), "-shortest", "-c:a", "aac");
+  const fade = args.xfade ?? 0.25;
+  const clipSec = args.clipSec ?? 49 / 16;
+  const audioAbs = args.audioUrl
+    ? path.join(outDir, args.audioUrl.split("/").pop() || "")
+    : undefined;
+  const audioArgs = audioAbs ? ["-i", audioAbs, "-shortest", "-c:a", "aac"] : [];
+  if (files.length > 1 && fade > 0) {
+    const norm = files.map((_, i) => `[${i}:v]fps=16,scale=640:352:force_original_aspect_ratio=decrease,pad=640:352:(ow-iw)/2:(oh-ih)/2,format=yuv420p[s${i}]`);
+    const xf: string[] = [];
+    let last = "s0";
+    let outDur = clipSec;
+    for (let i = 1; i < files.length; i++) {
+      const name = i === files.length - 1 ? "vout" : `x${i}`;
+      xf.push(`[${last}][s${i}]xfade=transition=fade:duration=${fade}:offset=${(outDur - fade).toFixed(3)}[${name}]`);
+      last = name;
+      outDur += clipSec - fade;
+    }
+    try {
+      await execFileAsync("ffmpeg", [
+        "-y",
+        ...files.flatMap((f) => ["-i", f]),
+        "-filter_complex",
+        [...norm, ...xf].join(";"),
+        "-map",
+        "[vout]",
+        ...audioArgs,
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        outPath,
+      ], { timeout: 600_000 });
+      return { id, kind: "video", label: "Director cut · WAN 49f xfade", url: `/api/outputs/${filename}` };
+    } catch { /* hard concat */ }
   }
-  ffmpegArgs.push("-c:v", "libx264", "-pix_fmt", "yuv420p", outPath);
+  const listPath = path.join(workDir, "clips.txt");
+  await fs.writeFile(listPath, files.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join("\n"));
+  const ffmpegArgs = ["-y", "-f", "concat", "-safe", "0", "-i", listPath, ...audioArgs, "-c:v", "libx264", "-pix_fmt", "yuv420p", outPath];
   try {
     await execFileAsync("ffmpeg", ffmpegArgs, { timeout: 600_000 });
     return { id, kind: "video", label: "Director cut · WAN clips", url: `/api/outputs/${filename}` };

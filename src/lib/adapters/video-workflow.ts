@@ -11,7 +11,7 @@ import {
 } from "@/lib/adapters/director-frames";
 import { synthesizeSpeech } from "@/lib/adapters/tts";
 import { assembleExplainerVideo, concatClips } from "@/lib/adapters/ffmpeg";
-import { runZermoVideoAdapter } from "@/lib/adapters/zermo";
+import { runChainedWanClips, WAN_FAST } from "@/lib/adapters/zermo";
 import { getDurationBeats, getDurationSeconds } from "@/lib/explainer/presets";
 import { promises as fs } from "fs";
 import path from "path";
@@ -191,16 +191,21 @@ export async function runVideoWorkflowAdapter(
     ctx.job.inputs.size = "640x352";
     const frames = await generateDirectorFrames(ctx, shots, size);
     outputs.push(...frames.outputs);
-    const clipUrls: string[] = [];
     const stills = frames.outputs.filter((o) => o.kind === "image" && o.url);
-    for (let i = 0; i < stills.length; i++) {
-      const imagePath = path.join(process.cwd(), ".data", "outputs", path.basename(stills[i]!.url!));
-      await fs.access(imagePath);
-      const clip = await runZermoVideoAdapter(ctx, imagePath, shots[i]?.prompt || brief, `video:wan:${i}`);
-      outputs.push(...clip.outputs);
-      for (const o of clip.outputs) if (o.kind === "video" && o.url) clipUrls.push(o.url);
-    }
-    const cut = await concatClips({ jobId: ctx.job.id, videoUrls: clipUrls });
+    const chained = await runChainedWanClips(
+      ctx,
+      stills.map((s, i) => ({
+        imagePath: path.join(process.cwd(), ".data", "outputs", path.basename(s.url!)),
+        prompt: shots[i]?.prompt || brief,
+      })),
+    );
+    outputs.push(...chained.outputs);
+    const cut = await concatClips({
+      jobId: ctx.job.id,
+      videoUrls: chained.clipUrls,
+      clipSec: WAN_FAST.frames / WAN_FAST.fps,
+      xfade: WAN_FAST.xfade,
+    });
     if (cut) outputs.push(cut);
     return { outputs, modeUsed: "zermo", script: storyboard };
   }
