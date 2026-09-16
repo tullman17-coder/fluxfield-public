@@ -11,6 +11,9 @@ import {
 } from "@/lib/adapters/director-frames";
 import { synthesizeSpeech } from "@/lib/adapters/tts";
 import { assembleExplainerVideo } from "@/lib/adapters/ffmpeg";
+import { runZermoVideoAdapter } from "@/lib/adapters/zermo";
+import { promises as fs } from "fs";
+import path from "path";
 import {
   getVideoWorkflow,
   getVideoWorkflowMode,
@@ -179,8 +182,22 @@ export async function runVideoWorkflowAdapter(
   ];
 
   const size =
-    ASPECTS[ctx.job.inputs.aspect || def.aspectDefault] ?? ASPECTS["9:16"];
+    ctx.settings.generationMode === "zermo"
+      ? { w: 640, h: 352 }
+      : ASPECTS[ctx.job.inputs.aspect || def.aspectDefault] ?? ASPECTS["9:16"];
   const shots = framePrompts(def, mode.id, brief, labels, style);
+  if (ctx.settings.generationMode === "zermo") {
+    ctx.job.inputs.size = "640x352";
+    const frames = await generateDirectorFrames(ctx, shots.slice(0, 1), size);
+    outputs.push(...frames.outputs);
+    const still = frames.outputs.find((o) => o.kind === "image" && o.url);
+    if (!still?.url) throw new Error("WAN fast video needs a still");
+    const imagePath = path.join(process.cwd(), ".data", "outputs", path.basename(still.url));
+    await fs.access(imagePath);
+    const clip = await runZermoVideoAdapter(ctx, imagePath, brief);
+    outputs.push(...clip.outputs);
+    return { outputs, modeUsed: "zermo", script: storyboard };
+  }
   const frames = await generateDirectorFrames(ctx, shots, size);
   outputs.push(...frames.outputs);
 

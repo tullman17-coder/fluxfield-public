@@ -291,7 +291,7 @@ export default function SettingsPage() {
       ) : null}
 
       <div className="space-y-5 rounded-2xl border border-white/10 glass p-5">
-        <Field label="Generation source" hint="Zermo: Chroma images (Fast 4 / Detail 8 steps, CFG 1, within 1024px), ACE music (10–90s FLAC). No reference editing, TTS or native long video. Credentials: server-only ZERMO_API_KEY or ZERMO_API_KEY_FILE; optional ZERMO_API_BASE (default https://api.zermo.org).">
+        <Field label="Generation source" hint="Zermo: Flux.1 stills, WAN 2.2 5B I2V (director/UGC), ACE-Step 1.5 turbo music+lyrics. FastWan-QAD is FastVideo/SageAttention — not this Comfy worker. No MiniMax-H3.">
           <select
             className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3 text-sm"
             value={settings.generationMode}
@@ -304,11 +304,11 @@ export default function SettingsPage() {
           >
             <option value="auto">Automatic — factory Studio, then factory Comfy</option>
             <option value="local-studio">Studio only</option>
-            <option value="zermo">Zermo API — images + music, no fallback</option>
+            <option value="zermo">Zermo API — Flux.1 / WAN / ACE, no fallback</option>
             <option value="comfyui">Comfy only</option>
             <option value="mock">Preview art — no graphics card needed</option>
           </select>
-          {settings.generationMode === "zermo" ? <p className="text-xs" role="status">{health?.zermo?.configured ? (health.zermo.ready ? "Zermo authenticated connection ready" : "Zermo configured but unreachable — no fallback") : "Zermo server credential not configured"}</p> : null}
+          {settings.generationMode === "zermo" ? <p className="text-xs" role="status">{health?.zermo?.configured ? (health.zermo.ready ? `Ready · stills ${health.zermo.image?.model ?? "—"} · video ${health.zermo.video?.model ?? "—"} · music ${health.zermo.music?.model ?? "—"}` : "Zermo configured but unreachable — no fallback") : "Zermo server credential not configured"}</p> : null}
         </Field>
         <Field
           label="Studio address"

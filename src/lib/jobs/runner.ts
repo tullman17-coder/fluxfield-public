@@ -99,7 +99,7 @@ export async function createAndRunJob(
     if (generationMode === "zermo") {
       const size = fitZermoSize(ratio.width, ratio.height);
       input.inputs.size ||= `${size.width}x${size.height}`;
-      input.inputs.steps ||= "8";
+      input.inputs.steps ||= "20";
       input.inputs.cfg ||= "1";
     } else input.inputs.size = `${ratio.width}x${ratio.height}`;
     prompt = enhancePrompt(base, preset.id, framing, assist);

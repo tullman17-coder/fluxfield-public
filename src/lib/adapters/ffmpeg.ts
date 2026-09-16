@@ -98,3 +98,40 @@ export async function assembleExplainerVideo(args: {
     return undefined;
   }
 }
+
+/** Concat WAN clips + optional ACE bed. Soft-fails if ffmpeg is missing. */
+export async function concatClips(args: {
+  jobId: string;
+  videoUrls: string[];
+  audioUrl?: string;
+}): Promise<JobOutput | undefined> {
+  if (!(await checkFfmpeg()) || !args.videoUrls.length) return undefined;
+  const outDir = path.join(process.cwd(), ".data", "outputs");
+  const workDir = path.join(process.cwd(), ".data", "tmp", args.jobId);
+  await fs.mkdir(workDir, { recursive: true });
+  const files: string[] = [];
+  for (const url of args.videoUrls) {
+    const name = url.split("/").pop();
+    if (!name) continue;
+    const abs = path.join(outDir, name);
+    try { await fs.access(abs); files.push(abs); } catch { /* skip */ }
+  }
+  if (!files.length) return undefined;
+  const listPath = path.join(workDir, "clips.txt");
+  await fs.writeFile(listPath, files.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join("\n"));
+  const id = nanoid(8);
+  const filename = `${args.jobId}-${id}.mp4`;
+  const outPath = path.join(outDir, filename);
+  const ffmpegArgs = ["-y", "-f", "concat", "-safe", "0", "-i", listPath];
+  if (args.audioUrl) {
+    const audioName = args.audioUrl.split("/").pop();
+    if (audioName) ffmpegArgs.push("-i", path.join(outDir, audioName), "-shortest", "-c:a", "aac");
+  }
+  ffmpegArgs.push("-c:v", "libx264", "-pix_fmt", "yuv420p", outPath);
+  try {
+    await execFileAsync("ffmpeg", ffmpegArgs, { timeout: 180_000 });
+    return { id, kind: "video", label: "Director cut · WAN clips", url: `/api/outputs/${filename}` };
+  } catch {
+    return undefined;
+  }
+}

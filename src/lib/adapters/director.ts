@@ -22,6 +22,9 @@ import {
   generateDirectorFrames,
   MAX_DIRECTOR_FRAMES,
 } from "@/lib/adapters/director-frames";
+import { runMusicAdapter } from "@/lib/adapters/music";
+import { runZermoVideoAdapter } from "@/lib/adapters/zermo";
+import { concatClips } from "@/lib/adapters/ffmpeg";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -143,11 +146,17 @@ export async function runDirectorAdapter(
   });
 
   } else {
-    outputs.push({ id: nanoid(8), kind: "text", label: "Zermo scope", text: "Generated keyframes only. No synthetic soundtrack or native long-form video is produced by Zermo in this slice." });
+    ctx.job.inputs.seconds = String(Math.min(90, Math.max(10, runtimeSec)));
+    if (!ctx.job.inputs.lyricMode) ctx.job.inputs.lyricMode = mode === "music-video" ? "write" : "instrumental";
+    const music = await runMusicAdapter(ctx);
+    outputs.push(...music.outputs);
   }
 
   // Key frames — live GPU when Studio/Comfy is up, otherwise local art.
-  const size = ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];
+  const size = ctx.settings.generationMode === "zermo"
+    ? { w: 640, h: 352 }
+    : ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];
+  if (ctx.settings.generationMode === "zermo") ctx.job.inputs.size = "640x352";
   const keyShots = pickKeyShots(production);
   // One palette for the whole piece. Without this each frame picks its own hue
   // from its own prompt and a storyboard reads like twelve unrelated films.
@@ -175,6 +184,21 @@ export async function runDirectorAdapter(
   });
   const frames = await generateDirectorFrames(ctx, frameShots, size);
   outputs.push(...frames.outputs);
+
+  if (ctx.settings.generationMode === "zermo") {
+    const clipUrls: string[] = [];
+    const stills = frames.outputs.filter((o) => o.kind === "image" && o.url);
+    for (let i = 0; i < stills.length; i++) {
+      const imagePath = path.join(OUT_DIR, path.basename(stills[i]!.url!));
+      await fs.access(imagePath);
+      const clip = await runZermoVideoAdapter(ctx, imagePath, frameShots[i]?.prompt || brief, `video:wan:${i}`);
+      outputs.push(...clip.outputs);
+      for (const o of clip.outputs) if (o.kind === "video" && o.url) clipUrls.push(o.url);
+    }
+    const audioUrl = outputs.find((o) => o.kind === "audio")?.url;
+    const cut = await concatClips({ jobId: ctx.job.id, videoUrls: clipUrls, audioUrl });
+    if (cut) outputs.push(cut);
+  }
 
   // Window plan — what is rendered and what is still queued.
   const windowLines = production.windows.map((w) => {

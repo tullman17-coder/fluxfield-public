@@ -18,13 +18,14 @@ async function main() {
     const { formatReviewNote } = await import('../src/lib/compose/verify');
     const { DEFAULT_SETTINGS, publicSettings, writeSettings } = await import('../src/lib/settings');
     const settings = { ...DEFAULT_SETTINGS, generationMode: 'zermo' as const };
-    const job = { aspect: '1:1', prompt: 'teapot', negativePrompt: '', inputs: { seed: '18446744073709551615', steps: '4' } };
+    const job = { aspect: '1:1', prompt: 'teapot', negativePrompt: '', inputs: { seed: '18446744073709551615', steps: '20' } };
     assert.equal(imageRequest({ job, settings } as never).seed, job.inputs.seed);
-    assert.equal(imageRequest({ job, settings } as never).settings.steps, 4);
+    assert.equal(imageRequest({ job, settings } as never).settings.steps, 20);
+    assert.equal(imageRequest({ job, settings } as never).model, 'flux1-dev-q4');
     for (const seed of ['18446744073709551616', '-1', '1e3', '1.2', '01', 9007199254740992]) {
       assert.throws(() => imageRequest({ job: { ...job, inputs: { seed } }, settings } as never));
     }
-    const media = { worker_availability: 'configured; polled on work', models: [{ id: 'chroma-flash-q4', operations: ['image.generate'] }, { id: 'ace-step-1.5-turbo', operations: ['music.generate'] }] };
+    const media = { worker_availability: 'configured; polled on work', models: [{ id: 'flux1-dev-q4', operations: ['image.generate'] }, { id: 'wan2.2-5b-fp8', operations: ['video.image_to_video'] }, { id: 'ace-step-1.5-turbo', operations: ['music.generate'] }] };
     globalThis.fetch = async url => Response.json(String(url).endsWith('/capabilities') ? media : { data: [{ id: 'local-auto', active_model: 'served-uncensored' }] });
     let health = await checkZermoHealth();
     assert.equal(health.ready, true); assert.equal(health.text.model, 'served-uncensored');

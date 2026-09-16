@@ -7,12 +7,13 @@ export type ManagedHealth = {
   text: { ready: boolean; model: string | null };
   image: { ready: boolean; model: string | null };
   music: { ready: boolean; model: string | null };
+  video: { ready: boolean; model: string | null };
   error?: string;
 };
 
 export const ZERMO_IMAGE_PROFILES = [
-  { steps: "4", label: "Fast · 4 steps" },
-  { steps: "8", label: "Detail · 8 steps" },
+  { steps: "8", label: "Fast · 8 steps" },
+  { steps: "20", label: "Detail · 20 steps" },
 ] as const;
 
 export function jobStatusLabel(job: { status: string; phase?: string } | null): string {

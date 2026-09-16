@@ -25,12 +25,13 @@ export async function boundedBytes(response: Response, limit = 128 * 1024 * 1024
 }
 
 export type ZermoRequest = {
-  operation: "image.generate" | "music.generate";
-  model: "chroma-flash-q4" | "ace-step-1.5-turbo";
+  operation: "image.generate" | "music.generate" | "video.image_to_video";
+  model: "chroma-flash-q4" | "flux1-dev-q4" | "flux1-uncensored" | "ace-step-1.5-turbo" | "wan2.2-5b-fp8";
   prompt: string;
   negative_prompt?: string;
   seed?: number | string;
-  settings: { width?: number; height?: number; steps?: number; duration?: number; lyrics?: string };
+  inputs?: { image?: string };
+  settings: { width?: number; height?: number; steps?: number; duration?: number; lyrics?: string; frames?: number };
 };
 export type ZermoIntent = {
   request: ZermoRequest;
@@ -98,6 +99,7 @@ export async function checkZermoHealth() {
     text: { ready: false, model: null as string | null },
     image: { ready: false, model: null as string | null },
     music: { ready: false, model: null as string | null },
+    video: { ready: false, model: null as string | null },
     error: undefined as string | undefined,
   };
   try { await credential(); health.configured = true; }
@@ -110,7 +112,7 @@ export async function checkZermoHealth() {
     health.apiReachable = true;
     health.workerConfigured = ["configured", "configured; polled on work"].includes(media.value?.worker_availability);
     const models = Array.isArray(media.value?.models) ? media.value.models : [];
-    for (const [lane, id, operation] of [["image", "chroma-flash-q4", "image.generate"], ["music", "ace-step-1.5-turbo", "music.generate"]] as const) {
+    for (const [lane, id, operation] of [["image", "flux1-dev-q4", "image.generate"], ["music", "ace-step-1.5-turbo", "music.generate"], ["video", "wan2.2-5b-fp8", "video.image_to_video"]] as const) {
       const allowed = models.some((m: { id?: string; operations?: string[] }) => m?.id === id && Array.isArray(m.operations) && m.operations.includes(operation));
       health[lane] = { ready: allowed && health.workerConfigured, model: allowed ? id : null };
     }
@@ -139,12 +141,16 @@ export function imageRequest(ctx: AdapterContext): ZermoRequest {
     [width, height] = size.slice(1).map(Number);
     if (![width, height].every((n) => Number.isInteger(n) && n >= 256 && n <= 1024 && n % 8 === 0)) throw new Error("Zermo dimensions must be 256–1024 and divisible by 8");
   }
-  const steps = Number(ctx.job.inputs.steps || 8);
-  if (![4, 8].includes(steps) || (ctx.job.inputs.cfg && Number(ctx.job.inputs.cfg) !== 1)) throw new Error("Zermo supports steps=4 (Fast draft) or 8 (Detail), with CFG=1");
+  const steps = Number(ctx.job.inputs.steps || 20);
+  if (![8, 20].includes(steps) || (ctx.job.inputs.cfg && Number(ctx.job.inputs.cfg) !== 1)) throw new Error("Zermo Flux.1 supports steps=8 or 20, with CFG=1");
   const seed = exactSeed(ctx.job.inputs.seed);
   if (!ctx.job.prompt.trim() || ctx.job.prompt.length > 8000 || ctx.job.negativePrompt.length > 8000) throw new Error("Zermo prompts must be 1–8000 characters");
-  // Chroma owns CFG=1; UI dimensions are fitted to its 1024px envelope.
-  return { operation: "image.generate", model: "chroma-flash-q4", prompt: ctx.job.prompt, negative_prompt: ctx.job.negativePrompt, ...(seed === undefined ? {} : { seed }), settings: { width, height, steps } };
+  const mature = ["boudoir", "figure", "pinup"].includes(ctx.job.presetId);
+  const model = mature ? "flux1-uncensored" : "flux1-dev-q4";
+  const fitted = { width: Math.min(width, 768), height: Math.min(height, 768) };
+  fitted.width = Math.round(fitted.width / 8) * 8;
+  fitted.height = Math.round(fitted.height / 8) * 8;
+  return { operation: "image.generate", model, prompt: ctx.job.prompt, negative_prompt: ctx.job.negativePrompt, ...(seed === undefined ? {} : { seed }), settings: { width: fitted.width, height: fitted.height, steps } };
 }
 export async function runZermoJob(job: StudioJob, purpose: string, proposed: ZermoRequest): Promise<AdapterResult> {
   const live = await getJob(job.id);
@@ -168,7 +174,7 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
   } else {
     remote = await (await request("/jobs", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": intent.key }, body: JSON.stringify(intent.request) })).json();
   }
-  const deadline = Date.now() + 10 * 60_000;
+  const deadline = Date.now() + (intent.request.operation === "video.image_to_video" ? 15 : 10) * 60_000;
   for (;;) {
     remoteId(remote.id, "job");
     if (intent.remoteId && remote.id !== intent.remoteId) throw new Error("Zermo job identity changed");
@@ -190,15 +196,17 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
     const response = await request(`/assets/${id}`);
     const mime = response.headers.get("content-type")?.split(";")[0].trim();
     const music = intent.request.operation === "music.generate";
-    const ext = music ? (mime === "audio/flac" || mime === "audio/x-flac" ? "flac" : null) : mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : null;
+    const video = intent.request.operation === "video.image_to_video";
+    const ext = music ? (mime === "audio/flac" || mime === "audio/x-flac" ? "flac" : null) : video ? (mime === "video/mp4" ? "mp4" : null) : mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : null;
     if (!ext) throw new Error("Unexpected Zermo asset content type");
     const bytes = await boundedBytes(response);
-    const valid = ext === "flac" ? bytes.subarray(0, 4).toString() === "fLaC" : ext === "png" ? bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) : bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+    const valid = ext === "flac" ? bytes.subarray(0, 4).toString() === "fLaC" : ext === "mp4" ? bytes.subarray(4, 8).toString() === "ftyp" : ext === "png" ? bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) : bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
     if (!valid) throw new Error("Invalid Zermo asset bytes");
     const name = `${job.id}-${id}.${ext}`;
     await fs.writeFile(path.join(dir, `${name}.tmp`), bytes);
     await fs.rename(path.join(dir, `${name}.tmp`), path.join(dir, name));
-    outputs.push({ id, kind: music ? "audio" : "image", label: music ? "Zermo ACE · FLAC" : `Zermo Chroma · ${intent.effective?.steps ?? intent.request.settings.steps} steps · CFG 1`, url: `/api/outputs/${name}` });
+    const model = String(intent.request.model);
+    outputs.push({ id, kind: music ? "audio" : video ? "video" : "image", label: music ? "Zermo ACE · FLAC" : video ? "Zermo WAN 5B · 17f" : `Zermo ${model} · ${intent.effective?.steps ?? intent.request.settings.steps} steps`, url: `/api/outputs/${name}` });
   }
   return { outputs, remotePromptId: intent.remoteId };
 }
@@ -212,4 +220,24 @@ export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = 
     outputs.push(...result.outputs); remotePromptId = result.remotePromptId;
   }
   return { outputs, remotePromptId };
+}
+
+/** Fast I2V on Boop WAN 2.2 5B: 17 frames / 8 steps (~1s at 16fps). Not MiniMax-H3. */
+export async function runZermoVideoAdapter(ctx: AdapterContext, imagePath: string, prompt: string, purpose = "video:wan") {
+  const png = await fs.readFile(imagePath);
+  const upload = await (await request("/assets", {
+    method: "POST",
+    headers: { "Content-Type": "image/png" },
+    body: png,
+    signal: AbortSignal.timeout(60_000),
+  })).json() as { id?: string };
+  if (!upload?.id) throw new Error("Zermo still upload failed");
+  const body: ZermoRequest = {
+    operation: "video.image_to_video",
+    model: "wan2.2-5b-fp8",
+    prompt,
+    inputs: { image: upload.id },
+    settings: { frames: 17, steps: 8 },
+  };
+  return runZermoJob(ctx.job, purpose, body);
 }
