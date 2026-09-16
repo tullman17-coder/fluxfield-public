@@ -102,9 +102,13 @@ export const EXPLAINER_VOICES = [
 ];
 
 export const EXPLAINER_DURATIONS = [
-  { id: "30s", label: "30s", beats: 4 },
-  { id: "1m", label: "1m", beats: 6 },
-  { id: "2m", label: "2m", beats: 10 },
+  { id: "30s", label: "30s", beats: 4, sec: 30 },
+  { id: "1m", label: "1 min", beats: 6, sec: 60 },
+  { id: "2m", label: "2 min", beats: 8, sec: 120 },
+  { id: "3m", label: "3 min", beats: 10, sec: 180 },
+  { id: "5m", label: "5 min", beats: 12, sec: 300 },
+  { id: "10m", label: "10 min", beats: 12, sec: 600 },
+  { id: "15m", label: "15 min", beats: 12, sec: 900 },
 ];
 
 export function getExplainerPreset(id: string) {
@@ -113,4 +117,8 @@ export function getExplainerPreset(id: string) {
 
 export function getDurationBeats(id: string) {
   return EXPLAINER_DURATIONS.find((d) => d.id === id)?.beats ?? 6;
+}
+
+export function getDurationSeconds(id: string) {
+  return EXPLAINER_DURATIONS.find((d) => d.id === id)?.sec ?? 60;
 }

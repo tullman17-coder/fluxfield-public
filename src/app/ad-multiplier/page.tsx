@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { JobRunner } from "@/components/studio/job-runner";
 import { getVideoWorkflow } from "@/lib/video-workflows/catalog";
+import { EXPLAINER_DURATIONS } from "@/lib/explainer/presets";
 
 const def = getVideoWorkflow("ad-multiplier")!;
 
@@ -26,6 +27,15 @@ export default function AdMultiplierPage() {
           { label: "1:1", value: "1:1" },
           { label: "16:9", value: "16:9" },
         ],
+      },
+      {
+        id: "duration",
+        label: "Length",
+        type: "select" as const,
+        options: EXPLAINER_DURATIONS.map((d) => ({
+          label: d.label,
+          value: d.id,
+        })),
       },
       {
         id: "sourceVideoPath",

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { jobRunnerSupportsVisualQa, jobStatusLabel, exactSeed, musicEffectiveSettings, musicLengths, musicSeconds, preferredImproveProvider, settingsWritePayload, supercomputerReady, visualQaSummary, ZERMO_IMAGE_PROFILES } from "../src/lib/studio/presentation";
 import { visibleDreamPresets, DREAM_PRESETS, MATURE_PRESETS } from "../src/lib/dream/presets";
-import { EXPLAINER_PRESETS } from "../src/lib/explainer/presets";
+import { EXPLAINER_PRESETS, getDurationBeats, getDurationSeconds } from "../src/lib/explainer/presets";
 
 assert.equal(jobStatusLabel(null), "Ready for a prompt");
 assert.equal(jobStatusLabel({ status: "queued" }), "Queued");
@@ -18,6 +18,9 @@ assert.equal(musicSeconds("zermo", "300"), "90");
 assert.equal(musicSeconds("zermo", "5"), "10");
 assert.equal(musicSeconds("zermo", "60"), "60");
 assert.equal(musicSeconds("zermo", "oops"), "60");
+assert.equal(getDurationSeconds("15m"), 900);
+assert.equal(getDurationBeats("15m"), 12);
+assert.equal(getDurationSeconds("2m"), 120);
 assert.equal(musicSeconds("mock", "300"), "300");
 assert(musicLengths("zermo").every((x) => Number(x.id) >= 10 && Number(x.id) <= 90));
 assert.equal(preferredImproveProvider({ improveProvider: "api", hasImproveApiKey: true }), "api");

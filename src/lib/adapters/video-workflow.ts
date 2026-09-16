@@ -10,8 +10,9 @@ import {
   type DirectorFrameShot,
 } from "@/lib/adapters/director-frames";
 import { synthesizeSpeech } from "@/lib/adapters/tts";
-import { assembleExplainerVideo } from "@/lib/adapters/ffmpeg";
+import { assembleExplainerVideo, concatClips } from "@/lib/adapters/ffmpeg";
 import { runZermoVideoAdapter } from "@/lib/adapters/zermo";
+import { getDurationBeats, getDurationSeconds } from "@/lib/explainer/presets";
 import { promises as fs } from "fs";
 import path from "path";
 import {
@@ -162,7 +163,7 @@ export async function runVideoWorkflowAdapter(
   const style = ctx.job.inputs.dreamStyle || ctx.job.inputs.look || "photo";
   const n = Math.min(
     12,
-    Math.max(3, Number(ctx.job.inputs.frames || def.frameCount) || def.frameCount),
+    Math.max(3, getDurationBeats(ctx.job.inputs.duration || "1m")),
   );
   const labels = beatLabels(def, mode.id, n);
   const sourceMissing =
@@ -188,14 +189,19 @@ export async function runVideoWorkflowAdapter(
   const shots = framePrompts(def, mode.id, brief, labels, style);
   if (ctx.settings.generationMode === "zermo") {
     ctx.job.inputs.size = "640x352";
-    const frames = await generateDirectorFrames(ctx, shots.slice(0, 1), size);
+    const frames = await generateDirectorFrames(ctx, shots, size);
     outputs.push(...frames.outputs);
-    const still = frames.outputs.find((o) => o.kind === "image" && o.url);
-    if (!still?.url) throw new Error("WAN fast video needs a still");
-    const imagePath = path.join(process.cwd(), ".data", "outputs", path.basename(still.url));
-    await fs.access(imagePath);
-    const clip = await runZermoVideoAdapter(ctx, imagePath, brief);
-    outputs.push(...clip.outputs);
+    const clipUrls: string[] = [];
+    const stills = frames.outputs.filter((o) => o.kind === "image" && o.url);
+    for (let i = 0; i < stills.length; i++) {
+      const imagePath = path.join(process.cwd(), ".data", "outputs", path.basename(stills[i]!.url!));
+      await fs.access(imagePath);
+      const clip = await runZermoVideoAdapter(ctx, imagePath, shots[i]?.prompt || brief, `video:wan:${i}`);
+      outputs.push(...clip.outputs);
+      for (const o of clip.outputs) if (o.kind === "video" && o.url) clipUrls.push(o.url);
+    }
+    const cut = await concatClips({ jobId: ctx.job.id, videoUrls: clipUrls });
+    if (cut) outputs.push(cut);
     return { outputs, modeUsed: "zermo", script: storyboard };
   }
   const frames = await generateDirectorFrames(ctx, shots, size);
@@ -230,7 +236,9 @@ export async function runVideoWorkflowAdapter(
       jobId: ctx.job.id,
       imageUrls,
       audioUrl,
-      secondsPerBeat: Number(ctx.job.inputs.secondsPerBeat || 3.2),
+      secondsPerBeat:
+        getDurationSeconds(ctx.job.inputs.duration || "1m") /
+        Math.max(1, imageUrls.length),
     });
     if (video) outputs.push(video);
   }

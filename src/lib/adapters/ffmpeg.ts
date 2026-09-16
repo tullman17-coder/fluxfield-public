@@ -87,7 +87,7 @@ export async function assembleExplainerVideo(args: {
   ffmpegArgs.push("-c:v", "libx264", "-pix_fmt", "yuv420p", outPath);
 
   try {
-    await execFileAsync("ffmpeg", ffmpegArgs, { timeout: 180_000 });
+    await execFileAsync("ffmpeg", ffmpegArgs, { timeout: 600_000 });
     return {
       id,
       kind: "video",
@@ -129,7 +129,7 @@ export async function concatClips(args: {
   }
   ffmpegArgs.push("-c:v", "libx264", "-pix_fmt", "yuv420p", outPath);
   try {
-    await execFileAsync("ffmpeg", ffmpegArgs, { timeout: 180_000 });
+    await execFileAsync("ffmpeg", ffmpegArgs, { timeout: 600_000 });
     return { id, kind: "video", label: "Director cut · WAN clips", url: `/api/outputs/${filename}` };
   } catch {
     return undefined;

@@ -7,6 +7,7 @@ import {
 } from "@/lib/wrappers/catalog";
 import {
   getDurationBeats,
+  getDurationSeconds,
   getExplainerPreset,
 } from "@/lib/explainer/presets";
 import { readSettings } from "@/lib/settings";
@@ -561,7 +562,9 @@ async function processJob(jobId: string) {
           jobId,
           imageUrls,
           audioUrl: audio?.url,
-          secondsPerBeat: 3.5,
+          secondsPerBeat:
+            getDurationSeconds(current.inputs.duration || "1m") /
+            Math.max(1, imageUrls.length),
         });
       }
 
