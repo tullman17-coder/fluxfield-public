@@ -1,6 +1,6 @@
 # Fluxfield
 
-Local Higgsfield/Maestro-style studio — **marketing wrappers**, **Explainer**, a **Director** for long-form pieces, and a **Music** desk — talking to offline models on another machine, including a **Local Studio / Local Dream Studio** controller over **Netbird**.
+Local Higgsfield/Maestro-style studio — **marketing wrappers**, **Explainer**, a **Director** for long-form pieces, and a **Music** desk — talking to offline models on another machine, including a **Local Studio / Local Dream Studio** controller over **Private-LAN**.
 
 ## What you get
 
