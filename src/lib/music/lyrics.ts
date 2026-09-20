@@ -363,3 +363,43 @@ export function lyricPlainText(sheet: LyricSheet) {
   }
   return out.join("\n").trim();
 }
+
+export type LyricCue = { at: number; until: number; text: string };
+
+export function timedLyricCues(sheet: LyricSheet): LyricCue[] {
+  const lines = sheet.sections.flatMap((s) => s.lines).filter((l) => l.text.trim());
+  const end = sheet.sections.at(-1)?.endSec;
+  return lines.map((l, i) => ({
+    at: l.at,
+    until: i + 1 < lines.length ? lines[i + 1]!.at : Math.max(l.at + 3, end ?? l.at + 3),
+    text: l.text.trim(),
+  }));
+}
+
+export function lyricCueAt(cues: LyricCue[], t: number) {
+  let text = "";
+  for (const c of cues) if (t + 1e-6 >= c.at) text = c.text;
+  return text;
+}
+
+export function wanLyricPrompt(cues: LyricCue[], t: number) {
+  const line = lyricCueAt(cues, t);
+  if (!line) return "closed mouth, instrumental, no singing";
+  return `on-camera vocalist singing these exact words, mouth and jaw moving in time: "${line}"`;
+}
+
+function srtStamp(sec: number) {
+  const s = Math.max(0, sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const rest = s % 60;
+  const whole = Math.floor(rest);
+  const ms = Math.min(999, Math.round((rest - whole) * 1000));
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(whole).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+}
+
+export function lyricSheetToSrt(sheet: LyricSheet) {
+  return timedLyricCues(sheet)
+    .map((c, i) => `${i + 1}\n${srtStamp(c.at)} --> ${srtStamp(c.until)}\n${c.text}\n`)
+    .join("\n");
+}

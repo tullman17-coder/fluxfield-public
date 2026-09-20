@@ -26,6 +26,8 @@ import { runMusicAdapter } from "@/lib/adapters/music";
 import { runChainedWanClips, WAN_FAST, wanClipsForDuration } from "@/lib/adapters/zermo";
 import { concatClips } from "@/lib/adapters/ffmpeg";
 import { updateJob } from "@/lib/jobs/store";
+import type { LyricSheet } from "@/lib/music/lyrics";
+import { lyricSheetToSrt, timedLyricCues, wanLyricPrompt } from "@/lib/music/lyrics";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -150,6 +152,7 @@ export async function runDirectorAdapter(
       targetSec: Math.min(production.runtimeSec, 240),
       seedText: `${ctx.job.id}:score`,
     });
+  let lyricSheet: LyricSheet | null = null;
   if (ctx.settings.generationMode !== "zermo") {
   const rendered = renderArrangement(score, `${ctx.job.id}:${production.title}`);
   const wav = encodeWav(rendered.left, rendered.right, rendered.sampleRate);
@@ -175,6 +178,7 @@ export async function runDirectorAdapter(
     if (!ctx.job.inputs.lyricMode) ctx.job.inputs.lyricMode = mode === "music-video" ? "write" : "instrumental";
     const music = await runMusicAdapter(ctx);
     outputs.push(...music.outputs);
+    lyricSheet = music.lyrics;
     await mark(25, "ACE score done · stills next");
   }
 
@@ -221,6 +225,9 @@ export async function runDirectorAdapter(
     const stills = outputs.filter((o) => o.kind === "image" && o.url);
     const startStill = stills[0];
     const wanCount = wanClipsForDuration(runtimeSec);
+    const clipSec = WAN_FAST.frames / WAN_FAST.fps;
+    const fade = WAN_FAST.xfade;
+    const cues = lyricSheet ? timedLyricCues(lyricSheet) : [];
     if (startStill?.url) {
     await mark(50, `WAN 0/${wanCount} · ${wanCount} left`);
     const startPath = path.join(OUT_DIR, path.basename(startStill.url));
@@ -228,7 +235,10 @@ export async function runDirectorAdapter(
       ctx,
       Array.from({ length: wanCount }, (_, i) => ({
         imagePath: startPath,
-        prompt: frameShots[i % frameShots.length]?.prompt || brief,
+        prompt: [
+          frameShots[i % frameShots.length]?.prompt || brief,
+          wanLyricPrompt(cues, i * (clipSec - fade)),
+        ].join(" "),
       })),
       async (done, total, clips) => {
         const kept = outputs.filter((o) => o.kind !== "video");
@@ -241,12 +251,18 @@ export async function runDirectorAdapter(
     if (!haveClips) outputs.push(...chained.outputs);
     await mark(92, "Stitching WAN clips");
     const audioUrl = outputs.find((o) => o.kind === "audio")?.url;
+    let srtPath: string | undefined;
+    if (lyricSheet && timedLyricCues(lyricSheet).length) {
+      srtPath = path.join(OUT_DIR, `${ctx.job.id}-lyrics.srt`);
+      await fs.writeFile(srtPath, lyricSheetToSrt(lyricSheet));
+    }
     const cut = await concatClips({
       jobId: ctx.job.id,
       videoUrls: chained.clipUrls,
       audioUrl,
       clipSec: WAN_FAST.frames / WAN_FAST.fps,
       xfade: WAN_FAST.xfade,
+      srtPath,
     });
     if (cut) outputs.push(cut);
     }

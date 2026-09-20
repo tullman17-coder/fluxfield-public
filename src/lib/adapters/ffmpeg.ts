@@ -8,6 +8,19 @@ import type { JobOutput } from "@/lib/adapters/types";
 
 const execFileAsync = promisify(execFile);
 
+async function burnSrt(videoPath: string, srtPath?: string) {
+  if (!srtPath) return;
+  try {
+    await fs.access(srtPath);
+    const tmp = `${videoPath}.sub.mp4`;
+    const escaped = srtPath.replace(/\\/g, "/").replace(/'/g, "\\'").replace(/:/g, "\\:");
+    await execFileAsync("ffmpeg", ["-y", "-i", videoPath, "-vf", `subtitles='${escaped}'`, "-c:a", "copy", "-c:v", "libx264", "-pix_fmt", "yuv420p", tmp], { timeout: 120_000 });
+    await fs.rename(tmp, videoPath);
+  } catch {
+    // ponytail: no libass → cut without burned lyrics
+  }
+}
+
 export async function checkFfmpeg(): Promise<boolean> {
   try {
     await execFileAsync("ffmpeg", ["-version"], { timeout: 3000 });
@@ -112,6 +125,7 @@ export async function concatClips(args: {
   audioUrl?: string;
   clipSec?: number;
   xfade?: number;
+  srtPath?: string;
 }): Promise<JobOutput | undefined> {
   if (!(await checkFfmpeg()) || !args.videoUrls.length) return undefined;
   const outDir = path.join(process.cwd(), ".data", "outputs");
@@ -160,6 +174,7 @@ export async function concatClips(args: {
         "yuv420p",
         outPath,
       ], { timeout: 600_000 });
+      await burnSrt(outPath, args.srtPath);
       return { id, kind: "video", label: "Director cut · WAN 49f xfade", url: `/api/outputs/${filename}` };
     } catch { /* hard concat */ }
   }
@@ -168,6 +183,7 @@ export async function concatClips(args: {
   const ffmpegArgs = ["-y", "-f", "concat", "-safe", "0", "-i", listPath, ...audioArgs, "-c:v", "libx264", "-pix_fmt", "yuv420p", outPath];
   try {
     await execFileAsync("ffmpeg", ffmpegArgs, { timeout: 600_000 });
+    await burnSrt(outPath, args.srtPath);
     return { id, kind: "video", label: "Director cut · WAN clips", url: `/api/outputs/${filename}` };
   } catch {
     return undefined;
