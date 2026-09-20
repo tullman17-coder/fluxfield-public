@@ -100,7 +100,9 @@ export async function assembleExplainerVideo(args: {
 }
 
 export async function extractLastFrame(videoPath: string, pngPath: string) {
-  await execFileAsync("ffmpeg", ["-y", "-sseof", "-0.05", "-i", videoPath, "-frames:v", "1", pngPath], { timeout: 30_000 });
+  // -sseof -0.05 is shorter than one 16fps frame; ffmpeg exits 0 with no PNG.
+  await execFileAsync("ffmpeg", ["-y", "-sseof", "-1", "-i", videoPath, "-update", "1", "-frames:v", "1", pngPath], { timeout: 30_000 });
+  await fs.access(pngPath);
 }
 
 /** Concat WAN clips with a short xfade. Soft-fails if ffmpeg is missing. */
