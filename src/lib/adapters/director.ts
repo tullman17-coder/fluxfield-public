@@ -25,6 +25,7 @@ import {
 import { runMusicAdapter } from "@/lib/adapters/music";
 import { runChainedWanClips, WAN_FAST } from "@/lib/adapters/zermo";
 import { concatClips } from "@/lib/adapters/ffmpeg";
+import { updateJob } from "@/lib/jobs/store";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -109,11 +110,24 @@ export async function runDirectorAdapter(
         ].join("\n")
       : fullList;
 
+  const keyCount = Math.min(MAX_FRAMES, production.shots.length);
   outputs.push({
     id: nanoid(8),
     kind: "storyboard",
-    label: `Shot list · ${production.shots.length} shots`,
+    label: `Shot list · ${production.shots.length} shots · ${keyCount} key stills · ${keyCount}×49f WAN`,
     text: preview,
+  });
+  outputs.push({
+    id: nanoid(8),
+    kind: "text",
+    label: "Full shot list",
+    url: `/api/outputs/${listName}`,
+  });
+  await updateJob(ctx.job.id, {
+    outputs: [...outputs],
+    progress: 18,
+    phase: "compose",
+    script: preview,
   });
 
   // A track for music videos so the cuts have something to sit against, and a
@@ -223,13 +237,6 @@ export async function runDirectorAdapter(
       "",
       ...windowLines,
     ].join("\n"),
-  });
-
-  outputs.push({
-    id: nanoid(8),
-    kind: "text",
-    label: "Full shot list",
-    url: `/api/outputs/${listName}`,
   });
 
   return { outputs, production, modeUsed: frames.modeUsed };

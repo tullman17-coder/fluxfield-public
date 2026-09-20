@@ -123,9 +123,7 @@ export default function DirectorPage() {
           Director
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
-          Plan a whole piece instead of a single clip — up to an hour of shots
-          with timecodes and key frames. This is a plan, not a rendered film.
-          Zermo makes still key frames only; native score, video, and narration are not enabled.
+          Shot list first (1 min fast ≈ 25 cuts). Then up to 12 key stills, each WAN 49 frames (~3s at 16fps). The list shows while ACE and stills run.
         </p>
       </header>
 
@@ -393,6 +391,25 @@ export default function DirectorPage() {
         </aside>
 
         <section className="min-w-0 pt-3 xl:col-start-1">
+          {shotList?.text ? (
+            <details className="glass mb-6 min-w-0 rounded-[14px] p-5" open>
+              <summary className="cursor-pointer text-lg font-bold text-[#f5eff6]">
+                {shotList.label || "Shot list"}
+              </summary>
+              <pre className="mt-4 max-h-[32rem] min-w-0 overflow-auto whitespace-pre font-mono text-xs leading-relaxed tabular-nums text-[#b8aebb]">
+                {shotList.text}
+              </pre>
+              {listFile?.url ? (
+                <a
+                  href={listFile.url}
+                  download
+                  className="mt-4 inline-grid min-h-11 place-items-center rounded-[10px] border border-white/15 px-4 text-sm font-bold text-[#b8aebb] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6]"
+                >
+                  Download the full list
+                </a>
+              ) : null}
+            </details>
+          ) : null}
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
             Key frames
           </p>
@@ -436,35 +453,14 @@ export default function DirectorPage() {
             <div className="glass mt-4 rounded-[14px] px-4 py-8 text-center text-[#b8aebb]">
               <p>
                 {running
-                  ? "Laying out the shots…"
+                  ? (shotList?.label || "Laying out the shots…")
                   : "Frames for the key moments show up here."}
               </p>
               <span className="mt-1 block text-sm text-[#8d838f]">
-                One from each stretch of the piece, so you can read the whole
-                thing before every shot is drawn.
+                Up to 12 key stills. Each still becomes one WAN clip of 49 frames.
               </span>
             </div>
           )}
-
-          {shotList?.text ? (
-            <details className="glass mt-6 min-w-0 rounded-[14px] p-5" open>
-              <summary className="cursor-pointer text-lg font-bold text-[#f5eff6]">
-                Shot list
-              </summary>
-              <pre className="mt-4 max-h-[32rem] min-w-0 overflow-auto whitespace-pre font-mono text-xs leading-relaxed tabular-nums text-[#b8aebb]">
-                {shotList.text}
-              </pre>
-              {listFile?.url ? (
-                <a
-                  href={listFile.url}
-                  download
-                  className="mt-4 inline-grid min-h-11 place-items-center rounded-[10px] border border-white/15 px-4 text-sm font-bold text-[#b8aebb] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6]"
-                >
-                  Download the full list
-                </a>
-              ) : null}
-            </details>
-          ) : null}
         </section>
       </div>
       <MediaLightbox
