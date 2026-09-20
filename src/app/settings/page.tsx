@@ -21,6 +21,8 @@ const ENGINE_LABEL: Record<string, string> = {
   "zermo-unreachable": "Zermo unavailable — no fallback",
   "local-studio": "Studio",
   comfyui: "Comfy",
+  higgsfield: "Seedance 2.5",
+  "higgsfield-unreachable": "Higgsfield offline",
   mock: "Preview art",
 };
 

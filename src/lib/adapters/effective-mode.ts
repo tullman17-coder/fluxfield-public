@@ -26,6 +26,7 @@ export function pickMode(
   }
   if (reach.studioReady) return "local-studio";
   if (reach.comfy) return "comfyui";
+  if (reach.higgsfield) return "higgsfield";
   return "mock";
 }
 
@@ -44,10 +45,14 @@ export async function currentMode(settings: StudioSettings) {
     checkLocalStudioHealth(settings),
   ]);
   const studioReady = studio && Boolean(settings.studioApiKey);
+  const higgsfield = settings.generationMode === "auto" && !studioReady && !comfy
+    ? await checkHiggsfieldHealth(settings.higgsfieldApiKey)
+    : false;
   return {
     comfy,
     studio,
     studioReady,
-    mode: pickMode(settings, { studioReady, comfy }),
+    higgsfield,
+    mode: pickMode(settings, { studioReady, comfy, higgsfield }),
   };
 }

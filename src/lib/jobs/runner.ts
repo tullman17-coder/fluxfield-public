@@ -381,7 +381,7 @@ async function processJob(jobId: string) {
       settings.generationMode !== "local-studio" &&
       (await checkComfyHealth(settings.comfyUrl));
     const higgsfieldUp =
-      settings.generationMode === "higgsfield" &&
+      (settings.generationMode === "higgsfield" || settings.generationMode === "auto") &&
       Boolean(settings.higgsfieldApiKey) &&
       (await checkHiggsfieldHealth(settings.higgsfieldApiKey));
 
