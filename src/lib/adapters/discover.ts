@@ -228,7 +228,7 @@ export async function discoverAndHeal(
     (host) => !isPersonalHost(host),
   );
 
-  let [studioHits, comfyHits, ollamaHits, ttsHits] = await Promise.all([
+  const [studioHits, comfyHits, ollamaHits, ttsHits] = await Promise.all([
     factoryHosts.length && scanKind(studio.ok, next.studioUrl)
       ? probeAll(
           "studio",

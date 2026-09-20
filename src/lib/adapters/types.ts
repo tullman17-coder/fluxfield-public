@@ -1,4 +1,4 @@
-export type GenerationMode = "auto" | "mock" | "comfyui" | "local-studio" | "zermo";
+export type GenerationMode = "auto" | "mock" | "comfyui" | "local-studio" | "zermo" | "higgsfield";
 
 export type StudioSettings = {
   hasStudioApiKey?: boolean;
@@ -37,6 +37,10 @@ export type StudioSettings = {
    * its own checker off.
    */
   unrestricted: boolean;
+  /**
+   * Higgsfield AI API key for cloud generation (Seedance 2.5, face inputs, etc).
+   */
+  higgsfieldApiKey: string;
 };
 
 export type JobStatus = "queued" | "running" | "completed" | "failed";
@@ -59,7 +63,7 @@ export type JobOutput = {
   text?: string;
 };
 
-export type ModeUsed = "mock" | "comfyui" | "local-studio" | "zermo";
+export type ModeUsed = "mock" | "comfyui" | "local-studio" | "zermo" | "higgsfield";
 
 export type StudioJob = {
   id: string;

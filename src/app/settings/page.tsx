@@ -302,10 +302,11 @@ export default function SettingsPage() {
               })
             }
           >
-            <option value="auto">Automatic — factory Studio, then factory Comfy</option>
+            <option value="auto">Automatic — factory Studio, then factory Comfy, then Higgsfield</option>
             <option value="local-studio">Studio only</option>
             <option value="zermo">Zermo API — Qwen Image 2.1 / WAN / ACE, no fallback</option>
             <option value="comfyui">Comfy only</option>
+            <option value="higgsfield">Higgsfield AI — Seedance 2.5, face inputs, cloud</option>
             <option value="mock">Preview art — no graphics card needed</option>
           </select>
           {settings.generationMode === "zermo" ? <p className="text-xs" role="status">{health?.zermo?.configured ? (health.zermo.ready ? `Ready · stills ${health.zermo.image?.model ?? "—"} · video ${health.zermo.video?.model ?? "—"} · music ${health.zermo.music?.model ?? "—"}` : "Zermo configured but unreachable — no fallback") : "Zermo server credential not configured"}</p> : null}
@@ -331,6 +332,20 @@ export default function SettingsPage() {
             value={settings.studioApiKey || ""}
             onChange={(e) =>
               setSettings({ ...settings, studioApiKey: e.target.value })
+            }
+            className="border-white/10 bg-white/10"
+            autoComplete="off"
+          />
+        </Field>
+        <Field
+          label="Higgsfield API key"
+          hint="For Seedance 2.5, face inputs, and 40+ other models via Higgsfield cloud. Get a key at higgsfield.ai."
+        >
+          <Input
+            type="password"
+            value={settings.higgsfieldApiKey || ""}
+            onChange={(e) =>
+              setSettings({ ...settings, higgsfieldApiKey: e.target.value })
             }
             className="border-white/10 bg-white/10"
             autoComplete="off"

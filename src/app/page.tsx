@@ -29,33 +29,33 @@ export default async function HomePage() {
               "conic-gradient(from 40deg, rgb(138 73 190 / 45%), rgb(205 64 154 / 35%), rgb(88 56 160 / 40%), rgb(138 73 190 / 45%))",
           }}
         />
-        <p className="relative text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
+        <p className="relative text-[11px] font-bold uppercase tracking-[0.12em] text-[#d4a017]">
           Campaign layouts
         </p>
-        <h1 className="relative mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[#f5eff6] md:text-6xl">
+        <h1 className="relative mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[#d4a017] md:text-6xl">
           Fluxfield
         </h1>
-        <p className="relative mt-4 max-w-2xl text-base text-pretty text-[#b8aebb] md:text-lg">
+        <p className="relative mt-4 max-w-2xl text-base text-pretty text-[#c4957d] md:text-lg">
           Drop posters, catalog spreads, event bills, shop banners, fitting-room
           screens. Pick a layout, describe the product, and get finished art with
-          the words already set.
+          the words already set. Powered by Seedance 2.5, face inputs, and 40+ models.
         </p>
         <div className="relative mt-6 flex min-w-0 flex-wrap gap-3">
           <Link
             href="/supercomputer"
-            className="grid min-h-11 place-items-center rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-5 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6]"
+            className="grid min-h-11 place-items-center rounded-[10px] border border-[#d4a017] bg-[#d4a017] px-5 text-sm font-bold text-[#1a0505] transition-colors hover:border-[#f5deb3] hover:bg-[#f5deb3]"
           >
             Run superComputer
           </Link>
           <Link
             href="/create"
-            className="grid min-h-11 place-items-center rounded-[10px] border border-white/15 bg-[#2c162f] px-5 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6]"
+            className="grid min-h-11 place-items-center rounded-[10px] border border-white/15 bg-[#8b0000] px-5 text-sm font-bold text-[#d4a017] transition-colors hover:border-[#d4a017]"
           >
             Make an image
           </Link>
           <Link
             href="/settings"
-            className="grid min-h-11 place-items-center rounded-[10px] px-5 text-sm font-bold text-[#b8aebb] transition-colors hover:text-[#f5eff6]"
+            className="grid min-h-11 place-items-center rounded-[10px] px-5 text-sm font-bold text-[#c4957d] transition-colors hover:text-[#fdf0e6]"
           >
             Settings
           </Link>

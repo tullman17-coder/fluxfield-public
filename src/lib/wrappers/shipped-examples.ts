@@ -20,12 +20,14 @@ export type CardEngine =
   | "mock"
   | "comfyui"
   | "local-studio"
+  | "higgsfield"
   | "shipped";
 
 export const ENGINE_LABEL: Record<CardEngine, string> = {
   zermo: "Qwen Image 2.1",
   "local-studio": "Studio",
   comfyui: "Comfy",
+  higgsfield: "Seedance 2.5",
   mock: "Preview art",
   shipped: "Sample",
 };

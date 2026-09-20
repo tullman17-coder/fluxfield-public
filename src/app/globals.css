@@ -49,34 +49,34 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Dark purple canvas + milky glass surfaces.
-   Midnight base, milk-frosted translucency on top. */
+/* Zermo crimson blood + bright golden trex.
+   Deep crimson canvas, molten gold accents, sharp modern feel. */
 :root,
 .dark {
   color-scheme: dark;
-  --background: #0b0910;
-  --foreground: #f5eff6;
-  --card: #14101a;
-  --card-foreground: #f5eff6;
-  --popover: #17131f;
-  --popover-foreground: #f5eff6;
-  --primary: #d565d6;
-  --primary-foreground: #170b18;
-  --secondary: #1c1622;
-  --secondary-foreground: #f5eff6;
-  --muted: #1c1622;
-  --muted-foreground: #b8aebb;
-  --accent: #2c162f;
-  --accent-foreground: #e77ae6;
-  --destructive: #ff8ea0;
-  --border: rgb(245 239 246 / 12%);
-  --input: rgb(245 239 246 / 16%);
-  --ring: #f2a1ed;
-  --chart-1: #d565d6;
-  --chart-2: #8d838f;
-  --chart-3: #504156;
-  --chart-4: #332a38;
-  --chart-5: #211a25;
+  --background: #1a0505;
+  --foreground: #fdf0e6;
+  --card: #2a0a0a;
+  --card-foreground: #fdf0e6;
+  --popover: #2f0c0c;
+  --popover-foreground: #fdf0e6;
+  --primary: #d4a017;
+  --primary-foreground: #1a0505;
+  --secondary: #3a1212;
+  --secondary-foreground: #fdf0e6;
+  --muted: #3a1212;
+  --muted-foreground: #c4957d;
+  --accent: #8b0000;
+  --accent-foreground: #f5deb3;
+  --destructive: #ff4d4d;
+  --border: rgb(253 240 230 / 12%);
+  --input: rgb(253 240 230 / 16%);
+  --ring: #d4a017;
+  --chart-1: #d4a017;
+  --chart-2: #c4957d;
+  --chart-3: #8b0000;
+  --chart-4: #5a0a0a;
+  --chart-5: #3a1212;
   --radius: 0.625rem;
   --sidebar: #100d16;
   --sidebar-foreground: #f5eff6;

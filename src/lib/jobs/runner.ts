@@ -20,6 +20,7 @@ import {
 import { runMockAdapter } from "@/lib/adapters/mock";
 import { runMusicAdapter } from "@/lib/adapters/music";
 import { runZermoAdapter, runChainedWanClips, WAN_FAST } from "@/lib/adapters/zermo";
+import { runHiggsfieldAdapter, checkHiggsfieldHealth } from "@/lib/adapters/higgsfield";
 import { assembleExplainerVideo, concatClips, checkFfmpeg } from "@/lib/adapters/ffmpeg";
 import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 import { runDirectorAdapter } from "@/lib/adapters/director";
@@ -379,9 +380,20 @@ async function processJob(jobId: string) {
       settings.generationMode !== "mock" &&
       settings.generationMode !== "local-studio" &&
       (await checkComfyHealth(settings.comfyUrl));
+    const higgsfieldUp =
+      settings.generationMode === "higgsfield" &&
+      Boolean(settings.higgsfieldApiKey) &&
+      (await checkHiggsfieldHealth(settings.higgsfieldApiKey));
 
     let modeUsed: ModeUsed = settings.generationMode === "zermo" ? "zermo" : "mock";
-    if (settings.generationMode === "local-studio") {
+    if (settings.generationMode === "higgsfield") {
+      if (!higgsfieldUp) {
+        throw new Error(
+          `Higgsfield API not reachable. Check your API key in Settings → Connections.`,
+        );
+      }
+      modeUsed = "higgsfield";
+    } else if (settings.generationMode === "local-studio") {
       if (!studioUp) {
         throw new Error(
           `Local Studio not reachable at ${settings.studioUrl}. Point it at DGX Spark with the Studio key, or switch mode to auto/mock.`,
@@ -398,6 +410,7 @@ async function processJob(jobId: string) {
     } else if (settings.generationMode === "auto") {
       if (studioUp) modeUsed = "local-studio";
       else if (comfyUp) modeUsed = "comfyui";
+      else if (higgsfieldUp) modeUsed = "higgsfield";
       else modeUsed = "mock";
     }
 
@@ -443,17 +456,19 @@ async function processJob(jobId: string) {
     // job. In auto mode keep walking down the chain when one actually fails.
     const chain: ModeUsed[] =
       settings.generationMode === "auto"
-        ? (["local-studio", "comfyui", "mock"] as const).filter(
+        ? (["local-studio", "comfyui", "higgsfield", "mock"] as const).filter(
             (m) =>
               m === "mock" ||
               (m === "local-studio" && studioUp) ||
-              (m === "comfyui" && comfyUp),
+              (m === "comfyui" && comfyUp) ||
+              (m === "higgsfield" && higgsfieldUp),
           )
         : [modeUsed];
 
     const runWith = (mode: ModeUsed, job = refreshed) => {
       const next = { ...ctx, job };
       if (mode === "zermo") return runZermoAdapter(next, packCount);
+      if (mode === "higgsfield") return runHiggsfieldAdapter(next);
       return mode === "local-studio"
         ? runLocalStudioAdapter(next, packCount)
         : mode === "comfyui"
