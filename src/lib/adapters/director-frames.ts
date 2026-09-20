@@ -111,6 +111,7 @@ export async function generateDirectorFrames(
   ctx: AdapterContext,
   shots: DirectorFrameShot[],
   size: { w: number; h: number } = { w: 960, h: 540 },
+  onFrame?: (done: number, total: number, outputs: JobOutput[]) => Promise<void>,
 ): Promise<{ outputs: JobOutput[]; modeUsed: ModeUsed }> {
   const capped = shots.slice(0, MAX_DIRECTOR_FRAMES);
   if (!capped.length) return { outputs: [], modeUsed: "mock" };
@@ -128,6 +129,7 @@ export async function generateDirectorFrames(
       );
       outputs.push(...result.outputs.map((o) => ({ ...o, label: shot.label })));
       liveSucceeded += 1;
+      await onFrame?.(outputs.length, capped.length, outputs);
       continue;
     }
     if (modeUsed === "local-studio") {
@@ -140,6 +142,7 @@ export async function generateDirectorFrames(
         if (frame) {
           outputs.push({ ...frame, label: shot.label, id: nanoid(8) });
           liveSucceeded += 1;
+          await onFrame?.(outputs.length, capped.length, outputs);
           continue;
         }
       } catch {
@@ -152,6 +155,7 @@ export async function generateDirectorFrames(
         if (frame) {
           outputs.push({ ...frame, label: shot.label, id: nanoid(8) });
           liveSucceeded += 1;
+          await onFrame?.(outputs.length, capped.length, outputs);
           continue;
         }
       } catch {
@@ -160,6 +164,7 @@ export async function generateDirectorFrames(
     }
 
     outputs.push(await writeMockFrame(ctx.job.id, shot, size));
+    await onFrame?.(outputs.length, capped.length, outputs);
   }
 
   if (liveSucceeded === 0) modeUsed = "mock";

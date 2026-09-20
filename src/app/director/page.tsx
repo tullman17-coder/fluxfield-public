@@ -105,7 +105,8 @@ export default function DirectorPage() {
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const shotList = job?.outputs.find((o) => o.kind === "storyboard");
-  const windows = job?.outputs.find((o) => o.kind === "text" && o.text);
+  const runStatus = job?.outputs.find((o) => o.id === "run-progress");
+  const windows = job?.outputs.find((o) => o.kind === "text" && o.label === "Windows");
   const listFile = job?.outputs.find((o) => o.kind === "text" && o.url);
   const soundtrack = job?.outputs.find((o) => o.kind === "audio");
   const lyricSheet = job?.outputs.find((o) => o.kind === "script");
@@ -342,7 +343,7 @@ export default function DirectorPage() {
               disabled={running}
               className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/5 disabled:text-[#6e6570] sm:w-48"
             >
-              {running ? "Planning" : "Build the plan"}
+              {running ? (runStatus?.text || "Working…") : "Build the plan"}
             </button>
           </div>
         </form>
@@ -391,6 +392,23 @@ export default function DirectorPage() {
         </aside>
 
         <section className="min-w-0 pt-3 xl:col-start-1">
+          {job && job.status !== "completed" ? (
+            <div className="glass mb-6 rounded-[14px] p-4" role="status">
+              <p className="text-sm font-bold text-[#f5eff6]">
+                {runStatus?.text || (running ? "Working…" : job.error || "Queued")}
+              </p>
+              <progress
+                value={job.progress}
+                max={100}
+                className="mt-2 h-2 w-full accent-[#d565d6]"
+              />
+              <p className="mt-1 font-mono text-xs tabular-nums text-[#b8aebb]">
+                {job.progress}%
+                {frames.length ? ` · stills ${frames.length}` : ""}
+                {clips.length ? ` · WAN ${clips.length}` : ""}
+              </p>
+            </div>
+          ) : null}
           {shotList?.text ? (
             <details className="glass mb-6 min-w-0 rounded-[14px] p-5" open>
               <summary className="cursor-pointer text-lg font-bold text-[#f5eff6]">

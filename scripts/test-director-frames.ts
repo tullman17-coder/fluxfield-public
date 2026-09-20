@@ -73,6 +73,7 @@ async function main() {
       return new Response(PNG, { headers: { "content-type": "image/png" } });
     };
 
+    let ticks = 0;
     await generateDirectorFrames(
       ctx,
       [
@@ -84,7 +85,11 @@ async function main() {
         },
       ],
       { w: 540, h: 960 },
+      async () => {
+        ticks += 1;
+      },
     );
+    assert.equal(ticks, 1);
 
     assert.ok(request);
     assert.match(request.prompt, /film noir, hard chiaroscuro/);
@@ -110,9 +115,30 @@ async function main() {
       },
     };
     await saveJob(directorJob);
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFileAsync = promisify(execFile);
+    const mp4Path = path.join(tmp, "one.mp4");
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=black:s=64x64:d=1",
+      "-frames:v",
+      "1",
+      mp4Path,
+    ]);
+    const MP4 = await fs.readFile(mp4Path);
+    const FLAC = Buffer.from("fLaC");
     const directorRequests: ZermoRequest[] = [];
     globalThis.fetch = async (_url, init) => {
       if (init?.method === "POST") {
+        const headers = (init.headers || {}) as Record<string, string>;
+        const ct = headers["Content-Type"] || headers["content-type"] || "";
+        if (String(ct).includes("image/png")) {
+          return Response.json({ id: `asset_${"e".repeat(32)}` });
+        }
         const submitted = JSON.parse(String(init.body)) as ZermoRequest;
         directorRequests.push(submitted);
         const suffix = directorRequests.length.toString(16).padStart(32, "0");
@@ -123,23 +149,33 @@ async function main() {
           outputs: [`asset_${suffix}`],
         });
       }
+      const last = directorRequests.at(-1);
+      if (last?.operation === "music.generate") {
+        return new Response(FLAC, { headers: { "content-type": "audio/flac" } });
+      }
+      if (last?.operation === "video.image_to_video") {
+        return new Response(MP4, { headers: { "content-type": "video/mp4" } });
+      }
       return new Response(PNG, { headers: { "content-type": "image/png" } });
     };
     const { runDirectorAdapter } = await import(
       "../src/lib/adapters/director"
     );
     await runDirectorAdapter({ ...ctx, job: directorJob });
-    assert.ok(directorRequests.length > 0);
-    for (const submitted of directorRequests) {
+    const stills = directorRequests.filter((r) => r.operation === "image.generate");
+    assert.ok(stills.length > 0);
+    for (const submitted of stills) {
       assert.ok(submitted.prompt.includes(brief));
       assert.match(submitted.prompt, /film noir, hard chiaroscuro/);
       assert.notEqual(submitted.seed, undefined);
       assert.deepEqual(submitted.settings, {
-        width: 1024,
-        height: 576,
+        width: 640,
+        height: 352,
         steps: 8,
       });
     }
+    const wan = directorRequests.filter((r) => r.operation === "video.image_to_video");
+    assert.ok(wan.length > 0);
 
     const explicitJob = job("director-explicit", {
       size: "512x512",

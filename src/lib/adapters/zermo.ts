@@ -250,6 +250,7 @@ export async function runZermoVideoAdapter(ctx: AdapterContext, imagePath: strin
 export async function runChainedWanClips(
   ctx: AdapterContext,
   shots: { imagePath: string; prompt: string }[],
+  onClip?: (done: number, total: number, outputs: AdapterResult["outputs"]) => Promise<void>,
 ) {
   const outputs: AdapterResult["outputs"] = [];
   const clipUrls: string[] = [];
@@ -261,11 +262,13 @@ export async function runChainedWanClips(
     const clip = await runZermoVideoAdapter(ctx, start, shots[i]!.prompt, `video:wan:${i}`);
     outputs.push(...clip.outputs);
     const vid = clip.outputs.find((o) => o.kind === "video" && o.url);
-    if (!vid?.url) continue;
-    clipUrls.push(vid.url);
-    const tail = path.join(dir, `${ctx.job.id}-tail-${i}.png`);
-    await extractLastFrame(path.join(dir, path.basename(vid.url)), tail);
-    start = tail;
+    if (vid?.url) {
+      clipUrls.push(vid.url);
+      const tail = path.join(dir, `${ctx.job.id}-tail-${i}.png`);
+      await extractLastFrame(path.join(dir, path.basename(vid.url)), tail);
+      start = tail;
+    }
+    await onClip?.(i + 1, shots.length, outputs);
   }
   return { outputs, clipUrls };
 }

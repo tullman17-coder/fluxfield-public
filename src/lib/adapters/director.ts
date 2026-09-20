@@ -130,6 +130,15 @@ export async function runDirectorAdapter(
     script: preview,
   });
 
+  const mark = async (progress: number, label: string) => {
+    const rest = outputs.filter((o) => o.id !== "run-progress");
+    rest.push({ id: "run-progress", kind: "text", label, text: label });
+    outputs.length = 0;
+    outputs.push(...rest);
+    await updateJob(ctx.job.id, { outputs: [...outputs], progress, phase: "compose" });
+  };
+  await mark(18, `Plan · ${production.shots.length} shots · ACE next`);
+
   // A track for music videos so the cuts have something to sit against, and a
   // score bed for films so the acts have a floor under them.
   const score =
@@ -158,12 +167,14 @@ export async function runDirectorAdapter(
       .join(" · "),
     url: `/api/outputs/${wavName}`,
   });
+  await mark(25, "Score done · stills next");
 
   } else {
     ctx.job.inputs.seconds = String(Math.min(90, Math.max(10, runtimeSec)));
     if (!ctx.job.inputs.lyricMode) ctx.job.inputs.lyricMode = mode === "music-video" ? "write" : "instrumental";
     const music = await runMusicAdapter(ctx);
     outputs.push(...music.outputs);
+    await mark(25, "ACE score done · stills next");
   }
 
   // Key frames — live GPU when Studio/Comfy is up, otherwise local art.
@@ -196,19 +207,34 @@ export async function runDirectorAdapter(
       seed: hash32(`${production.title}:${shot.index}:${shot.move}`),
     };
   });
-  const frames = await generateDirectorFrames(ctx, frameShots, size);
-  outputs.push(...frames.outputs);
+  const frames = await generateDirectorFrames(ctx, frameShots, size, async (done, total, frameOut) => {
+    const kept = outputs.filter((o) => o.kind !== "image");
+    outputs.length = 0;
+    outputs.push(...kept, ...frameOut);
+    await mark(25 + Math.round((done / total) * 25), `Still ${done}/${total} · ${total - done} left`);
+  });
+  const haveFrames = outputs.some((o) => o.kind === "image");
+  if (!haveFrames) outputs.push(...frames.outputs);
 
   if (ctx.settings.generationMode === "zermo") {
-    const stills = frames.outputs.filter((o) => o.kind === "image" && o.url);
+    const stills = outputs.filter((o) => o.kind === "image" && o.url);
+    await mark(50, `WAN 0/${stills.length} · ${stills.length} left`);
     const chained = await runChainedWanClips(
       ctx,
       stills.map((s, i) => ({
         imagePath: path.join(OUT_DIR, path.basename(s.url!)),
         prompt: frameShots[i]?.prompt || brief,
       })),
+      async (done, total, clips) => {
+        const kept = outputs.filter((o) => o.kind !== "video");
+        outputs.length = 0;
+        outputs.push(...kept, ...clips);
+        await mark(50 + Math.round((done / total) * 40), `WAN ${done}/${total} · ${total - done} left`);
+      },
     );
-    outputs.push(...chained.outputs);
+    const haveClips = outputs.some((o) => o.kind === "video");
+    if (!haveClips) outputs.push(...chained.outputs);
+    await mark(92, "Stitching WAN clips");
     const audioUrl = outputs.find((o) => o.kind === "audio")?.url;
     const cut = await concatClips({
       jobId: ctx.job.id,
