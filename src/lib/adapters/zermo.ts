@@ -144,13 +144,13 @@ export function imageRequest(ctx: AdapterContext): ZermoRequest {
     [width, height] = size.slice(1).map(Number);
     if (![width, height].every((n) => Number.isInteger(n) && n >= 256 && n <= 1024 && n % 8 === 0)) throw new Error("Zermo dimensions must be 256–1024 and divisible by 8");
   }
-  const steps = Number(ctx.job.inputs.steps || 20);
-  if (![8, 20].includes(steps) || (ctx.job.inputs.cfg && Number(ctx.job.inputs.cfg) !== 1)) throw new Error("Zermo Flux.1 supports steps=8 or 20, with CFG=1");
+  const steps = Number(ctx.job.inputs.steps || 8);
+  if (![8, 20].includes(steps) || (ctx.job.inputs.cfg && Number(ctx.job.inputs.cfg) !== 1)) throw new Error("Zermo Qwen Image 2.1 supports steps=8 or 20, with CFG=1");
   const seed = exactSeed(ctx.job.inputs.seed);
   if (!ctx.job.prompt.trim() || ctx.job.prompt.length > 8000 || ctx.job.negativePrompt.length > 8000) throw new Error("Zermo prompts must be 1–8000 characters");
   const mature = ["boudoir", "figure", "pinup"].includes(ctx.job.presetId);
   const model = mature ? "flux1-uncensored" : "flux1-dev-q4";
-  const fitted = { width: Math.min(width, 768), height: Math.min(height, 768) };
+  const fitted = { width: Math.min(width, 1024), height: Math.min(height, 1024) };
   fitted.width = Math.round(fitted.width / 8) * 8;
   fitted.height = Math.round(fitted.height / 8) * 8;
   return { operation: "image.generate", model, prompt: ctx.job.prompt, negative_prompt: ctx.job.negativePrompt, ...(seed === undefined ? {} : { seed }), settings: { width: fitted.width, height: fitted.height, steps } };

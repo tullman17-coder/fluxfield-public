@@ -84,7 +84,7 @@ const ids = ["editorial-motion", "stickman-cartoon", "watercolor-chronicle", "fa
 assert.deepEqual(EXPLAINER_PRESETS.map((p) => p.id), ids);
 for (const p of EXPLAINER_PRESETS) {
   assert.equal(p.previewImage, `/examples/explainer/${p.id}.webp`);
-  assert(p.styleAlias.startsWith("Flux.1 · "));
+  assert(p.styleAlias.startsWith("Qwen 2.1 · "));
   assert(p.example.length > 5);
 }
 const provenance = JSON.parse(

@@ -12,7 +12,7 @@ export function ManagedConnection({ health }: { health: ManagedHealth | null | u
       </div>)}
     </div>
     <p className="text-xs text-[#b8aebb]">Media worker configuration: {!health ? "checking" : health.workerConfigured ? "present" : "not ready"}. Spark controls the service; media runs on its configured worker. Connection checks are not proof of a completed generation.</p>
-    <p className="text-sm text-[#b8aebb]">Writing, Flux.1 stills, WAN 2.2 5B I2V (49f/8step last-frame chain), ACE music+lyrics.</p>
+    <p className="text-sm text-[#b8aebb]">Writing, Qwen Image 2.1 stills (qwen_image_2.1_int8_convrot), WAN 2.2 5B I2V (49f/8step last-frame chain), ACE music+lyrics.</p>
     <p className="text-xs text-[#8d838f]">Director and UGC animate key shots on WAN. FastWan-QAD is a FastVideo stack, not this Comfy worker. Credentials stay on the server.</p>
     {health?.error ? <p role="alert" className="text-sm text-amber-300">{health.error}</p> : null}
   </section>;

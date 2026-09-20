@@ -75,11 +75,11 @@ export default function ExplainerPage() {
           Explain with a script and scene art
         </h1>
         <p className="mt-2 max-w-2xl text-[#b8aebb]">
-          Script, Flux.1 stills, WAN 49f last-frame chain, and VO when TTS is up.
+          Script, Qwen Image 2.1 stills, WAN 49f last-frame chain, and VO when TTS is up.
         </p>
       </div>
 
-      <p className="text-sm text-[#b8aebb]">Six styles of Flux.1-dev Q4, not six different models.</p>
+      <p className="text-sm text-[#b8aebb]">Six styles of Qwen-Image-2.1, not six different models.</p>
       {error ? <p role="alert" className="text-sm text-red-400">{error}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {EXPLAINER_PRESETS.map((p) => {
@@ -98,7 +98,7 @@ export default function ExplainerPage() {
               <div className="relative aspect-video bg-black/20">
                 {/* Static WebP samples are already downsized; preserve their provenance. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.previewImage} alt={`${p.name} — Flux.1-dev Q4 generated still sample`} loading="lazy" decoding="async" width={640} height={360} className="h-full w-full object-cover" />
+                <img src={p.previewImage} alt={`${p.name} — Qwen-Image-2.1 generated still sample`} loading="lazy" decoding="async" width={640} height={360} className="h-full w-full object-cover" />
                 {active ? (
                   <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-[#d565d6] text-xs font-bold text-black">
                     ✓
@@ -112,7 +112,7 @@ export default function ExplainerPage() {
                 <div className="text-sm font-medium text-[#f5eff6]">{p.styleAlias}</div>
                 <div className="text-xs text-[#8d838f]">{p.blurb}</div>
                 <p className="mt-1 text-xs text-[#b8aebb]">Example: {p.example}</p>
-                <p className="mt-2 text-[10px] text-[#b8aebb]">Flux.1-dev Q4 · generated still sample, not video</p>
+                <p className="mt-2 text-[10px] text-[#b8aebb]">Qwen-Image-2.1 · generated still sample, not video</p>
               </div>
             </button>
           );

@@ -23,7 +23,7 @@ export type CardEngine =
   | "shipped";
 
 export const ENGINE_LABEL: Record<CardEngine, string> = {
-  zermo: "Flux.1 Q4",
+  zermo: "Qwen Image 2.1",
   "local-studio": "Studio",
   comfyui: "Comfy",
   mock: "Preview art",

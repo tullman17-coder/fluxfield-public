@@ -17,7 +17,7 @@ async function loadHealth(force = false) {
 }
 
 const ENGINE_LABEL: Record<string, string> = {
-  zermo: "Flux.1 / WAN / ACE",
+  zermo: "Qwen Image 2.1 / WAN / ACE",
   "zermo-unreachable": "Zermo unavailable — no fallback",
   "local-studio": "Studio",
   comfyui: "Comfy",
@@ -291,7 +291,7 @@ export default function SettingsPage() {
       ) : null}
 
       <div className="space-y-5 rounded-2xl border border-white/10 glass p-5">
-        <Field label="Generation source" hint="Zermo: Flux.1 stills, WAN 2.2 5B I2V (director/UGC), ACE-Step 1.5 turbo music+lyrics. FastWan-QAD is FastVideo/SageAttention — not this Comfy worker. No MiniMax-H3.">
+        <Field label="Generation source" hint="Zermo: Qwen Image 2.1 stills (qwen_image_2.1_int8_convrot), WAN 2.2 5B I2V (director/UGC), ACE-Step 1.5 turbo music+lyrics. FastWan-QAD is FastVideo/SageAttention — not this Comfy worker. No MiniMax-H3.">
           <select
             className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3 text-sm"
             value={settings.generationMode}
@@ -304,7 +304,7 @@ export default function SettingsPage() {
           >
             <option value="auto">Automatic — factory Studio, then factory Comfy</option>
             <option value="local-studio">Studio only</option>
-            <option value="zermo">Zermo API — Flux.1 / WAN / ACE, no fallback</option>
+            <option value="zermo">Zermo API — Qwen Image 2.1 / WAN / ACE, no fallback</option>
             <option value="comfyui">Comfy only</option>
             <option value="mock">Preview art — no graphics card needed</option>
           </select>

@@ -15,7 +15,7 @@ const MODES = [
   {
     id: "music-video",
     label: "Music video",
-    blurb: "ACE score + lyrics, Flux.1 stills, WAN 5B clips per key shot.",
+    blurb: "ACE score + lyrics, Qwen Image 2.1 stills, WAN 5B clips per key shot.",
   },
   {
     id: "film",
@@ -400,7 +400,7 @@ export default function DirectorPage() {
             {frames.length ? `${frames.length} frames` : "Frames"}
           </h2>
           <ZermoJobStatus job={job} onResume={setJob} />
-          {zermo ? <p className="mt-2 text-xs text-[#b8aebb]">Director cut: Flux.1 still → WAN 5B 49f/8step, last-frame chain + 0.25s xfade, ACE score. Same Boop fast lane, not FastWan-QAD.</p> : null}
+          {zermo ? <p className="mt-2 text-xs text-[#b8aebb]">Director cut: Qwen Image 2.1 still → WAN 5B 49f/8step, last-frame chain + 0.25s xfade, ACE score. Same Boop fast lane, not FastWan-QAD.</p> : null}
           {frames.length ? (
             <ul className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {frames.map((f) => (

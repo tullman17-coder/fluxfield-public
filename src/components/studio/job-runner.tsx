@@ -201,12 +201,12 @@ export function JobRunner({
             >
               {DREAM_PRESETS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {zermo ? `Flux.1 · ${p.label}` : p.label}
+                  {zermo ? `Qwen 2.1 · ${p.label}` : p.label}
                 </option>
               ))}
             </select>
             <p className="text-xs text-[#8d838f]">
-              {zermo ? "Prompt styles on Flux.1-dev Q4, not separate models." : "Sets the overall finish of the art."}
+              {zermo ? "Prompt styles on Qwen-Image-2.1 (qwen_image_2.1_int8_convrot), not separate models." : "Sets the overall finish of the art."}
             </p>
           </div> : null}
           <div className="space-y-2">
