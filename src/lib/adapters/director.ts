@@ -23,7 +23,7 @@ import {
   MAX_DIRECTOR_FRAMES,
 } from "@/lib/adapters/director-frames";
 import { runMusicAdapter } from "@/lib/adapters/music";
-import { runChainedWanClips, WAN_FAST } from "@/lib/adapters/zermo";
+import { runChainedWanClips, WAN_FAST, wanClipsForDuration } from "@/lib/adapters/zermo";
 import { concatClips } from "@/lib/adapters/ffmpeg";
 import { updateJob } from "@/lib/jobs/store";
 
@@ -111,10 +111,11 @@ export async function runDirectorAdapter(
       : fullList;
 
   const keyCount = Math.min(MAX_FRAMES, production.shots.length);
+  const wanCount = wanClipsForDuration(runtimeSec);
   outputs.push({
     id: nanoid(8),
     kind: "storyboard",
-    label: `Shot list · ${production.shots.length} shots · ${keyCount} key stills · ${keyCount}×49f WAN`,
+    label: `Shot list · ${production.shots.length} shots · ${keyCount} key stills · ${wanCount}×49f WAN`,
     text: preview,
   });
   outputs.push({
@@ -218,12 +219,16 @@ export async function runDirectorAdapter(
 
   if (ctx.settings.generationMode === "zermo") {
     const stills = outputs.filter((o) => o.kind === "image" && o.url);
-    await mark(50, `WAN 0/${stills.length} · ${stills.length} left`);
+    const startStill = stills[0];
+    const wanCount = wanClipsForDuration(runtimeSec);
+    if (startStill?.url) {
+    await mark(50, `WAN 0/${wanCount} · ${wanCount} left`);
+    const startPath = path.join(OUT_DIR, path.basename(startStill.url));
     const chained = await runChainedWanClips(
       ctx,
-      stills.map((s, i) => ({
-        imagePath: path.join(OUT_DIR, path.basename(s.url!)),
-        prompt: frameShots[i]?.prompt || brief,
+      Array.from({ length: wanCount }, (_, i) => ({
+        imagePath: startPath,
+        prompt: frameShots[i % frameShots.length]?.prompt || brief,
       })),
       async (done, total, clips) => {
         const kept = outputs.filter((o) => o.kind !== "video");
@@ -244,6 +249,7 @@ export async function runDirectorAdapter(
       xfade: WAN_FAST.xfade,
     });
     if (cut) outputs.push(cut);
+    }
   }
 
   // Window plan — what is rendered and what is still queued.

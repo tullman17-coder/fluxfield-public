@@ -45,6 +45,10 @@ async function main() {
   delete process.env.ZERMO_API_KEY_FILE;
 
   try {
+    const { wanClipsForDuration } = await import("../src/lib/adapters/zermo");
+    assert.equal(wanClipsForDuration(60), 22);
+    assert.equal(wanClipsForDuration(30), 11);
+
     const { generateDirectorFrames } = await import(
       "../src/lib/adapters/director-frames"
     );
@@ -175,7 +179,7 @@ async function main() {
       });
     }
     const wan = directorRequests.filter((r) => r.operation === "video.image_to_video");
-    assert.ok(wan.length > 0);
+    assert.equal(wan.length, wanClipsForDuration(30));
 
     const explicitJob = job("director-explicit", {
       size: "512x512",

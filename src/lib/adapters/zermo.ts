@@ -228,6 +228,14 @@ export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = 
 /** Fast I2V on Boop WAN 2.2 5B: 49 frames / 8 steps (~3s at 16fps). Last-frame chain, not FastWan-QAD. */
 export const WAN_FAST = { frames: 49, steps: 8, fps: 16, xfade: 0.25 } as const;
 
+/** Clips to cover ACE length (10–90s). 36 ≈ 90s xfade. */
+export function wanClipsForDuration(sec: number) {
+  const clip = WAN_FAST.frames / WAN_FAST.fps;
+  const fade = WAN_FAST.xfade;
+  const target = Math.min(90, Math.max(10, sec));
+  return Math.min(36, Math.max(1, Math.ceil((target - fade) / (clip - fade))));
+}
+
 export async function runZermoVideoAdapter(ctx: AdapterContext, imagePath: string, prompt: string, purpose = "video:wan") {
   const png = await fs.readFile(imagePath);
   const upload = await (await request("/assets", {
