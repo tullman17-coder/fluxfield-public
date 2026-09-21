@@ -31,7 +31,7 @@ export type ZermoRequest = {
   negative_prompt?: string;
   seed?: number | string;
   inputs?: { image?: string; audio?: string };
-  settings: { width?: number; height?: number; steps?: number; duration?: number; lyrics?: string; frames?: number };
+  settings: { width?: number; height?: number; steps?: number; duration?: number; lyrics?: string; frames?: number; bpm?: number; keyscale?: string };
 };
 export type ZermoIntent = {
   request: ZermoRequest;
@@ -218,7 +218,11 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
     const name = `${job.id}-${id}.${ext}`;
     await fs.writeFile(path.join(dir, `${name}.tmp`), bytes);
     await fs.rename(path.join(dir, `${name}.tmp`), path.join(dir, name));
-    outputs.push({ id, kind: music ? "audio" : video ? "video" : "image", label: music ? "Zermo ACE · FLAC" : video ? "Zermo WAN 5B · 49f chain" : `Zermo Qwen Image 2.1 · ${intent.effective?.steps ?? intent.request.settings.steps} steps`, url: `/api/outputs/${name}` });
+    if (music) {
+      const { retuneTo432 } = await import("./ffmpeg");
+      await retuneTo432(path.join(dir, name));
+    }
+    outputs.push({ id, kind: music ? "audio" : video ? "video" : "image", label: music ? "Zermo ACE · FLAC · A=432" : video ? "Zermo WAN 5B · 49f chain" : `Zermo Qwen Image 2.1 · ${intent.effective?.steps ?? intent.request.settings.steps} steps`, url: `/api/outputs/${name}` });
   }
   return { outputs, remotePromptId: intent.remoteId };
 }

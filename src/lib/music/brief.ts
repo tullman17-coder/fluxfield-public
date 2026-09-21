@@ -12,7 +12,7 @@ export type MusicBrief = {
 };
 
 const HIPHOP =
-  "hip hop, rap, male vocal, aggressive, boom bap, dark keys, 90s hip hop";
+  "hip hop, rap, male vocal, 808, trap drums, dry vocal, punchy mix, modern radio";
 
 const STYLES: [RegExp, { tags: string; genre: string; cadence: string }][] = [
   [
@@ -51,12 +51,12 @@ const STYLES: [RegExp, { tags: string; genre: string; cadence: string }][] = [
 
 const GENRE_TAGS: Record<string, string> = {
   hiphop: HIPHOP,
-  trap: "trap, hip hop, rap, male vocal, 808, hi-hats, dark",
-  drill: "drill, hip hop, rap, male vocal, sliding 808, dark",
+  trap: "trap, hip hop, rap, male vocal, 808, rolling hats, dry mix, dark",
+  drill: "UK drill, sliding 808, rap, male vocal, dark, syncopated hats",
   metal: "metal, aggressive male vocal, distorted guitar, double kick",
-  pop: "pop, male vocal, catchy, bright drums",
-  rnb: "r&b, male vocal, warm keys, stacked vocals",
-  house: "house, four on the floor, electronic, vocal chops",
+  pop: "pop, male vocal, catchy hook, punchy 808, 2020s radio",
+  rnb: "r&b, male vocal, 808, atmospheric, stacked vocals",
+  house: "tech house, four on the floor, punchy kick, vocal chop",
   lofi: "lo-fi, chill, dusty keys, soft drums",
 };
 

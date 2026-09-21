@@ -7,6 +7,7 @@ import {
   type LyricSheet,
 } from "../src/lib/music/lyrics";
 import { interpretMusicBrief } from "../src/lib/music/brief";
+import { midiToFreq } from "../src/lib/music/theory";
 
 const sheet: LyricSheet = {
   title: "Looby",
@@ -44,5 +45,6 @@ assert.match(eminem.tags, /rapid-fire/);
 assert.doesNotMatch(eminem.tags, /eminem/i);
 assert.match(eminem.topic, /Grand Theft Auto/i);
 assert.doesNotMatch(eminem.topic, /style of/i);
+assert.equal(midiToFreq(69), 432);
 
 console.log("PASS: lyric cues, WAN prompt, SRT stamps");

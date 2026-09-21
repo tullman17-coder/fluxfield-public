@@ -188,7 +188,7 @@ export async function runMusicAdapter(
       operation: "music.generate" as const, model: "ace-step-1.5-turbo" as const,
       prompt: `${tags}, ${inputs.genre || parsed.genre}, ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
       ...(audioId ? { inputs: { audio: audioId } } : {}),
-      settings: { duration, lyrics: sheet ? lyricPlainText(sheet) : "" },
+      settings: { duration, lyrics: sheet ? lyricPlainText(sheet) : "", bpm: arrangement.bpm, keyscale: keyLabel(arrangement) },
     };
     const result = await runZermoJob(ctx.job, "music:track", requested);
     if (requested.settings.lyrics) result.outputs.push({ id: nanoid(8), kind: "script", label: "Lyrics requested", text: requested.settings.lyrics });

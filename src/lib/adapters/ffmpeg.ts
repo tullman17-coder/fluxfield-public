@@ -44,6 +44,26 @@ export async function checkFfmpeg(): Promise<boolean> {
   }
 }
 
+/** Pitch-shift in place so A4 is 432 Hz. Duration stays. */
+export async function retuneTo432(file: string) {
+  const ext = path.extname(file);
+  const tmp = `${file}.432${ext}`;
+  const ratio = 432 / 440;
+  const filters = [
+    `rubberband=pitch=${ratio}`,
+    `aresample=48000,asetrate=48000*${ratio},aresample=48000,atempo=${1 / ratio}`,
+  ];
+  for (const af of filters) {
+    try {
+      await execFileAsync("ffmpeg", ["-y", "-i", file, "-af", af, tmp], { timeout: 120_000 });
+      await fs.rename(tmp, file);
+      return;
+    } catch {
+      await fs.unlink(tmp).catch(() => undefined);
+    }
+  }
+}
+
 /**
  * Assemble a simple slideshow MP4 from image URLs on disk + optional audio.
  * Soft-fails (returns undefined) if ffmpeg is missing.
