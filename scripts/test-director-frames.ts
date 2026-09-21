@@ -48,6 +48,9 @@ async function main() {
     const { wanClipsForDuration } = await import("../src/lib/adapters/zermo");
     assert.equal(wanClipsForDuration(60), 22);
     assert.equal(wanClipsForDuration(30), 11);
+    const { pacingFromCutSpeed } = await import("../src/lib/director/plan");
+    assert.equal(pacingFromCutSpeed("-2"), "slow");
+    assert.equal(pacingFromCutSpeed("2"), "frantic");
 
     const { generateDirectorFrames } = await import(
       "../src/lib/adapters/director-frames"
@@ -188,6 +191,39 @@ async function main() {
     }
     const wan = directorRequests.filter((r) => r.operation === "video.image_to_video");
     assert.equal(wan.length, wanClipsForDuration(30));
+
+    await fs.mkdir(path.join(tmp, ".data", "uploads"), { recursive: true });
+    const scoreName = "drop.flac";
+    await fs.writeFile(path.join(tmp, ".data", "uploads", scoreName), FLAC);
+    directorRequests.length = 0;
+    const uploadJob = {
+      ...job("director-drop-score"),
+      aspect: "16:9",
+      inputs: {
+        mode: "music-video",
+        brief,
+        runtime: "30",
+        look: "noir",
+        cutSpeed: "-2",
+        scoreSource: "upload",
+        soundtrack: scoreName,
+        cast: "Maya in a black coat",
+        aspect: "16:9",
+      },
+    };
+    await saveJob(uploadJob);
+    await runDirectorAdapter({ ...ctx, job: uploadJob });
+    assert.equal(
+      directorRequests.filter((r) => r.operation === "music.generate").length,
+      0,
+    );
+    const dropStills = directorRequests.filter((r) => r.operation === "image.generate");
+    assert.equal(dropStills.length, DIRECTOR_RENDER_STILLS);
+    assert.match(dropStills[0]!.prompt, /Cast: Maya in a black coat/);
+    assert.equal(
+      directorRequests.filter((r) => r.operation === "video.image_to_video").length,
+      wanClipsForDuration(30),
+    );
 
     const explicitJob = job("director-explicit", {
       size: "512x512",

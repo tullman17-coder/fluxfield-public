@@ -21,6 +21,20 @@ async function burnSrt(videoPath: string, srtPath?: string) {
   }
 }
 
+export async function audioDurationSec(file: string): Promise<number | undefined> {
+  try {
+    const { stdout } = await execFileAsync(
+      "ffprobe",
+      ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", file],
+      { timeout: 8000 },
+    );
+    const n = Number(String(stdout).trim());
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function checkFfmpeg(): Promise<boolean> {
   try {
     await execFileAsync("ffmpeg", ["-version"], { timeout: 3000 });

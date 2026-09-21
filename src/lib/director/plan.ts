@@ -66,6 +66,24 @@ export const TIKTOK_TEMPLATES = [
   },
 ] as const;
 
+/** Maestro Cut Speed. Maps onto shot hold length. WAN 5B clip length stays 3s. */
+export const CUT_SPEEDS = [
+  { id: "-2", label: "Fewest", blurb: "Longest holds. 5B still ~3s per WAN clip." },
+  { id: "-1", label: "Open", blurb: "Fewer cuts, stay in the section." },
+  { id: "0", label: "Music", blurb: "Cuts on sections and phrases." },
+  { id: "1", label: "Tight", blurb: "Shorter clips inside a section." },
+  { id: "2", label: "Rapid", blurb: "Max cuts the 3s GPU clip allows." },
+] as const;
+
+export function pacingFromCutSpeed(raw?: string): Pacing {
+  const n = Number(raw);
+  if (n <= -2) return "slow";
+  if (n === -1) return "steady";
+  if (n >= 2) return "frantic";
+  if (n === 1) return "fast";
+  return "steady";
+}
+
 export const LOOKS = [
   { id: "cinematic", label: "Cinematic", blurb: "Anamorphic haze, deep contrast." },
   { id: "documentary", label: "Documentary", blurb: "Available light, handheld honesty." },

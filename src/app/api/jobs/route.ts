@@ -57,6 +57,17 @@ export async function POST(request: Request) {
       referenceImagePath = dest;
       inputs.referenceImage = name;
     }
+    const score = form.get("soundtrack");
+    if (score && typeof score !== "string" && score.size > 0) {
+      const bytes = Buffer.from(await score.arrayBuffer());
+      const ext = path.extname(score.name || "") || ".flac";
+      const name = `${nanoid(8)}${ext}`;
+      const dest = path.join(process.cwd(), ".data", "uploads", name);
+      await fs.mkdir(path.dirname(dest), { recursive: true });
+      await fs.writeFile(dest, bytes);
+      inputs.soundtrack = name;
+      inputs.scoreSource = inputs.scoreSource || "upload";
+    }
   } else {
     const body = (await request.json()) as {
       tool?: JobTool;

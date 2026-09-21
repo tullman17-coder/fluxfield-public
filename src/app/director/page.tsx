@@ -4,7 +4,7 @@ import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
 import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
-import { LOOKS, RUNTIMES, TIKTOK_RUNTIMES, TIKTOK_TEMPLATES } from "@/lib/director/plan";
+import { LOOKS, RUNTIMES, TIKTOK_RUNTIMES, TIKTOK_TEMPLATES, CUT_SPEEDS } from "@/lib/director/plan";
 import { GENRES, MOODS } from "@/lib/music/theory";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
@@ -24,12 +24,10 @@ const MODES = [
   },
 ] as const;
 
-const PACES = [
-  { id: "slow", label: "Slow", blurb: "Long holds, room to breathe" },
-  { id: "steady", label: "Steady", blurb: "Even cuts, conversational" },
-  { id: "fast", label: "Fast", blurb: "Short holds, forward drive" },
-  { id: "frantic", label: "Frantic", blurb: "Rapid cuts, high pressure" },
-];
+const SCORE_SOURCES = [
+  { id: "write", label: "Write ACE", blurb: "House writes the score" },
+  { id: "upload", label: "Drop track", blurb: "Use a song you already have" },
+] as const;
 
 const LYRIC_MODES = [
   { id: "instrumental", label: "No words", blurb: "Just the music" },
@@ -55,6 +53,10 @@ export default function DirectorPage() {
   const [runtime, setRuntime] = useState("180");
   const [look, setLook] = useState("cinematic");
   const [pacing, setPacing] = useState("steady");
+  const [cutSpeed, setCutSpeed] = useState("0");
+  const [cast, setCast] = useState("");
+  const [scoreSource, setScoreSource] = useState<"write" | "upload">("write");
+  const [scoreFile, setScoreFile] = useState<File | null>(null);
   const [aspect, setAspect] = useState("16:9");
   const [template, setTemplate] = useState("hook-payoff");
   const [genre, setGenre] = useState("synthwave");
@@ -72,40 +74,51 @@ export default function DirectorPage() {
       briefRef.current?.focus();
       return;
     }
+    if (mode === "music-video" && scoreSource === "upload" && !scoreFile) {
+      setError("Drop a soundtrack, or switch Score to Write ACE.");
+      return;
+    }
     setError(null);
     try {
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool: "director",
-          workflowSlug: "director",
-          presetId: look,
-          inputs: {
-            mode,
-            brief,
-            runtime,
-            look,
-            pacing,
-            aspect: mode === "tiktok" ? "9:16" : aspect,
-            template: mode === "tiktok" ? template : "",
-            genre,
-            mood,
-            lyricMode: mode === "music-video" ? lyricMode : "instrumental",
-            lyrics: mode === "music-video" ? lyrics : "",
-            ...(mode === "music-video"
-              ? { seconds: String(Math.min(90, Math.max(10, Number(runtime) || 180))) }
-              : {}),
-          },
+      const form = new FormData();
+      form.set("tool", "director");
+      form.set("workflowSlug", "director");
+      form.set("presetId", look);
+      form.set(
+        "inputs",
+        JSON.stringify({
+          mode,
+          brief,
+          runtime,
+          look,
+          pacing,
+          cutSpeed,
+          cast,
+          scoreSource: mode === "music-video" ? scoreSource : "write",
+          clipMax: "3",
+          videoLane: "boop-5b",
+          aspect: mode === "tiktok" ? "9:16" : aspect,
+          template: mode === "tiktok" ? template : "",
+          genre,
+          mood,
+          lyricMode: mode === "music-video" ? lyricMode : "instrumental",
+          lyrics: mode === "music-video" ? lyrics : "",
+          ...(mode === "music-video"
+            ? { seconds: String(Math.min(90, Math.max(10, Number(runtime) || 180))) }
+            : {}),
         }),
-      });
+      );
+      if (mode === "music-video" && scoreSource === "upload" && scoreFile) {
+        form.set("soundtrack", scoreFile);
+      }
+      const res = await fetch("/api/jobs", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not start the plan");
       setJob(data.job as StudioJob);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the plan");
     }
-  }, [brief, mode, runtime, look, pacing, aspect, template, genre, mood, lyricMode, lyrics, setJob]);
+  }, [brief, mode, runtime, look, pacing, cutSpeed, cast, scoreSource, scoreFile, aspect, template, genre, mood, lyricMode, lyrics, setJob]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const shotList = job?.outputs.find((o) => o.kind === "storyboard");
@@ -128,7 +141,7 @@ export default function DirectorPage() {
           Director
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
-          Shot list first. Music video writes ACE + lyrics. TikTok uses a trend template, 9:16, no song writing. One key still, then WAN fills the runtime.
+          Shot list first. Drop a track or write ACE. Cast names lock the still. Cut Speed is shot density — WAN 5B clips stay ~3s on Boop.
         </p>
       </header>
 
@@ -198,6 +211,19 @@ export default function DirectorPage() {
             />
           </div>
 
+          <div className="grid gap-2 border-t border-white/10 py-5">
+            <label htmlFor="cast" className="text-sm font-medium text-[#b8aebb]">
+              Cast
+            </label>
+            <input
+              id="cast"
+              value={cast}
+              onChange={(e) => setCast(e.currentTarget.value)}
+              placeholder="Maya, black coat, scar on left brow. One person unless you name two."
+              className="h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/10 px-3 text-sm text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
+            />
+          </div>
+
           <fieldset className="min-w-0 border-t border-white/10 py-5">
             <legend className="text-sm font-medium text-[#b8aebb]">Look</legend>
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
@@ -242,20 +268,35 @@ export default function DirectorPage() {
               </select>
             </div>
             <div className="min-w-0">
-              <label htmlFor="pacing" className={labelClass}>
-                Cutting
+              <label htmlFor="cutSpeed" className={labelClass}>
+                Cut speed
               </label>
               <select
-                id="pacing"
-                value={pacing}
-                onChange={(e) => setPacing(e.currentTarget.value)}
+                id="cutSpeed"
+                value={cutSpeed}
+                onChange={(e) => {
+                  const v = e.currentTarget.value;
+                  setCutSpeed(v);
+                  const n = Number(v);
+                  setPacing(
+                    n <= -2 ? "slow" : n === 1 ? "fast" : n >= 2 ? "frantic" : "steady",
+                  );
+                }}
                 className={selectClass}
               >
-                {PACES.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label} — {p.blurb}
+                {CUT_SPEEDS.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label} — {c.blurb}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="clipMax" className={labelClass}>
+                Clip length
+              </label>
+              <select id="clipMax" value="3" disabled className={selectClass}>
+                <option value="3">Auto · 3s WAN 5B (Boop)</option>
               </select>
             </div>
             <div className="min-w-0">
@@ -298,7 +339,7 @@ export default function DirectorPage() {
               <div className="grid min-w-0 grid-cols-2 gap-3">
                 <div className="min-w-0">
                   <label htmlFor="genre" className={labelClass}>
-                    Score
+                    ACE style
                   </label>
                   <select
                     id="genre"
@@ -331,6 +372,41 @@ export default function DirectorPage() {
                   </select>
                 </div>
               </div>
+            ) : null}
+            {mode === "music-video" ? (
+            <fieldset className="min-w-0 sm:col-span-2 border-t border-white/10 py-4">
+              <legend className="text-sm font-medium text-[#b8aebb]">Score</legend>
+              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+                {SCORE_SOURCES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    aria-pressed={scoreSource === s.id}
+                    onClick={() => setScoreSource(s.id)}
+                    className={cn(
+                      "grid min-h-11 min-w-0 gap-0.5 rounded-[10px] border px-3 py-2 text-left transition-colors",
+                      scoreSource === s.id
+                        ? "border-[#d565d6] bg-[#2c162f] text-[#e77ae6]"
+                        : "border-white/10 bg-white/5 text-[#b8aebb] hover:border-white/15 hover:text-[#f5eff6]",
+                    )}
+                  >
+                    <span className="text-sm font-bold">{s.label}</span>
+                    <span className="text-sm text-[#8d838f]">{s.blurb}</span>
+                  </button>
+                ))}
+              </div>
+              {scoreSource === "upload" ? (
+                <label className="mt-3 block text-sm text-[#b8aebb]">
+                  Soundtrack
+                  <input
+                    type="file"
+                    accept="audio/*,.flac,.wav,.mp3,.m4a"
+                    className="mt-2 block w-full text-sm text-[#f5eff6]"
+                    onChange={(e) => setScoreFile(e.currentTarget.files?.[0] ?? null)}
+                  />
+                </label>
+              ) : null}
+            </fieldset>
             ) : null}
             {mode === "music-video" ? (
             <fieldset className="min-w-0 border-t border-white/10 py-4">

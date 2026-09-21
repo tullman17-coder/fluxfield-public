@@ -11,6 +11,7 @@ import {
   planProduction,
   shotListText,
   normalizeDirectorMode,
+  pacingFromCutSpeed,
   type Pacing,
   type Production,
   type Shot,
@@ -26,7 +27,7 @@ import {
 } from "@/lib/adapters/director-frames";
 import { runMusicAdapter } from "@/lib/adapters/music";
 import { runChainedWanClips, WAN_FAST, wanClipsForDuration } from "@/lib/adapters/zermo";
-import { concatClips } from "@/lib/adapters/ffmpeg";
+import { audioDurationSec, concatClips } from "@/lib/adapters/ffmpeg";
 import { updateJob } from "@/lib/jobs/store";
 import type { LyricSheet } from "@/lib/music/lyrics";
 import { lyricSheetToSrt, timedLyricCues, wanLyricPrompt } from "@/lib/music/lyrics";
@@ -80,18 +81,37 @@ export async function runDirectorAdapter(
 ): Promise<AdapterResult & { production: Production; modeUsed: ModeUsed }> {
   const inputs = ctx.job.inputs;
   const mode = normalizeDirectorMode(inputs.mode);
-  const runtimeSec =
+  const brief = inputs.brief?.trim() || ctx.job.prompt.trim();
+  const cast = inputs.cast?.trim() || "";
+  const scoreSource = inputs.scoreSource === "upload" ? "upload" : "write";
+  const soundtrackName = (inputs.soundtrack || "").trim();
+  const soundtrackFile =
+    soundtrackName &&
+    !soundtrackName.includes("/") &&
+    !soundtrackName.includes("\\") &&
+    !soundtrackName.includes("..")
+      ? path.join(process.cwd(), ".data", "uploads", soundtrackName)
+      : "";
+  let runtimeSec =
     mode === "tiktok"
       ? Math.max(8, Math.min(60, Number(inputs.runtime || 15)))
       : Math.max(30, Math.min(3600, Number(inputs.runtime || 180)));
-  const brief = inputs.brief?.trim() || ctx.job.prompt.trim();
+  if (mode === "music-video" && scoreSource === "upload") {
+    if (!soundtrackFile) throw new Error("Drop a soundtrack, or switch Score to write.");
+    const probed = await audioDurationSec(soundtrackFile);
+    if (probed) runtimeSec = Math.max(10, Math.min(90, Math.round(probed)));
+  }
+  const pacing: Pacing =
+    inputs.cutSpeed !== undefined && inputs.cutSpeed !== ""
+      ? pacingFromCutSpeed(inputs.cutSpeed)
+      : (inputs.pacing as Pacing) || (mode === "tiktok" ? "fast" : "steady");
 
   const production = planProduction({
     mode,
     brief,
     runtimeSec,
     look: inputs.look || "cinematic",
-    pacing: (inputs.pacing as Pacing) || (mode === "tiktok" ? "fast" : "steady"),
+    pacing,
     genre: inputs.genre || "synthwave",
     mood: inputs.mood || "neutral",
     seedText: `${ctx.job.id}:${brief}`,
@@ -151,8 +171,19 @@ export async function runDirectorAdapter(
   );
 
   let lyricSheet: LyricSheet | null = null;
-  // ACE + lyrics only for music videos. TikTok is picture-first, no song writing.
-  if (mode === "music-video") {
+  // ACE + lyrics only when writing a music video. Dropped tracks skip ACE. TikTok is picture-first.
+  if (mode === "music-video" && scoreSource === "upload") {
+    const ext = path.extname(soundtrackFile) || ".flac";
+    const copied = `${ctx.job.id}-score${ext}`;
+    await fs.copyFile(soundtrackFile, path.join(OUT_DIR, copied));
+    outputs.push({
+      id: nanoid(8),
+      kind: "audio",
+      label: "Dropped score",
+      url: `/api/outputs/${copied}`,
+    });
+    await mark(25, "Score on disk · stills next");
+  } else if (mode === "music-video") {
   const score =
     production.arrangement ??
     planArrangement({
@@ -216,6 +247,7 @@ export async function runDirectorAdapter(
     return {
       label: `${shot.timecode} · ${shot.size} · ${shot.section}`,
       prompt: [
+        cast ? `Cast: ${cast}.` : "",
         brief,
         `Scene: ${shot.section}.`,
         `Shot: ${shot.size}, ${shot.move}.`,
