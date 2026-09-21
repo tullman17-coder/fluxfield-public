@@ -206,7 +206,7 @@ export default function DirectorPage() {
               ref={briefRef}
               value={brief}
               onChange={(e) => setBrief(e.currentTarget.value)}
-              placeholder="Create a song in Biggie Smalls voice, same beat and genre as Slipknot, about calling out of work on a Friday."
+              placeholder=""
               className="min-h-28 w-full min-w-0 resize-y rounded-[10px] border border-white/15 bg-white/15 p-3 text-base leading-normal text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
           </div>
