@@ -10,6 +10,7 @@ import type {
 import {
   planProduction,
   shotListText,
+  normalizeDirectorMode,
   type Pacing,
   type Production,
   type Shot,
@@ -78,8 +79,11 @@ export async function runDirectorAdapter(
   ctx: AdapterContext,
 ): Promise<AdapterResult & { production: Production; modeUsed: ModeUsed }> {
   const inputs = ctx.job.inputs;
-  const mode = inputs.mode === "film" ? "film" : "music-video";
-  const runtimeSec = Math.max(30, Math.min(3600, Number(inputs.runtime || 180)));
+  const mode = normalizeDirectorMode(inputs.mode);
+  const runtimeSec =
+    mode === "tiktok"
+      ? Math.max(8, Math.min(60, Number(inputs.runtime || 15)))
+      : Math.max(30, Math.min(3600, Number(inputs.runtime || 180)));
   const brief = inputs.brief?.trim() || ctx.job.prompt.trim();
 
   const production = planProduction({
@@ -87,10 +91,11 @@ export async function runDirectorAdapter(
     brief,
     runtimeSec,
     look: inputs.look || "cinematic",
-    pacing: (inputs.pacing as Pacing) || "steady",
+    pacing: (inputs.pacing as Pacing) || (mode === "tiktok" ? "fast" : "steady"),
     genre: inputs.genre || "synthwave",
     mood: inputs.mood || "neutral",
     seedText: `${ctx.job.id}:${brief}`,
+    template: inputs.template,
   });
 
   await fs.mkdir(OUT_DIR, { recursive: true });
@@ -140,10 +145,14 @@ export async function runDirectorAdapter(
     outputs.push(...rest);
     await updateJob(ctx.job.id, { outputs: [...outputs], progress, phase: "compose" });
   };
-  await mark(18, `Plan · ${production.shots.length} shots · ACE next`);
+  await mark(
+    18,
+    `Plan · ${production.shots.length} shots · ${mode === "music-video" ? "ACE next" : "stills next"}`,
+  );
 
-  // A track for music videos so the cuts have something to sit against, and a
-  // score bed for films so the acts have a floor under them.
+  let lyricSheet: LyricSheet | null = null;
+  // ACE + lyrics only for music videos. TikTok is picture-first, no song writing.
+  if (mode === "music-video") {
   const score =
     production.arrangement ??
     planArrangement({
@@ -152,7 +161,6 @@ export async function runDirectorAdapter(
       targetSec: Math.min(production.runtimeSec, 240),
       seedText: `${ctx.job.id}:score`,
     });
-  let lyricSheet: LyricSheet | null = null;
   if (ctx.settings.generationMode !== "zermo") {
   const rendered = renderArrangement(score, `${ctx.job.id}:${production.title}`);
   const wav = encodeWav(rendered.left, rendered.right, rendered.sampleRate);
@@ -175,18 +183,27 @@ export async function runDirectorAdapter(
 
   } else {
     ctx.job.inputs.seconds = String(Math.min(90, Math.max(10, runtimeSec)));
-    if (!ctx.job.inputs.lyricMode) ctx.job.inputs.lyricMode = mode === "music-video" ? "write" : "instrumental";
+    if (!ctx.job.inputs.lyricMode) ctx.job.inputs.lyricMode = "write";
     const music = await runMusicAdapter(ctx);
     outputs.push(...music.outputs);
     lyricSheet = music.lyrics;
     await mark(25, "ACE score done · stills next");
   }
+  } else {
+    await mark(25, "TikTok · stills next");
+  }
 
   // Key frames — live GPU when Studio/Comfy is up, otherwise local art.
-  const size = ctx.settings.generationMode === "zermo"
-    ? { w: 640, h: 352 }
-    : ASPECTS[inputs.aspect || "16:9"] ?? ASPECTS["16:9"];
-  if (ctx.settings.generationMode === "zermo") ctx.job.inputs.size = "640x352";
+  const size =
+    ctx.settings.generationMode === "zermo"
+      ? mode === "tiktok"
+        ? { w: 352, h: 640 }
+        : { w: 640, h: 352 }
+      : ASPECTS[inputs.aspect || (mode === "tiktok" ? "9:16" : "16:9")] ??
+        ASPECTS["16:9"];
+  if (ctx.settings.generationMode === "zermo") {
+    ctx.job.inputs.size = mode === "tiktok" ? "352x640" : "640x352";
+  }
   const keyShots = pickKeyShots(production);
   // One palette for the whole piece. Without this each frame picks its own hue
   // from its own prompt and a storyboard reads like twelve unrelated films.

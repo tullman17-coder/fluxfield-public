@@ -10,7 +10,11 @@ import {
  * one shot at a time.
  */
 
-export type DirectorMode = "music-video" | "film";
+export type DirectorMode = "music-video" | "tiktok";
+
+export function normalizeDirectorMode(raw?: string): DirectorMode {
+  return raw === "music-video" ? "music-video" : "tiktok";
+}
 
 /** Durations offered in the UI, up to an hour. */
 export const RUNTIMES = [
@@ -22,6 +26,45 @@ export const RUNTIMES = [
   { id: "1800", label: "30 min" },
   { id: "3600", label: "60 min" },
 ];
+
+export const TIKTOK_RUNTIMES = [
+  { id: "15", label: "15s" },
+  { id: "30", label: "30s" },
+  { id: "60", label: "60s" },
+];
+
+export const TIKTOK_TEMPLATES = [
+  {
+    id: "hook-payoff",
+    label: "Hook → payoff",
+    blurb: "Stop the scroll, then land it.",
+    beats: ["Hook", "Hold", "Turn", "Payoff"],
+  },
+  {
+    id: "before-after",
+    label: "Before / after",
+    blurb: "Split the clip on the change.",
+    beats: ["Before", "The work", "After", "Stinger"],
+  },
+  {
+    id: "pov",
+    label: "POV",
+    blurb: "Camera is the person.",
+    beats: ["Cold open", "Walk-in", "Beat", "Look to cam"],
+  },
+  {
+    id: "list",
+    label: "List",
+    blurb: "Three items, one punch.",
+    beats: ["Title card", "One", "Two", "Three", "CTA"],
+  },
+  {
+    id: "greenscreen",
+    label: "Green screen",
+    blurb: "Talking head over the clip.",
+    beats: ["Setup", "React", "Punchline"],
+  },
+] as const;
 
 export const LOOKS = [
   { id: "cinematic", label: "Cinematic", blurb: "Anamorphic haze, deep contrast." },
@@ -96,15 +139,6 @@ const MOVES = [
   "whip pan",
   "rack focus",
   "orbit",
-];
-
-const FILM_ACTS = [
-  "Act I — Setup",
-  "Act I — Disruption",
-  "Act II — Pursuit",
-  "Act II — Reversal",
-  "Act III — Confrontation",
-  "Act III — Resolve",
 ];
 
 function rng(seed: number) {
@@ -236,7 +270,7 @@ function titleFrom(brief: string, mode: DirectorMode) {
   const subs = subjectsFrom(brief);
   const pick = subs.join(" ").split(" ").slice(0, 3).join(" ");
   const title = pick.replace(/\b\w/g, (c) => c.toUpperCase());
-  return title || (mode === "film" ? "Untitled Film" : "Untitled Video");
+  return title || (mode === "tiktok" ? "Untitled TikTok" : "Untitled Video");
 }
 
 /** One line of intent at the top of every section, so the list reads as a plan. */
@@ -277,6 +311,7 @@ export function planProduction(args: {
   genre?: string;
   mood?: string;
   seedText?: string;
+  template?: string;
 }): Production {
   const rand = rng(hash(args.seedText || args.brief));
   const subjects = subjectsFrom(args.brief);
@@ -349,22 +384,22 @@ export function planProduction(args: {
       }
     }
   } else {
-    // Film: walk the acts, varying hold length around the pacing base.
-    const actCount = FILM_ACTS.length;
-    const perAct = runtimeSec / actCount;
-    for (let a = 0; a < actCount; a++) {
-      const actStart = a * perAct;
-      const actEnd = actStart + perAct;
-      // Tension rises through the acts, peaking in the confrontation.
-      const energy = Math.min(1, 0.3 + (a / (actCount - 1)) * 0.8);
+    const template =
+      TIKTOK_TEMPLATES.find((t) => t.id === args.template) ?? TIKTOK_TEMPLATES[0];
+    const beats = template.beats;
+    const perBeat = runtimeSec / beats.length;
+    for (let a = 0; a < beats.length; a++) {
+      const actStart = a * perBeat;
+      const actEnd = actStart + perBeat;
+      const energy = Math.min(1, 0.45 + (a / Math.max(1, beats.length - 1)) * 0.5);
       let t = actStart;
       while (t < actEnd - 0.01) {
         const hold = Math.max(
-          1.2,
-          pace.base + (rand() - 0.5) * 2 * pace.spread - energy * 1.5,
+          0.8,
+          pace.base + (rand() - 0.5) * 2 * pace.spread - energy * 1.2,
         );
         const end = Math.min(actEnd, t + hold);
-        pushShot(t, end, FILM_ACTS[a], energy);
+        pushShot(t, end, beats[a], energy);
         t = end;
       }
     }
@@ -403,7 +438,7 @@ export function shotListText(p: Production) {
     p.title,
     p.logline,
     "",
-    `${p.mode === "film" ? "Short film" : "Music video"} · ${timecode(p.runtimeSec)} · ${p.shots.length} shots · ${p.windows.length} windows`,
+    `${p.mode === "tiktok" ? "TikTok" : "Music video"} · ${timecode(p.runtimeSec)} · ${p.shots.length} shots · ${p.windows.length} windows`,
     p.arrangement
       ? `${p.arrangement.bpm} BPM — cuts land on the beat`
       : `${p.pacing} pacing`,

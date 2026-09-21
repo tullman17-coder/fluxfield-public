@@ -110,12 +110,13 @@ async function main() {
       ...job("director-lighthouse"),
       aspect: "16:9",
       inputs: {
-        mode: "film",
+        mode: "tiktok",
         brief,
         runtime: "30",
         look: "noir",
         pacing: "steady",
-        aspect: "16:9",
+        aspect: "9:16",
+        template: "hook-payoff",
       },
     };
     await saveJob(directorJob);
@@ -171,13 +172,17 @@ async function main() {
     );
     const stills = directorRequests.filter((r) => r.operation === "image.generate");
     assert.equal(stills.length, DIRECTOR_RENDER_STILLS);
+    assert.equal(
+      directorRequests.filter((r) => r.operation === "music.generate").length,
+      0,
+    );
     for (const submitted of stills) {
       assert.ok(submitted.prompt.includes(brief));
       assert.match(submitted.prompt, /film noir, hard chiaroscuro/);
       assert.notEqual(submitted.seed, undefined);
       assert.deepEqual(submitted.settings, {
-        width: 640,
-        height: 352,
+        width: 352,
+        height: 640,
         steps: 8,
       });
     }

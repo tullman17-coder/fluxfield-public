@@ -4,7 +4,7 @@ import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
 import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
-import { LOOKS, RUNTIMES } from "@/lib/director/plan";
+import { LOOKS, RUNTIMES, TIKTOK_RUNTIMES, TIKTOK_TEMPLATES } from "@/lib/director/plan";
 import { GENRES, MOODS } from "@/lib/music/theory";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
@@ -15,12 +15,12 @@ const MODES = [
   {
     id: "music-video",
     label: "Music video",
-    blurb: "ACE score + lyrics, Qwen Image 2.1 stills, WAN 5B clips per key shot.",
+    blurb: "ACE score + lyrics, one Qwen still, WAN 5B chain.",
   },
   {
-    id: "film",
-    label: "Short film",
-    blurb: "Six acts, WAN clips per window, ACE bed.",
+    id: "tiktok",
+    label: "TikTok",
+    blurb: "15–60s vertical. Trend template, no song writing.",
   },
 ] as const;
 
@@ -50,12 +50,13 @@ const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
 export default function DirectorPage() {
   const { zermo } = useStudioConnection();
-  const [mode, setMode] = useState<"music-video" | "film">("music-video");
+  const [mode, setMode] = useState<"music-video" | "tiktok">("music-video");
   const [brief, setBrief] = useState("");
   const [runtime, setRuntime] = useState("180");
   const [look, setLook] = useState("cinematic");
   const [pacing, setPacing] = useState("steady");
   const [aspect, setAspect] = useState("16:9");
+  const [template, setTemplate] = useState("hook-payoff");
   const [genre, setGenre] = useState("synthwave");
   const [mood, setMood] = useState("neutral");
   const [lyricMode, setLyricMode] = useState("write");
@@ -86,12 +87,15 @@ export default function DirectorPage() {
             runtime,
             look,
             pacing,
-            aspect,
+            aspect: mode === "tiktok" ? "9:16" : aspect,
+            template: mode === "tiktok" ? template : "",
             genre,
             mood,
-            lyricMode,
-            lyrics,
-            seconds: String(Math.min(90, Math.max(10, Number(runtime) || 180))),
+            lyricMode: mode === "music-video" ? lyricMode : "instrumental",
+            lyrics: mode === "music-video" ? lyrics : "",
+            ...(mode === "music-video"
+              ? { seconds: String(Math.min(90, Math.max(10, Number(runtime) || 180))) }
+              : {}),
           },
         }),
       });
@@ -101,7 +105,7 @@ export default function DirectorPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the plan");
     }
-  }, [brief, mode, runtime, look, pacing, aspect, genre, mood, lyricMode, lyrics, setJob]);
+  }, [brief, mode, runtime, look, pacing, aspect, template, genre, mood, lyricMode, lyrics, setJob]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const shotList = job?.outputs.find((o) => o.kind === "storyboard");
@@ -124,7 +128,7 @@ export default function DirectorPage() {
           Director
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
-          Shot list first (1 min fast ≈ 25 cuts). One key still (WAN start). WAN clips fill the score (~3s each; 1 min ≈ 22 clips). The list shows while ACE runs.
+          Shot list first. Music video writes ACE + lyrics. TikTok uses a trend template, 9:16, no song writing. One key still, then WAN fills the runtime.
         </p>
       </header>
 
@@ -147,7 +151,20 @@ export default function DirectorPage() {
                   key={m.id}
                   type="button"
                   aria-pressed={mode === m.id}
-                  onClick={() => setMode(m.id)}
+                  onClick={() => {
+                    setMode(m.id);
+                    if (m.id === "tiktok") {
+                      setRuntime("15");
+                      setAspect("9:16");
+                      setPacing("fast");
+                      setLyricMode("instrumental");
+                    } else {
+                      setRuntime("180");
+                      setAspect("16:9");
+                      setPacing("steady");
+                      setLyricMode("write");
+                    }
+                  }}
                   className={cn(
                     "grid min-h-11 min-w-0 gap-1 rounded-[10px] border px-3 py-2 text-left transition-colors",
                     mode === m.id
@@ -217,7 +234,7 @@ export default function DirectorPage() {
                 onChange={(e) => setRuntime(e.currentTarget.value)}
                 className={selectClass}
               >
-                {RUNTIMES.map((r) => (
+                {(mode === "tiktok" ? TIKTOK_RUNTIMES : RUNTIMES).map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.label}
                   </option>
@@ -258,6 +275,25 @@ export default function DirectorPage() {
                 ))}
               </select>
             </div>
+            {mode === "tiktok" ? (
+              <div className="min-w-0 sm:col-span-2">
+                <label htmlFor="template" className={labelClass}>
+                  Trend
+                </label>
+                <select
+                  id="template"
+                  value={template}
+                  onChange={(e) => setTemplate(e.currentTarget.value)}
+                  className={selectClass}
+                >
+                  {TIKTOK_TEMPLATES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label} — {t.blurb}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             {mode === "music-video" ? (
               <div className="grid min-w-0 grid-cols-2 gap-3">
                 <div className="min-w-0">
@@ -296,6 +332,7 @@ export default function DirectorPage() {
                 </div>
               </div>
             ) : null}
+            {mode === "music-video" ? (
             <fieldset className="min-w-0 border-t border-white/10 py-4">
               <legend className="text-sm font-medium text-[#b8aebb]">Words</legend>
               <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
@@ -326,6 +363,7 @@ export default function DirectorPage() {
                 />
               ) : null}
             </fieldset>
+            ) : null}
           </div>
 
           {error ? (

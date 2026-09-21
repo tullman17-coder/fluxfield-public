@@ -157,9 +157,9 @@ export async function createAndRunJob(
   } else if (input.tool === "director") {
     const brief = input.inputs.brief?.trim() || "";
     if (!brief) throw new Error("Describe the film or video you want.");
-    workflowName = input.inputs.mode === "film" ? "Short Film" : "Music Video";
+    workflowName = input.inputs.mode === "music-video" ? "Music Video" : "TikTok";
     presetLabel = input.presetId;
-    aspect = input.inputs.aspect || "16:9";
+    aspect = input.inputs.aspect || (input.inputs.mode === "music-video" ? "16:9" : "9:16");
     prompt = brief;
   } else if (
     input.tool === "ugc" ||
