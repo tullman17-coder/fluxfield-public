@@ -347,7 +347,7 @@ export async function runDirectorAdapter(
     label: "Windows",
     text: [
       `${production.shots.length} shots across ${production.windows.length} windows.`,
-      `${keyShots.length} keyframed on this pass.`,
+      `${DIRECTOR_RENDER_STILLS} key still on this pass.`,
       "",
       ...windowLines,
     ].join("\n"),

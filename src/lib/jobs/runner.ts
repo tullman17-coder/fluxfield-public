@@ -101,7 +101,7 @@ export async function createAndRunJob(
     if (generationMode === "zermo") {
       const size = fitZermoSize(ratio.width, ratio.height);
       input.inputs.size ||= `${size.width}x${size.height}`;
-      input.inputs.steps ||= "20";
+      input.inputs.steps ||= "8";
       input.inputs.cfg ||= "1";
     } else input.inputs.size = `${ratio.width}x${ratio.height}`;
     prompt = enhancePrompt(base, preset.id, framing, assist);
@@ -147,7 +147,7 @@ export async function createAndRunJob(
       input.inputs,
     ));
   } else if (input.tool === "music") {
-    const genre = getGenre(input.presetId || input.inputs.genre || "synthwave");
+    const genre = getGenre(input.presetId || input.inputs.genre || "hiphop");
     const brief = input.inputs.brief?.trim() || "";
     if (!brief) throw new Error("Describe the track you want.");
     workflowName = "Music";
@@ -269,7 +269,7 @@ async function processJob(jobId: string) {
       script = [
         `PROMPT: ${current.prompt}`,
         `NEGATIVE: ${current.negativePrompt || "—"}`,
-        `SIZE: ${current.inputs.size || current.aspect} · STEPS: ${current.inputs.steps || 4} · CFG: ${current.inputs.cfg || 1} · SEED: ${current.inputs.seed || "random"}`,
+        `SIZE: ${current.inputs.size || current.aspect} · STEPS: ${current.inputs.steps || 8} · CFG: ${current.inputs.cfg || 1} · SEED: ${current.inputs.seed || "random"}`,
       ].join("\n");
     } else if (
       current.tool === "music" ||

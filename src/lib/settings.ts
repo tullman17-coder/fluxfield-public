@@ -15,7 +15,7 @@ export const DEFAULT_SETTINGS: StudioSettings = {
   comfyUrl: "",
   ollamaUrl: defaultFactoryOllamaUrl(),
   ollamaModel: "llama3.2",
-  generationMode: "auto",
+  generationMode: "zermo",
   comfyCheckpoint: "",
   ttsUrl: "http://127.0.0.1:5500",
   ttsVoice: "en_US-lessac-medium",

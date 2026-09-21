@@ -474,7 +474,7 @@ export default function CreatePage() {
           {zermo ? <fieldset className="mb-4 border-y border-white/10 py-4">
             <legend className={labelClass}>Image profile</legend>
             <div className="flex flex-wrap gap-2">{ZERMO_IMAGE_PROFILES.map((profile) => <button key={profile.steps} type="button" aria-pressed={steps === profile.steps} onClick={() => setSteps(profile.steps)} className={cn("min-h-11 rounded-[10px] border px-4 text-sm", steps === profile.steps ? "border-[#d565d6] text-[#e77ae6]" : "border-white/15 text-[#b8aebb]")}>{profile.label}</button>)}</div>
-            <p className="mt-2 text-xs text-[#8d838f]">Same {activeRatio.width} × {activeRatio.height} output, fitted within 1024px. CFG 1 fixed. Detail is the default; Fast uses fewer sampling steps, not a smaller image.</p>
+            <p className="mt-2 text-xs text-[#8d838f]">Same {activeRatio.width} × {activeRatio.height} output, fitted within 1024px. CFG 1 fixed. Fast (8) is the default; Detail is 20 steps, not a smaller image.</p>
           </fieldset> : null}
           <details className="min-w-0 border-b border-white/10">
             <summary className="grid min-h-11 cursor-pointer list-none content-center gap-1 py-3 font-medium text-[#f5eff6] [&::-webkit-details-marker]:hidden">

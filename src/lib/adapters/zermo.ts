@@ -208,8 +208,7 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
     const name = `${job.id}-${id}.${ext}`;
     await fs.writeFile(path.join(dir, `${name}.tmp`), bytes);
     await fs.rename(path.join(dir, `${name}.tmp`), path.join(dir, name));
-    const model = String(intent.request.model);
-    outputs.push({ id, kind: music ? "audio" : video ? "video" : "image", label: music ? "Zermo ACE · FLAC" : video ? "Zermo WAN 5B · 49f chain" : `Zermo ${model} · ${intent.effective?.steps ?? intent.request.settings.steps} steps`, url: `/api/outputs/${name}` });
+    outputs.push({ id, kind: music ? "audio" : video ? "video" : "image", label: music ? "Zermo ACE · FLAC" : video ? "Zermo WAN 5B · 49f chain" : `Zermo Qwen Image 2.1 · ${intent.effective?.steps ?? intent.request.settings.steps} steps`, url: `/api/outputs/${name}` });
   }
   return { outputs, remotePromptId: intent.remoteId };
 }

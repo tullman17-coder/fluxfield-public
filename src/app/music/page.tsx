@@ -23,7 +23,7 @@ export default function MusicPage() {
   const { settings, zermo, error: connectionError } = useStudioConnection();
   const [brief, setBrief] = useState("");
   const [trackName, setTrackName] = useState("");
-  const [genre, setGenre] = useState("synthwave");
+  const [genre, setGenre] = useState("hiphop");
   const [mood, setMood] = useState("neutral");
   const [seconds, setSeconds] = useState("60");
   const [key, setKey] = useState("");

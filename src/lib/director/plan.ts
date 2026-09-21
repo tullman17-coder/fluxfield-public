@@ -341,7 +341,7 @@ export function planProduction(args: {
   const arrangement =
     args.mode === "music-video"
       ? planArrangement({
-          genre: args.genre || "synthwave",
+          genre: args.genre || "hiphop",
           mood: args.mood || "neutral",
           targetSec: args.runtimeSec,
           seedText: args.seedText || args.brief,

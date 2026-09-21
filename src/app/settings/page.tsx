@@ -293,7 +293,7 @@ export default function SettingsPage() {
       ) : null}
 
       <div className="space-y-5 rounded-2xl border border-white/10 glass p-5">
-        <Field label="Generation source" hint="Zermo: Qwen Image 2.1 stills (qwen_image_2.1_int8_convrot), WAN 2.2 5B I2V (director/UGC), ACE-Step 1.5 turbo music+lyrics. FastWan-QAD is FastVideo/SageAttention — not this Comfy worker. No MiniMax-H3.">
+        <Field label="Generation source" hint="Zermo: Qwen Image 2.1 stills (qwen-image-2.1-Q4_K_M.gguf), WAN 2.2 5B I2V (director/UGC), ACE-Step 1.5 turbo music+lyrics. FastWan-QAD is FastVideo/SageAttention — not this Comfy worker. No MiniMax-H3.">
           <select
             className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3 text-sm"
             value={settings.generationMode}
@@ -371,7 +371,7 @@ export default function SettingsPage() {
             onChange={(e) =>
               setSettings({ ...settings, comfyCheckpoint: e.target.value })
             }
-            placeholder="flux1-dev.safetensors"
+            placeholder="qwen-image-2.1-Q4_K_M.gguf"
             className="border-white/10 bg-white/10"
           />
         </Field>
