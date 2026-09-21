@@ -116,7 +116,7 @@ async function buildLyrics(
     const raw = await generateLyrics(ctx.settings, {
       brief: inputs.brief || ctx.job.prompt,
       title,
-      genre: inputs.genre || "synthwave",
+      genre: inputs.genre || "hiphop",
       mood: inputs.mood || "neutral",
       sections: sung,
       linesPerSection: 4,
@@ -152,7 +152,7 @@ export async function runMusicAdapter(
   );
 
   const arrangement = planArrangement({
-    genre: inputs.genre || "synthwave",
+    genre: inputs.genre || "hiphop",
     mood: inputs.mood || "neutral",
     targetSec,
     key: inputs.key || undefined,
@@ -171,7 +171,7 @@ export async function runMusicAdapter(
     const sheet = saved ? null : await buildLyrics(ctx, arrangement, title);
     const requested = saved ?? {
       operation: "music.generate" as const, model: "ace-step-1.5-turbo" as const,
-      prompt: `${inputs.brief || ctx.job.prompt}. ${inputs.genre || ""} ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
+      prompt: `${inputs.acePrompt || inputs.brief || ctx.job.prompt}. ${inputs.genre || ""} ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
       settings: { duration, lyrics: sheet ? lyricPlainText(sheet) : "" },
     };
     const result = await runZermoJob(ctx.job, "music:track", requested);
@@ -186,7 +186,7 @@ export async function runMusicAdapter(
     audio = await generateOnServer(
       ctx.settings.musicUrl,
       ctx.settings.musicModel,
-      `${inputs.brief || ctx.job.prompt}. ${inputs.genre || ""} ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
+      `${inputs.acePrompt || inputs.brief || ctx.job.prompt}. ${inputs.genre || ""} ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
       targetSec,
       sheet ? lyricPlainText(sheet) : undefined,
     );

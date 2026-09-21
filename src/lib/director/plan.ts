@@ -85,12 +85,14 @@ export function pacingFromCutSpeed(raw?: string): Pacing {
 }
 
 export const LOOKS = [
-  { id: "cinematic", label: "Cinematic", blurb: "Anamorphic haze, deep contrast." },
-  { id: "documentary", label: "Documentary", blurb: "Available light, handheld honesty." },
-  { id: "noir", label: "Noir", blurb: "Hard shadow, smoke, low key." },
-  { id: "vaporwave", label: "Neon", blurb: "Saturated night, chrome and glow." },
-  { id: "fantasy", label: "Painterly", blurb: "Storybook light, heavy atmosphere." },
-  { id: "concept", label: "Concept", blurb: "Production-art scale and grandeur." },
+  { id: "auto", label: "From prompt", blurb: "Read the brief.", suffix: "" },
+  { id: "concert", label: "Concert", blurb: "Stage, lights, crowd.", suffix: "live concert music video, stage lights, performer, crowd" },
+  { id: "street", label: "Street", blurb: "Block, night, handheld.", suffix: "street music video, night, handheld, city block" },
+  { id: "club", label: "Club", blurb: "Strobe, bodies, bass.", suffix: "nightclub music video, strobe, dancing" },
+  { id: "bedroom", label: "Bedroom", blurb: "Close, phone-in-hand.", suffix: "bedroom music video, close, practical lamps" },
+  { id: "car", label: "Car", blurb: "Night drive.", suffix: "car music video, night drive, window light" },
+  { id: "phone", label: "Phone", blurb: "Vertical selfie cam.", suffix: "phone video, vertical, handheld selfie" },
+  { id: "animated", label: "Animated", blurb: "Toon / motion graphic.", suffix: "animated music video, bold shapes, motion graphics" },
 ];
 
 /** How long a single shot holds, by pacing. Shorter cuts = more shots. */

@@ -74,11 +74,43 @@ export const GENRES: Genre[] = [
   { id: "ambient", label: "Ambient", blurb: "No pulse, long tails, drifting air.", bpm: [56, 68], scale: "major", progression: [0, 4, 5, 3], drums: 0.0, bass: 0.4, pad: 1.0, lead: 0.35, arp: 0.1, swing: 0, accent: "#9ad6ff" },
   { id: "drill", label: "Drill", blurb: "Sliding bass, skittering hats, dark keys.", bpm: [138, 146], scale: "phrygian", progression: [0, 1, 5, 4], drums: 0.9, bass: 1.0, pad: 0.45, lead: 0.5, arp: 0.2, swing: 0, accent: "#ff4d6d" },
   { id: "orchestral", label: "Orchestral", blurb: "Rising strings, timpani, big finish.", bpm: [84, 100], scale: "minor", progression: [0, 5, 3, 4], drums: 0.4, bass: 0.7, pad: 1.0, lead: 0.65, arp: 0.3, swing: 0, accent: "#ffd479" },
+  { id: "hiphop", label: "Hip-hop", blurb: "Rap vocal, boom-bap or trap kit.", bpm: [82, 96], scale: "minor", progression: [0, 5, 3, 4], drums: 0.9, bass: 0.95, pad: 0.45, lead: 0.4, arp: 0.1, swing: 0.08, accent: "#ff8a3d" },
+  { id: "metal", label: "Metal", blurb: "Downtuned guitars, double-kick, shout.", bpm: [95, 140], scale: "phrygian", progression: [0, 1, 5, 4], drums: 1.0, bass: 0.95, pad: 0.3, lead: 0.7, arp: 0.05, swing: 0, accent: "#c0c0c0" },
+  { id: "pop", label: "Pop", blurb: "Hook-first, bright chorus.", bpm: [100, 120], scale: "major", progression: [0, 4, 5, 3], drums: 0.8, bass: 0.75, pad: 0.7, lead: 0.7, arp: 0.4, swing: 0, accent: "#ff5fc8" },
+  { id: "rnb", label: "R&B", blurb: "Warm keys, stacked vocals.", bpm: [70, 90], scale: "dorian", progression: [0, 5, 3, 4], drums: 0.7, bass: 0.8, pad: 0.8, lead: 0.55, arp: 0.2, swing: 0.12, accent: "#c58bff" },
+  { id: "rock", label: "Rock", blurb: "Live kit, guitar, chorus shout.", bpm: [110, 140], scale: "minor", progression: [0, 5, 3, 4], drums: 0.9, bass: 0.85, pad: 0.4, lead: 0.75, arp: 0.1, swing: 0, accent: "#ff4d6d" },
+  { id: "country", label: "Country", blurb: "Story vocal, acoustic drive.", bpm: [88, 120], scale: "major", progression: [0, 4, 5, 3], drums: 0.7, bass: 0.7, pad: 0.5, lead: 0.6, arp: 0.15, swing: 0.05, accent: "#ffd479" },
 ];
 
+const GENRE_ALIASES: Record<string, string> = {
+  auto: "hiphop",
+  "hip-hop": "hiphop",
+  rap: "hiphop",
+  "r&b": "rnb",
+  "nu-metal": "metal",
+  "heavy-metal": "metal",
+};
+
 export function getGenre(id: string): Genre {
-  return GENRES.find((g) => g.id === id) ?? GENRES[0];
+  const mapped = GENRE_ALIASES[id] || id;
+  return (
+    GENRES.find((g) => g.id === mapped) ??
+    GENRES.find((g) => g.id === "hiphop") ??
+    GENRES[0]
+  );
 }
+
+export const DIRECTOR_GENRES = [
+  { id: "auto", label: "From prompt" },
+  { id: "hiphop", label: "Hip-hop" },
+  { id: "metal", label: "Metal" },
+  { id: "pop", label: "Pop" },
+  { id: "rnb", label: "R&B" },
+  { id: "rock", label: "Rock" },
+  { id: "country", label: "Country" },
+  { id: "drill", label: "Drill" },
+  { id: "house", label: "House / EDM" },
+];
 
 export const MOODS: Record<string, { scale?: string; energy: number; bpmShift: number }> = {
   calm: { scale: "major", energy: -0.2, bpmShift: -8 },

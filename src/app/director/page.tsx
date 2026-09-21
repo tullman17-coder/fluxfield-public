@@ -5,7 +5,7 @@ import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 import { LOOKS, RUNTIMES, TIKTOK_RUNTIMES, TIKTOK_TEMPLATES, CUT_SPEEDS } from "@/lib/director/plan";
-import { GENRES, MOODS } from "@/lib/music/theory";
+import { DIRECTOR_GENRES, MOODS } from "@/lib/music/theory";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ export default function DirectorPage() {
   const [mode, setMode] = useState<"music-video" | "tiktok">("music-video");
   const [brief, setBrief] = useState("");
   const [runtime, setRuntime] = useState("180");
-  const [look, setLook] = useState("cinematic");
+  const [look, setLook] = useState("auto");
   const [pacing, setPacing] = useState("steady");
   const [cutSpeed, setCutSpeed] = useState("0");
   const [cast, setCast] = useState("");
@@ -59,7 +59,7 @@ export default function DirectorPage() {
   const [scoreFile, setScoreFile] = useState<File | null>(null);
   const [aspect, setAspect] = useState("16:9");
   const [template, setTemplate] = useState("hook-payoff");
-  const [genre, setGenre] = useState("synthwave");
+  const [genre, setGenre] = useState("auto");
   const [mood, setMood] = useState("neutral");
   const [lyricMode, setLyricMode] = useState("write");
   const [lyrics, setLyrics] = useState("");
@@ -141,7 +141,7 @@ export default function DirectorPage() {
           Director
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
-          Shot list first. Drop a track or write ACE. Cast names lock the still. Cut Speed is shot density — WAN 5B clips stay ~3s on Boop.
+          Type the whole job. Voice, beat, topic. We split it into ACE + still + WAN.
         </p>
       </header>
 
@@ -195,7 +195,7 @@ export default function DirectorPage() {
           <div className="grid gap-2 border-t border-white/10 py-5">
             <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
               <label htmlFor="brief" className="text-lg font-bold text-[#f5eff6]">
-                The story
+                What do you want
               </label>
               <span className="text-sm text-[#8d838f]">
                 {activeMode.label}
@@ -206,7 +206,7 @@ export default function DirectorPage() {
               ref={briefRef}
               value={brief}
               onChange={(e) => setBrief(e.currentTarget.value)}
-              placeholder="A glassblower works through the night in a coastal workshop. Rain on the windows, molten glass the only warm light, the piece finished at dawn."
+              placeholder="Create a song in Biggie Smalls voice, same beat and genre as Slipknot, about calling out of work on a Friday."
               className="min-h-28 w-full min-w-0 resize-y rounded-[10px] border border-white/15 bg-white/15 p-3 text-base leading-normal text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
           </div>
@@ -225,7 +225,7 @@ export default function DirectorPage() {
           </div>
 
           <fieldset className="min-w-0 border-t border-white/10 py-5">
-            <legend className="text-sm font-medium text-[#b8aebb]">Look</legend>
+            <legend className="text-sm font-medium text-[#b8aebb]">Picture (optional)</legend>
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
               {LOOKS.map((l) => (
                 <button
@@ -339,7 +339,7 @@ export default function DirectorPage() {
               <div className="grid min-w-0 grid-cols-2 gap-3">
                 <div className="min-w-0">
                   <label htmlFor="genre" className={labelClass}>
-                    ACE style
+                    Genre override
                   </label>
                   <select
                     id="genre"
@@ -347,7 +347,7 @@ export default function DirectorPage() {
                     onChange={(e) => setGenre(e.currentTarget.value)}
                     className={selectClass}
                   >
-                    {GENRES.map((g) => (
+                    {DIRECTOR_GENRES.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.label}
                       </option>

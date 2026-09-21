@@ -36,6 +36,16 @@ function job(id: string, inputs: Record<string, string> = {}): StudioJob {
 }
 
 async function main() {
+  const { interpretDirectorBrief } = await import("../src/lib/director/brief");
+  const parsed = interpretDirectorBrief(
+    "create a song in biggie smalls voice, but in the same beat and genre as slipknot, a song about calling out of work on a friday.",
+  );
+  assert.equal(parsed.genre, "metal");
+  assert.equal(parsed.look, "street");
+  assert.match(parsed.topic, /calling out of work on a friday/i);
+  assert.match(parsed.acePrompt, /biggie smalls/i);
+  assert.match(parsed.acePrompt, /nu-metal/i);
+
   const cwd = process.cwd();
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "fluxfield-director-"));
   const originalFetch = globalThis.fetch;

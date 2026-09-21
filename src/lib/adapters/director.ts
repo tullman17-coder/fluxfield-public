@@ -7,11 +7,13 @@ import type {
   JobOutput,
   ModeUsed,
 } from "@/lib/adapters/types";
+import { interpretDirectorBrief } from "@/lib/director/brief";
 import {
   planProduction,
   shotListText,
   normalizeDirectorMode,
   pacingFromCutSpeed,
+  LOOKS,
   type Pacing,
   type Production,
   type Shot,
@@ -82,6 +84,14 @@ export async function runDirectorAdapter(
   const inputs = ctx.job.inputs;
   const mode = normalizeDirectorMode(inputs.mode);
   const brief = inputs.brief?.trim() || ctx.job.prompt.trim();
+  const parsed = interpretDirectorBrief(brief);
+  const lookId =
+    !inputs.look || inputs.look === "auto" ? parsed.look : inputs.look;
+  const genreId =
+    !inputs.genre || inputs.genre === "auto" ? parsed.genre : inputs.genre;
+  const moodId =
+    !inputs.mood || inputs.mood === "neutral" ? parsed.mood : inputs.mood;
+  const lookSuffix = LOOKS.find((l) => l.id === lookId)?.suffix || "";
   const cast = inputs.cast?.trim() || "";
   const scoreSource = inputs.scoreSource === "upload" ? "upload" : "write";
   const soundtrackName = (inputs.soundtrack || "").trim();
@@ -110,10 +120,10 @@ export async function runDirectorAdapter(
     mode,
     brief,
     runtimeSec,
-    look: inputs.look || "cinematic",
+    look: lookId || "street",
     pacing,
-    genre: inputs.genre || "synthwave",
-    mood: inputs.mood || "neutral",
+    genre: genreId || "hiphop",
+    mood: moodId || "neutral",
     seedText: `${ctx.job.id}:${brief}`,
     template: inputs.template,
   });
@@ -187,8 +197,8 @@ export async function runDirectorAdapter(
   const score =
     production.arrangement ??
     planArrangement({
-      genre: "cinematic",
-      mood: inputs.mood || "neutral",
+      genre: genreId || "hiphop",
+      mood: moodId || "neutral",
       targetSec: Math.min(production.runtimeSec, 240),
       seedText: `${ctx.job.id}:score`,
     });
@@ -214,6 +224,9 @@ export async function runDirectorAdapter(
 
   } else {
     ctx.job.inputs.seconds = String(Math.min(90, Math.max(10, runtimeSec)));
+    ctx.job.inputs.genre = genreId;
+    ctx.job.inputs.mood = moodId;
+    ctx.job.inputs.acePrompt = parsed.acePrompt;
     if (!ctx.job.inputs.lyricMode) ctx.job.inputs.lyricMode = "write";
     const music = await runMusicAdapter(ctx);
     outputs.push(...music.outputs);
@@ -248,11 +261,11 @@ export async function runDirectorAdapter(
       label: `${shot.timecode} · ${shot.size} · ${shot.section}`,
       prompt: [
         cast ? `Cast: ${cast}.` : "",
-        brief,
+        parsed.visualPrompt || brief,
         `Scene: ${shot.section}.`,
         `Shot: ${shot.size}, ${shot.move}.`,
         `Action: ${shot.action}.`,
-        `Visual look: ${production.look}.`,
+        lookSuffix ? `Look: ${lookSuffix}.` : "",
       ]
         .filter(Boolean)
         .join(" "),
