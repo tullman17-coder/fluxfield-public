@@ -30,7 +30,7 @@ export type ZermoRequest = {
   prompt: string;
   negative_prompt?: string;
   seed?: number | string;
-  inputs?: { image?: string };
+  inputs?: { image?: string; audio?: string };
   settings: { width?: number; height?: number; steps?: number; duration?: number; lyrics?: string; frames?: number };
 };
 export type ZermoIntent = {
@@ -69,6 +69,16 @@ async function request(route: string, init: RequestInit = {}, media = true) {
   } catch { throw new Error("Zermo transport interrupted; resume the same job, do not regenerate"); }
   if (!response.ok) { await response.body?.cancel(); throw new Error(`Zermo API returned HTTP ${response.status}`); }
   return response;
+}
+export async function uploadZermoAsset(bytes: Buffer, mime: string) {
+  const upload = await (await request("/assets", {
+    method: "POST",
+    headers: { "Content-Type": mime },
+    body: new Uint8Array(bytes),
+    signal: AbortSignal.timeout(60_000),
+  })).json() as { id?: string };
+  if (!upload?.id) throw new Error("Zermo asset upload failed");
+  return remoteId(upload.id, "asset");
 }
 export function exactSeed(value: unknown): number | string | undefined {
   if (value === undefined || value === "") return undefined;

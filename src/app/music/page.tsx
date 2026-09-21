@@ -30,6 +30,7 @@ export default function MusicPage() {
   const [bpm, setBpm] = useState("");
   const [lyricMode, setLyricMode] = useState("write");
   const [lyrics, setLyrics] = useState("");
+  const [voiceFile, setVoiceFile] = useState<File | null>(null);
   const { job, setJob } = useJobWatch("music");
   const [error, setError] = useState<string | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
@@ -45,33 +46,33 @@ export default function MusicPage() {
     }
     setError(null);
     try {
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool: "music",
-          workflowSlug: "music",
-          presetId: genre,
-          inputs: {
-            brief,
-            trackName,
-            genre,
-            mood,
-            seconds: effectiveSeconds,
-            key,
-            bpm,
-            lyricMode,
-            lyrics,
-          },
+      const form = new FormData();
+      form.set("tool", "music");
+      form.set("workflowSlug", "music");
+      form.set("presetId", genre);
+      form.set(
+        "inputs",
+        JSON.stringify({
+          brief,
+          trackName,
+          genre,
+          mood,
+          seconds: effectiveSeconds,
+          key,
+          bpm,
+          lyricMode,
+          lyrics,
         }),
-      });
+      );
+      if (voiceFile) form.set("voiceSample", voiceFile);
+      const res = await fetch("/api/jobs", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not start the track");
       setJob(data.job as StudioJob);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the track");
     }
-  }, [brief, trackName, genre, mood, effectiveSeconds, key, bpm, lyricMode, lyrics, setJob]);
+  }, [brief, trackName, genre, mood, effectiveSeconds, key, bpm, lyricMode, lyrics, voiceFile, setJob]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const track = job?.outputs.find((o) => o.kind === "audio");
@@ -119,8 +120,17 @@ export default function MusicPage() {
               className="min-h-24 w-full min-w-0 resize-y rounded-[10px] border border-white/15 bg-white/15 p-3 text-base leading-normal text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
             <p className="text-xs text-[#8d838f]">
-              ACE gets style tags, not a voice clone. “Style of …” maps to kit + rap vocal. The story goes in the lyrics.
+              ACE gets style tags, not a voice clone from a name. Upload a WAV/FLAC you recorded if you want timbre from a sample.
             </p>
+            <label className="mt-3 block min-w-0 text-sm text-[#b8aebb]">
+              Voice sample (optional, yours)
+              <input
+                type="file"
+                accept="audio/wav,audio/flac,.wav,.flac"
+                className="mt-2 block w-full min-w-0 text-sm text-[#f5eff6] file:mr-3 file:rounded-[10px] file:border file:border-white/15 file:bg-white/10 file:px-3 file:py-2"
+                onChange={(e) => setVoiceFile(e.currentTarget.files?.[0] || null)}
+              />
+            </label>
           </div>
 
           <fieldset className="min-w-0 border-y border-white/10 py-5">

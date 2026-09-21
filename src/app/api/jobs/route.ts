@@ -73,6 +73,22 @@ export async function POST(request: Request) {
       inputs.soundtrack = name;
       inputs.scoreSource = inputs.scoreSource || "upload";
     }
+    const voice = form.get("voiceSample");
+    if (voice && typeof voice !== "string" && voice.size > 0) {
+      if (voice.size > 8 * 1024 * 1024) {
+        return NextResponse.json({ error: "Voice sample must be under 8 MB" }, { status: 400 });
+      }
+      const bytes = Buffer.from(await voice.arrayBuffer());
+      const ext = path.extname(voice.name || "") || ".wav";
+      if (!/^\.(wav|flac)$/i.test(ext)) {
+        return NextResponse.json({ error: "Voice sample must be WAV or FLAC" }, { status: 400 });
+      }
+      const name = `${nanoid(8)}${ext}`;
+      const dest = path.join(process.cwd(), ".data", "uploads", name);
+      await fs.mkdir(path.dirname(dest), { recursive: true });
+      await fs.writeFile(dest, bytes);
+      inputs.voiceSample = name;
+    }
   } else {
     const body = (await request.json()) as {
       tool?: JobTool;

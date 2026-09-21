@@ -20,7 +20,7 @@ import {
 } from "@/lib/music/lyrics";
 import { generateLyrics } from "@/lib/adapters/ollama";
 import { interpretMusicBrief } from "@/lib/music/brief";
-import { runZermoJob } from "./zermo";
+import { runZermoJob, uploadZermoAsset } from "./zermo";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -175,9 +175,19 @@ export async function runMusicAdapter(
     const duration = saved?.settings.duration ?? Number(inputs.seconds || 60);
     if (!Number.isFinite(duration) || duration < 10 || duration > 90) throw new Error("Zermo ACE supports 10–90 seconds; choose a shorter track");
     const sheet = saved ? null : await buildLyrics(ctx, arrangement, title);
+    let audioId: string | undefined;
+    const sample = inputs.voiceSample?.trim();
+    if (!saved && sample) {
+      const buf = await fs.readFile(path.join(process.cwd(), ".data", "uploads", path.basename(sample)));
+      if (buf.length > 8 * 1024 * 1024) throw new Error("Voice sample must be under 8 MB");
+      const mime = buf.subarray(0, 4).toString() === "fLaC" ? "audio/flac" : buf.subarray(0, 4).toString() === "RIFF" ? "audio/wav" : "";
+      if (!mime) throw new Error("Voice sample must be WAV or FLAC you recorded");
+      audioId = await uploadZermoAsset(buf, mime);
+    }
     const requested = saved ?? {
       operation: "music.generate" as const, model: "ace-step-1.5-turbo" as const,
       prompt: `${tags}, ${inputs.genre || parsed.genre}, ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
+      ...(audioId ? { inputs: { audio: audioId } } : {}),
       settings: { duration, lyrics: sheet ? lyricPlainText(sheet) : "" },
     };
     const result = await runZermoJob(ctx.job, "music:track", requested);
