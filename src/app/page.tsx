@@ -38,7 +38,7 @@ export default async function HomePage() {
         <p className="relative mt-4 max-w-2xl text-base text-pretty text-[#c4957d] md:text-lg">
           Drop posters, catalog spreads, event bills, shop banners, fitting-room
           screens. Pick a layout, describe the product, and get finished art with
-          the words already set. Powered by Seedance 2.5, face inputs, and 40+ models.
+          the words already set. House stills are Qwen Image 2.1, video is WAN 2.2 5B, music is ACE. Seedance 2.5 is optional Higgsfield cloud.
         </p>
         <div className="relative mt-6 flex min-w-0 flex-wrap gap-3">
           <Link

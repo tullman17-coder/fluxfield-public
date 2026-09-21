@@ -26,7 +26,7 @@ export async function boundedBytes(response: Response, limit = 128 * 1024 * 1024
 
 export type ZermoRequest = {
   operation: "image.generate" | "music.generate" | "video.image_to_video";
-  model: "chroma-flash-q4" | "flux1-dev-q4" | "flux1-uncensored" | "ace-step-1.5-turbo" | "wan2.2-5b-fp8";
+  model: "chroma-flash-q4" | "flux1-dev-q4" | "flux1-uncensored" | "qwen-image-21" | "ace-step-1.5-turbo" | "wan2.2-5b-fp8";
   prompt: string;
   negative_prompt?: string;
   seed?: number | string;
@@ -112,7 +112,7 @@ export async function checkZermoHealth() {
     health.apiReachable = true;
     health.workerConfigured = ["configured", "configured; polled on work"].includes(media.value?.worker_availability);
     const models = Array.isArray(media.value?.models) ? media.value.models : [];
-    for (const [lane, id, operation] of [["image", "flux1-dev-q4", "image.generate"], ["music", "ace-step-1.5-turbo", "music.generate"], ["video", "wan2.2-5b-fp8", "video.image_to_video"]] as const) {
+    for (const [lane, id, operation] of [["image", "qwen-image-21", "image.generate"], ["music", "ace-step-1.5-turbo", "music.generate"], ["video", "wan2.2-5b-fp8", "video.image_to_video"]] as const) {
       const allowed = models.some((m: { id?: string; operations?: string[] }) => m?.id === id && Array.isArray(m.operations) && m.operations.includes(operation));
       health[lane] = { ready: allowed && health.workerConfigured, model: allowed ? id : null };
     }
@@ -149,7 +149,7 @@ export function imageRequest(ctx: AdapterContext): ZermoRequest {
   const seed = exactSeed(ctx.job.inputs.seed);
   if (!ctx.job.prompt.trim() || ctx.job.prompt.length > 8000 || ctx.job.negativePrompt.length > 8000) throw new Error("Zermo prompts must be 1–8000 characters");
   const mature = ["boudoir", "figure", "pinup"].includes(ctx.job.presetId);
-  const model = mature ? "flux1-uncensored" : "flux1-dev-q4";
+  const model = mature ? "flux1-uncensored" : "qwen-image-21";
   const fitted = { width: Math.min(width, 1024), height: Math.min(height, 1024) };
   fitted.width = Math.round(fitted.width / 8) * 8;
   fitted.height = Math.round(fitted.height / 8) * 8;
