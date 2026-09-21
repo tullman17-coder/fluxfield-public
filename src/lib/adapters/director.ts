@@ -19,6 +19,7 @@ import { renderArrangement } from "@/lib/music/synth";
 import { encodeWav } from "@/lib/music/wav";
 import { keyLabel, timecode } from "@/lib/music/theory";
 import {
+  DIRECTOR_RENDER_STILLS,
   generateDirectorFrames,
   MAX_DIRECTOR_FRAMES,
 } from "@/lib/adapters/director-frames";
@@ -112,12 +113,11 @@ export async function runDirectorAdapter(
         ].join("\n")
       : fullList;
 
-  const keyCount = Math.min(MAX_FRAMES, production.shots.length);
   const wanCount = wanClipsForDuration(runtimeSec);
   outputs.push({
     id: nanoid(8),
     kind: "storyboard",
-    label: `Shot list · ${production.shots.length} shots · ${keyCount} key stills · ${wanCount}×49f WAN`,
+    label: `Shot list · ${production.shots.length} shots · ${DIRECTOR_RENDER_STILLS} key still · ${wanCount}×49f WAN`,
     text: preview,
   });
   outputs.push({
@@ -212,7 +212,11 @@ export async function runDirectorAdapter(
       seed: hash32(`${production.title}:${shot.index}:${shot.move}`),
     };
   });
-  const frames = await generateDirectorFrames(ctx, frameShots, size, async (done, total, frameOut) => {
+  const frames = await generateDirectorFrames(
+    ctx,
+    frameShots.slice(0, DIRECTOR_RENDER_STILLS),
+    size,
+    async (done, total, frameOut) => {
     const kept = outputs.filter((o) => o.kind !== "image");
     outputs.length = 0;
     outputs.push(...kept, ...frameOut);

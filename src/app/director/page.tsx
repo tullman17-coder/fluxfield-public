@@ -124,7 +124,7 @@ export default function DirectorPage() {
           Director
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
-          Shot list first (1 min fast ≈ 25 cuts). Then up to 12 key stills. WAN clips fill the score (~3s each; 1 min ≈ 22 clips). The list shows while ACE and stills run.
+          Shot list first (1 min fast ≈ 25 cuts). One key still (WAN start). WAN clips fill the score (~3s each; 1 min ≈ 22 clips). The list shows while ACE runs.
         </p>
       </header>
 
@@ -475,7 +475,7 @@ export default function DirectorPage() {
                   : "Frames for the key moments show up here."}
               </p>
               <span className="mt-1 block text-sm text-[#8d838f]">
-                Up to 12 key stills. WAN last-frame chain fills the ACE length (~3s per clip).
+                One key still. WAN last-frame chain fills the ACE length (~3s per clip).
               </span>
             </div>
           )}

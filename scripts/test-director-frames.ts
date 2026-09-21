@@ -166,8 +166,11 @@ async function main() {
       "../src/lib/adapters/director"
     );
     await runDirectorAdapter({ ...ctx, job: directorJob });
+    const { DIRECTOR_RENDER_STILLS } = await import(
+      "../src/lib/adapters/director-frames"
+    );
     const stills = directorRequests.filter((r) => r.operation === "image.generate");
-    assert.ok(stills.length > 0);
+    assert.equal(stills.length, DIRECTOR_RENDER_STILLS);
     for (const submitted of stills) {
       assert.ok(submitted.prompt.includes(brief));
       assert.match(submitted.prompt, /film noir, hard chiaroscuro/);

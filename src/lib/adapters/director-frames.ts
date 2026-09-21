@@ -18,8 +18,10 @@ import { fitZermoSize } from "./zermo-image-size";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
-/** Hard cap shared with the director adapter. */
+/** Prompt-beat cap. WAN last-frame chain only needs the opener still. */
 export const MAX_DIRECTOR_FRAMES = 12;
+/** Rendered Qwen stills. Extra keys were storyboard cost; the cut starts from still 1. */
+export const DIRECTOR_RENDER_STILLS = 1;
 
 export type DirectorFrameShot = {
   label: string;
