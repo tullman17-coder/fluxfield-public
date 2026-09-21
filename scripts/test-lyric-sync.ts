@@ -6,6 +6,7 @@ import {
   wanLyricPrompt,
   type LyricSheet,
 } from "../src/lib/music/lyrics";
+import { interpretMusicBrief } from "../src/lib/music/brief";
 
 const sheet: LyricSheet = {
   title: "Looby",
@@ -33,4 +34,15 @@ assert.match(wanLyricPrompt([], 0), /instrumental/);
 const srt = lyricSheetToSrt(sheet);
 assert.match(srt, /00:00:00,000 --> 00:00:06,000/);
 assert.match(srt, /here we go looby loo/);
+
+const eminem = interpretMusicBrief(
+  'Rap style of Eminem the artist about calling out of work to play Grand Theft Auto VI will launch on Thursday, November 19',
+);
+assert.equal(eminem.genre, "hiphop");
+assert.match(eminem.tags, /detroit/);
+assert.match(eminem.tags, /rapid-fire/);
+assert.doesNotMatch(eminem.tags, /eminem/i);
+assert.match(eminem.topic, /Grand Theft Auto/i);
+assert.doesNotMatch(eminem.topic, /style of/i);
+
 console.log("PASS: lyric cues, WAN prompt, SRT stamps");

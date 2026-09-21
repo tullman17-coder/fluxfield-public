@@ -115,9 +115,12 @@ export default function MusicPage() {
               ref={briefRef}
               value={brief}
               onChange={(e) => setBrief(e.currentTarget.value)}
-              placeholder="Slow burn for a candle launch film — warm, unhurried, opens quiet and lifts near the end."
+              placeholder="Rap style of Eminem about calling out of work when GTA VI drops"
               className="min-h-24 w-full min-w-0 resize-y rounded-[10px] border border-white/15 bg-white/15 p-3 text-base leading-normal text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
+            <p className="text-xs text-[#8d838f]">
+              ACE gets style tags, not a voice clone. “Style of …” maps to kit + rap vocal. The story goes in the lyrics.
+            </p>
           </div>
 
           <fieldset className="min-w-0 border-y border-white/10 py-5">

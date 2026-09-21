@@ -226,6 +226,7 @@ export async function generateLyrics(
     title: string;
     genre: string;
     mood: string;
+    cadence?: string;
     sections: string[];
     linesPerSection: number;
   },
@@ -236,6 +237,8 @@ export async function generateLyrics(
     `Write lyrics for a ${args.genre} track called "${args.title}".
 Subject: ${args.brief}
 Feel: ${args.mood}
+Cadence: ${args.cadence || "natural to the genre"}
+Do not name living recording artists. Do not claim to be a specific person.
 Write a block for each of these parts: ${wanted}
 Around ${args.linesPerSection} lines per block. The chorus is the hook and repeats.
 Write the words only — no commentary, no explanation, no notes about the request.

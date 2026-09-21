@@ -147,12 +147,16 @@ export async function createAndRunJob(
       input.inputs,
     ));
   } else if (input.tool === "music") {
-    const genre = getGenre(input.presetId || input.inputs.genre || "hiphop");
+    const { interpretMusicBrief } = await import("@/lib/music/brief");
+    const parsed = interpretMusicBrief(input.inputs.brief || "");
+    const genre = getGenre(parsed.genre);
     const brief = input.inputs.brief?.trim() || "";
     if (!brief) throw new Error("Describe the track you want.");
     workflowName = "Music";
     presetLabel = genre.label;
     input.inputs.genre = genre.id;
+    input.inputs.acePrompt = input.inputs.acePrompt || parsed.tags;
+    input.inputs.lyricTopic = parsed.topic;
     prompt = brief;
   } else if (input.tool === "director") {
     const brief = input.inputs.brief?.trim() || "";
