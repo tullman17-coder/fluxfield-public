@@ -330,7 +330,11 @@ async function processJob(jobId: string) {
       const directed = await runDirectorAdapter({
         settings,
         job: current,
-        referenceImagePath: undefined,
+        referenceImagePath: referenceImagePath
+          ? path.resolve(referenceImagePath)
+          : current.referenceImagePath
+            ? path.resolve(current.referenceImagePath)
+            : undefined,
       });
       await updateJob(jobId, {
         status: "completed",

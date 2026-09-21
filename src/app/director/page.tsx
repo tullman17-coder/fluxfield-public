@@ -57,6 +57,8 @@ export default function DirectorPage() {
   const [cast, setCast] = useState("");
   const [scoreSource, setScoreSource] = useState<"write" | "upload">("write");
   const [scoreFile, setScoreFile] = useState<File | null>(null);
+  const [refFile, setRefFile] = useState<File | null>(null);
+  const [refUrl, setRefUrl] = useState("");
   const [aspect, setAspect] = useState("16:9");
   const [template, setTemplate] = useState("hook-payoff");
   const [genre, setGenre] = useState("auto");
@@ -103,6 +105,7 @@ export default function DirectorPage() {
           mood,
           lyricMode: mode === "music-video" ? lyricMode : "instrumental",
           lyrics: mode === "music-video" ? lyrics : "",
+          ...(refUrl.trim() && !refFile ? { referenceImageUrl: refUrl.trim() } : {}),
           ...(mode === "music-video"
             ? { seconds: String(Math.min(90, Math.max(10, Number(runtime) || 180))) }
             : {}),
@@ -111,6 +114,8 @@ export default function DirectorPage() {
       if (mode === "music-video" && scoreSource === "upload" && scoreFile) {
         form.set("soundtrack", scoreFile);
       }
+      if (refFile) form.set("referenceImage", refFile);
+      if (!refFile && refUrl.trim()) form.set("referenceImageUrl", refUrl.trim());
       const res = await fetch("/api/jobs", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not start the plan");
@@ -118,7 +123,7 @@ export default function DirectorPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start the plan");
     }
-  }, [brief, mode, runtime, look, pacing, cutSpeed, cast, scoreSource, scoreFile, aspect, template, genre, mood, lyricMode, lyrics, setJob]);
+  }, [brief, mode, runtime, look, pacing, cutSpeed, cast, scoreSource, scoreFile, refFile, refUrl, aspect, template, genre, mood, lyricMode, lyrics, setJob]);
 
   const running = !!job && (job.status === "queued" || job.status === "running");
   const shotList = job?.outputs.find((o) => o.kind === "storyboard");
@@ -246,6 +251,35 @@ export default function DirectorPage() {
             </div>
             <p className="mt-3 text-sm text-[#8d838f]">
               {LOOKS.find((l) => l.id === look)?.blurb}
+            </p>
+            <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label htmlFor="refStill" className={labelClass}>
+                  Upload still
+                </label>
+                <input
+                  id="refStill"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setRefFile(e.currentTarget.files?.[0] || null)}
+                  className="block w-full min-w-0 text-sm text-[#b8aebb] file:mr-3 file:rounded-[8px] file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:text-[#f5eff6]"
+                />
+              </div>
+              <div className="min-w-0">
+                <label htmlFor="refUrl" className={labelClass}>
+                  Or image URL
+                </label>
+                <input
+                  id="refUrl"
+                  value={refUrl}
+                  onChange={(e) => setRefUrl(e.currentTarget.value)}
+                  placeholder="https://…"
+                  className="h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/10 px-3 text-sm text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-sm text-[#8d838f]">
+              Becomes the WAN opener. Skip Qwen still if you drop one.
             </p>
           </fieldset>
 

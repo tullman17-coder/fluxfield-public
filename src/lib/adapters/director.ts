@@ -102,6 +102,15 @@ export async function runDirectorAdapter(
     !soundtrackName.includes("..")
       ? path.join(process.cwd(), ".data", "uploads", soundtrackName)
       : "";
+  const refName = (inputs.referenceImage || "").trim();
+  const referenceFile =
+    ctx.referenceImagePath ||
+    (refName &&
+    !refName.includes("/") &&
+    !refName.includes("\\") &&
+    !refName.includes("..")
+      ? path.join(process.cwd(), ".data", "uploads", refName)
+      : "");
   let runtimeSec =
     mode === "tiktok"
       ? Math.max(8, Math.min(60, Number(inputs.runtime || 15)))
@@ -249,8 +258,6 @@ export async function runDirectorAdapter(
     ctx.job.inputs.size = mode === "tiktok" ? "352x640" : "640x352";
   }
   const keyShots = pickKeyShots(production);
-  // One palette for the whole piece. Without this each frame picks its own hue
-  // from its own prompt and a storyboard reads like twelve unrelated films.
   const baseHue = hash32(`${production.title}:${production.look}`) % 360;
   const frameShots = keyShots.map((shot) => {
     const progress = production.runtimeSec
@@ -274,6 +281,20 @@ export async function runDirectorAdapter(
       seed: hash32(`${production.title}:${shot.index}:${shot.move}`),
     };
   });
+  let frameMode: ModeUsed = ctx.settings.generationMode === "zermo" ? "zermo" : "mock";
+  if (referenceFile) {
+    const ext = path.extname(referenceFile) || ".png";
+    const copied = `${ctx.job.id}-ref${ext}`;
+    await fs.mkdir(OUT_DIR, { recursive: true });
+    await fs.copyFile(referenceFile, path.join(OUT_DIR, copied));
+    outputs.push({
+      id: nanoid(8),
+      kind: "image",
+      label: "Reference still",
+      url: `/api/outputs/${copied}`,
+    });
+    await mark(50, "Ref still · WAN next");
+  } else {
   const frames = await generateDirectorFrames(
     ctx,
     frameShots.slice(0, DIRECTOR_RENDER_STILLS),
@@ -286,6 +307,8 @@ export async function runDirectorAdapter(
   });
   const haveFrames = outputs.some((o) => o.kind === "image");
   if (!haveFrames) outputs.push(...frames.outputs);
+  frameMode = frames.modeUsed;
+  }
 
   if (ctx.settings.generationMode === "zermo") {
     const stills = outputs.filter((o) => o.kind === "image" && o.url);
@@ -353,5 +376,5 @@ export async function runDirectorAdapter(
     ].join("\n"),
   });
 
-  return { outputs, production, modeUsed: frames.modeUsed };
+  return { outputs, production, modeUsed: frameMode };
 }

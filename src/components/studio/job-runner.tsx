@@ -98,6 +98,7 @@ export function JobRunner({
       if (zermo) { delete inputs.voice; delete inputs.subtitles; }
       form.set("inputs", JSON.stringify(inputs));
       if (file) form.set("referenceImage", file);
+      if (!file && values.referenceImageUrl?.trim()) form.set("referenceImageUrl", values.referenceImageUrl.trim());
       const res = await fetch("/api/jobs", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Job failed");
@@ -284,6 +285,16 @@ export function JobRunner({
               accept="image/*"
               className="border-white/10 bg-white/10"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
+            <Input
+              id="refUrl"
+              type="url"
+              placeholder="or paste an image URL"
+              value={values.referenceImageUrl || ""}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, referenceImageUrl: e.currentTarget.value }))
+              }
+              className="border-white/10 bg-white/10"
             />
           </div>
         ) : null}

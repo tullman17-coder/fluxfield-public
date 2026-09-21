@@ -235,6 +235,43 @@ async function main() {
       wanClipsForDuration(30),
     );
 
+    directorRequests.length = 0;
+    const refName = "face.png";
+    await fs.writeFile(path.join(tmp, ".data", "uploads", refName), PNG);
+    const refJob = {
+      ...job("director-ref-still"),
+      aspect: "16:9",
+      inputs: {
+        mode: "music-video",
+        brief,
+        runtime: "30",
+        look: "street",
+        scoreSource: "upload",
+        soundtrack: scoreName,
+        referenceImage: refName,
+        aspect: "16:9",
+      },
+    };
+    await saveJob(refJob);
+    const refResult = await runDirectorAdapter({
+      ...ctx,
+      job: refJob,
+      referenceImagePath: path.join(tmp, ".data", "uploads", refName),
+    });
+    assert.equal(
+      directorRequests.filter((r) => r.operation === "image.generate").length,
+      0,
+    );
+    assert.equal(
+      directorRequests.filter((r) => r.operation === "video.image_to_video").length,
+      wanClipsForDuration(30),
+    );
+    assert.ok(refResult.outputs.some((o) => o.kind === "image" && o.label === "Reference still"));
+
+    const { fetchReferenceImage } = await import("../src/lib/jobs/reference");
+    await assert.rejects(() => fetchReferenceImage("file:///etc/passwd"), /http/);
+    await assert.rejects(() => fetchReferenceImage("http://127.0.0.1/x.png"), /not allowed/);
+
     const explicitJob = job("director-explicit", {
       size: "512x512",
       seed: "18446744073709551615",

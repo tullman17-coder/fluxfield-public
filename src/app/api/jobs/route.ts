@@ -5,6 +5,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
 import type { JobTool } from "@/lib/adapters/types";
+import { fetchReferenceImage, saveReferenceBytes } from "@/lib/jobs/reference";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -50,12 +51,16 @@ export async function POST(request: Request) {
     if (file && typeof file !== "string" && file.size > 0) {
       const bytes = Buffer.from(await file.arrayBuffer());
       const ext = path.extname(file.name || "") || ".png";
-      const name = `${nanoid(8)}${ext}`;
-      const dest = path.join(process.cwd(), ".data", "uploads", name);
-      await fs.mkdir(path.dirname(dest), { recursive: true });
-      await fs.writeFile(dest, bytes);
-      referenceImagePath = dest;
-      inputs.referenceImage = name;
+      const saved = await saveReferenceBytes(bytes, ext);
+      referenceImagePath = saved.dest;
+      inputs.referenceImage = saved.name;
+    }
+    const imageUrl = String(form.get("referenceImageUrl") || inputs.referenceImageUrl || "").trim();
+    if (!referenceImagePath && imageUrl) {
+      const saved = await fetchReferenceImage(imageUrl);
+      referenceImagePath = saved.dest;
+      inputs.referenceImage = saved.name;
+      inputs.referenceImageUrl = imageUrl;
     }
     const score = form.get("soundtrack");
     if (score && typeof score !== "string" && score.size > 0) {
@@ -79,6 +84,12 @@ export async function POST(request: Request) {
     workflowSlug = body.workflowSlug;
     presetId = body.presetId;
     inputs = body.inputs || {};
+    const imageUrl = String(inputs.referenceImageUrl || "").trim();
+    if (imageUrl) {
+      const saved = await fetchReferenceImage(imageUrl);
+      referenceImagePath = saved.dest;
+      inputs.referenceImage = saved.name;
+    }
   }
 
   if (!workflowSlug || !presetId) {
