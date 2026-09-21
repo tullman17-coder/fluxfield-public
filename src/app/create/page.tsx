@@ -44,6 +44,8 @@ export default function CreatePage() {
   const steps = customSteps || (zermo ? "8" : "4");
   const [assist, setAssist] = useState(true);
   const [visualQa, setVisualQa] = useState(false);
+  const [refFile, setRefFile] = useState<File | null>(null);
+  const [refUrl, setRefUrl] = useState("");
 
   const [improveProviderOverride, setImproveProviderOverride] = useState<
     "local" | "api" | null
@@ -103,27 +105,28 @@ export default function CreatePage() {
       setSubmitError(null);
       setImproved(null);
       try {
-        const res = await fetch("/api/jobs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tool: "dream",
-            workflowSlug: "dream",
-            presetId: activePreset.id,
-            inputs: {
-              prompt,
-              negativePrompt,
-              ratio,
-              framing,
-              count,
-              seed: seedOverride ?? seed,
-              steps,
-              cfg: zermo ? "1" : cfg,
-              assist: assist ? "on" : "off",
-              visualQa: visualQa ? "on" : "off",
-            },
+        const form = new FormData();
+        form.set("tool", "dream");
+        form.set("workflowSlug", "dream");
+        form.set("presetId", activePreset.id);
+        form.set(
+          "inputs",
+          JSON.stringify({
+            prompt,
+            negativePrompt,
+            ratio,
+            framing,
+            count,
+            seed: seedOverride ?? seed,
+            steps,
+            cfg: zermo ? "1" : cfg,
+            assist: assist ? "on" : "off",
+            visualQa: visualQa ? "on" : "off",
           }),
-        });
+        );
+        if (refFile) form.set("referenceImage", refFile);
+        else if (refUrl.trim()) form.set("referenceImageUrl", refUrl.trim());
+        const res = await fetch("/api/jobs", { method: "POST", body: form });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Job failed");
         setJob(data.job as StudioJob);
@@ -147,6 +150,7 @@ export default function CreatePage() {
     setCfg(i.cfg || "1");
     setAssist(i.assist !== "off");
     setVisualQa(i.visualQa === "on");
+    setRefUrl(i.referenceImageUrl || "");
     promptRef.current?.focus();
   }, []);
 
@@ -159,16 +163,14 @@ export default function CreatePage() {
         void (async () => {
           setSubmitError(null);
           try {
-            const res = await fetch("/api/jobs", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                tool: "dream",
-                workflowSlug: "dream",
-                presetId: j.presetId,
-                inputs: { ...i, seed: "" },
-              }),
-            });
+            const form = new FormData();
+            form.set("tool", "dream");
+            form.set("workflowSlug", "dream");
+            form.set("presetId", j.presetId);
+            form.set("inputs", JSON.stringify({ ...i, seed: "" }));
+            if (refFile) form.set("referenceImage", refFile);
+            else if (refUrl.trim()) form.set("referenceImageUrl", refUrl.trim());
+            const res = await fetch("/api/jobs", { method: "POST", body: form });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Job failed");
             setJob(data.job as StudioJob);
@@ -178,7 +180,7 @@ export default function CreatePage() {
         })();
       }, 0);
     },
-    [reuseFromJob, setJob],
+    [reuseFromJob, setJob, refFile, refUrl],
   );
 
   const images =
@@ -401,6 +403,27 @@ export default function CreatePage() {
             <p className="mt-3 text-sm text-[#8d838f]">
               Adds: {activePreset.suffix}
             </p>
+            <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
+              <label className="min-w-0 text-sm text-[#b8aebb]">
+                Reference still
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="mt-2 block w-full min-w-0 text-sm text-[#f5eff6] file:mr-3 file:rounded-[10px] file:border file:border-white/15 file:bg-white/10 file:px-3 file:py-2"
+                  onChange={(e) => setRefFile(e.currentTarget.files?.[0] || null)}
+                />
+              </label>
+              <label className="min-w-0 text-sm text-[#b8aebb]">
+                Or image URL
+                <input
+                  type="url"
+                  value={refUrl}
+                  onChange={(e) => setRefUrl(e.currentTarget.value)}
+                  placeholder="https://"
+                  className={`${inputClass} mt-2`}
+                />
+              </label>
+            </div>
           </fieldset>
 
           <div className="grid min-w-0 gap-5 py-5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.75fr)] md:items-end">

@@ -134,8 +134,8 @@ function remoteId(value: string, prefix: "job" | "asset") {
   if (!new RegExp(`^${prefix}_[a-f0-9]{32}$`).test(value)) throw new Error(`Invalid Zermo ${prefix} ID`);
   return value;
 }
-export function imageRequest(ctx: AdapterContext): ZermoRequest {
-  if (ctx.referenceImagePath || ctx.job.inputs.referenceImage || ctx.job.inputs.sourceVideoPath) throw new Error("Zermo reference editing is not supported in this slice; remove the reference or use another provider");
+export function imageRequest(ctx: AdapterContext, imageAsset?: string): ZermoRequest {
+  if (ctx.job.inputs.sourceVideoPath) throw new Error("Zermo stills do not take a source video");
   const parts = ctx.job.aspect.split(":").map(Number);
   let { width, height } = fitZermoSize(parts[0], parts[1]);
   if (ctx.job.inputs.size) {
@@ -153,7 +153,7 @@ export function imageRequest(ctx: AdapterContext): ZermoRequest {
   const fitted = { width: Math.min(width, 1024), height: Math.min(height, 1024) };
   fitted.width = Math.round(fitted.width / 8) * 8;
   fitted.height = Math.round(fitted.height / 8) * 8;
-  return { operation: "image.generate", model, prompt: ctx.job.prompt, negative_prompt: ctx.job.negativePrompt, ...(seed === undefined ? {} : { seed }), settings: { width: fitted.width, height: fitted.height, steps } };
+  return { operation: "image.generate", model, prompt: ctx.job.prompt, negative_prompt: ctx.job.negativePrompt, ...(seed === undefined ? {} : { seed }), ...(imageAsset ? { inputs: { image: imageAsset } } : {}), settings: { width: fitted.width, height: fitted.height, steps } };
 }
 export async function runZermoJob(job: StudioJob, purpose: string, proposed: ZermoRequest): Promise<AdapterResult> {
   const live = await getJob(job.id);
@@ -214,7 +214,21 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
 }
 export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = "image") {
   if (!Number.isInteger(count) || count < 1 || count > 12) throw new Error("Zermo image count must be 1–12");
-  const body = imageRequest(ctx);
+  let imageAsset: string | undefined;
+  if (ctx.referenceImagePath) {
+    const png = await fs.readFile(ctx.referenceImagePath);
+    const mime = png[0] === 0x89 ? "image/png" : png[0] === 0xff && png[1] === 0xd8 ? "image/jpeg" : "";
+    if (!mime) throw new Error("Reference must be PNG or JPEG");
+    const upload = await (await request("/assets", {
+      method: "POST",
+      headers: { "Content-Type": mime },
+      body: png,
+      signal: AbortSignal.timeout(60_000),
+    })).json() as { id?: string };
+    if (!upload?.id) throw new Error("Zermo still upload failed");
+    imageAsset = remoteId(upload.id, "asset");
+  }
+  const body = imageRequest(ctx, imageAsset);
   const outputs: AdapterResult["outputs"] = [];
   let remotePromptId: string | undefined;
   for (let i = 0; i < count; i++) {

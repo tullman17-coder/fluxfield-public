@@ -21,7 +21,10 @@ async function main() {
     await saveJob(job);
     const body = imageRequest(ctx);
     assert.deepEqual(body.settings, { width: 1024, height: 576, steps: 8 });
-    assert.throws(() => imageRequest({ ...ctx, referenceImagePath: "reference.png" }), /reference/);
+    assert.equal(body.inputs, undefined);
+    const imageAsset = "asset_" + "b".repeat(32);
+    assert.equal(imageRequest(ctx, imageAsset).inputs?.image, imageAsset);
+    assert.throws(() => imageRequest({ ...ctx, job: { ...job, inputs: { sourceVideoPath: "clip.mp4" } } }), /source video/);
     assert.throws(() => zermoBase("https://user:pass@example.com"));
     assert.throws(() => zermoBase("http://example.com"));
     const id = "job_" + "a".repeat(32), asset = "asset_" + "b".repeat(32);
