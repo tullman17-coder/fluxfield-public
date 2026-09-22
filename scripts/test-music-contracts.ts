@@ -227,13 +227,13 @@ async function main() {
     assert.match(directorHtml, /TikTok/);
     assert.doesNotMatch(directorHtml, /Music video|Write ACE|Drop track|id="genre"/);
     assert.match(directorHtml, /<textarea[^>]*id="brief"[^>]*placeholder=""/);
-    for (const query of [{ mode: "music-video", look: "animated", brief: "A dancing otter" }, { look: "animated" }]) {
+    for (const query of [{ mode: "music-video", look: "animated", brief: "A dancing otter" }, { look: "animated" }, { brief: "A dancing otter" }]) {
       await assert.rejects(DirectorPage({ searchParams: Promise.resolve(query) }), (error: unknown) => {
         const digest = (error as { digest: string }).digest;
         assert.match(digest, /NEXT_REDIRECT;replace;\/music\?/);
         const target = new URL(digest.split(";")[2], "http://unit.test");
         assert.equal(target.searchParams.get("mode"), "music-video");
-        assert.equal(target.searchParams.get("look"), "animated");
+        assert.equal(target.searchParams.get("look"), query.look ?? null);
         if (query.brief) assert.equal(target.searchParams.get("brief"), query.brief);
         return true;
       }, "Old music-video query links must enter Music, not TikTok");
