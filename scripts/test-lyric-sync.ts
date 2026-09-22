@@ -6,7 +6,7 @@ import {
   wanLyricPrompt,
   type LyricSheet,
 } from "../src/lib/music/lyrics";
-import { interpretMusicBrief } from "../src/lib/music/brief";
+import { applyMusicChip, interpretMusicBrief } from "../src/lib/music/brief";
 import { midiToFreq } from "../src/lib/music/theory";
 
 const sheet: LyricSheet = {
@@ -46,5 +46,9 @@ assert.doesNotMatch(eminem.tags, /eminem/i);
 assert.match(eminem.topic, /Grand Theft Auto/i);
 assert.doesNotMatch(eminem.topic, /style of/i);
 assert.equal(midiToFreq(69), 432);
+const rain = interpretMusicBrief("song about rain");
+assert.equal(applyMusicChip("trap", rain).genre, "trap");
+assert.match(applyMusicChip("trap", rain).tags, /808/);
+assert.equal(applyMusicChip("auto", rain).genre, rain.genre);
 
 console.log("PASS: lyric cues, WAN prompt, SRT stamps");

@@ -147,8 +147,8 @@ export async function createAndRunJob(
       input.inputs,
     ));
   } else if (input.tool === "music") {
-    const { interpretMusicBrief } = await import("@/lib/music/brief");
-    const parsed = interpretMusicBrief(input.inputs.brief || "");
+    const { interpretMusicBrief, applyMusicChip } = await import("@/lib/music/brief");
+    const parsed = applyMusicChip(input.inputs.genre, interpretMusicBrief(input.inputs.brief || ""));
     const genre = getGenre(parsed.genre);
     const brief = input.inputs.brief?.trim() || "";
     if (!brief) throw new Error("Describe the track you want.");

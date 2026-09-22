@@ -59,7 +59,7 @@ export function interpretDirectorBrief(raw: string): DirectorBrief {
   const acePrompt = [
     text,
     genre === "metal" ? "nu-metal drums, downtuned guitars, aggressive kit" : "",
-    genre === "hiphop" ? "boom-bap or trap hip-hop beat, rap vocal" : "",
+    genre === "hiphop" ? "808 trap drums, dry vocal, punchy mix" : "",
   ]
     .filter(Boolean)
     .join(". ");

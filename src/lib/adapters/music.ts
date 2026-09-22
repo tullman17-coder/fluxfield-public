@@ -19,7 +19,7 @@ import {
   type LyricSheet,
 } from "@/lib/music/lyrics";
 import { generateLyrics } from "@/lib/adapters/ollama";
-import { interpretMusicBrief } from "@/lib/music/brief";
+import { applyMusicChip, interpretMusicBrief } from "@/lib/music/brief";
 import { runZermoJob, uploadZermoAsset } from "./zermo";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
@@ -101,7 +101,7 @@ async function buildLyrics(
   title: string,
 ): Promise<LyricSheet | null> {
   const inputs = ctx.job.inputs;
-  const parsed = interpretMusicBrief(inputs.brief || ctx.job.prompt);
+  const parsed = applyMusicChip(inputs.genre, interpretMusicBrief(inputs.brief || ctx.job.prompt));
   const lyricBrief = inputs.lyricTopic || parsed.topic;
   const mode = inputs.lyricMode || "instrumental";
   if (mode === "instrumental") return null;
@@ -150,7 +150,7 @@ export async function runMusicAdapter(
   }
 > {
   const inputs = ctx.job.inputs;
-  const parsed = interpretMusicBrief(inputs.brief || ctx.job.prompt);
+  const parsed = applyMusicChip(inputs.genre, interpretMusicBrief(inputs.brief || ctx.job.prompt));
   const tags = inputs.acePrompt || parsed.tags;
   const targetSec = Math.max(
     10,

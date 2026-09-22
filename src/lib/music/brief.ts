@@ -90,3 +90,10 @@ export function interpretMusicBrief(raw: string): MusicBrief {
       : "sung vocal, first person");
   return { tags, topic, genre, cadence };
 }
+
+/** Chip wins over brief-guess. Auto/empty keeps the parser. */
+export function applyMusicChip(chip: string | undefined, parsed: MusicBrief): MusicBrief {
+  const id = chip?.trim();
+  if (!id || id === "auto") return parsed;
+  return { ...parsed, genre: id, tags: GENRE_TAGS[id] || parsed.tags };
+}

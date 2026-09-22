@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { AuthStatus } from "@/components/studio/auth-status";
+import { FieldBackdrop } from "@/components/studio/field-backdrop";
 
 const NAV = [
   { href: "/supercomputer", label: "Super", icon: "cpu" },
@@ -181,6 +182,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
     <div className="grid min-h-dvh w-full grid-cols-[4rem_minmax(0,1fr)] text-[#f5eff6] sm:grid-cols-[5.75rem_minmax(0,1fr)]">
       {/* Iridescent swirl backdrop */}
       <div className="swirl-layer" aria-hidden="true">
+        <FieldBackdrop />
         <div className="swirl-blob swirl-blob--a" />
         <div className="swirl-blob swirl-blob--b" />
         <div className="swirl-blob swirl-blob--c" />
