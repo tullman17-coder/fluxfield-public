@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-/** Higgsfield-style field: gold/crimson particles + ribbons. CSS blobs stay if WebGL dies. */
+/** Star field. Occasional gold glint, ~1s, then gone. */
 export function FieldBackdrop() {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -22,29 +22,6 @@ export function FieldBackdrop() {
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.setClearColor(0x000000, 0);
 
-      const ribbons = [0xd4a017, 0x8b0000, 0xc4957d].map((color, i) => {
-        const pts = Array.from({ length: 12 }, (_, n) => {
-          const t = n / 11;
-          return new THREE.Vector3(
-            Math.sin(t * Math.PI * 2 + i) * (8 + i),
-            Math.cos(t * Math.PI * 3 + i * 0.7) * 4,
-            Math.sin(t * Math.PI + i) * 3,
-          );
-        });
-        const mesh = new THREE.Mesh(
-          new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.08, 6, false),
-          new THREE.MeshBasicMaterial({
-            color,
-            transparent: true,
-            opacity: 0.28,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-          }),
-        );
-        scene.add(mesh);
-        return mesh;
-      });
-
       const count = 400;
       const pos = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
@@ -60,6 +37,21 @@ export function FieldBackdrop() {
       );
       scene.add(points);
 
+      const glintPos = new Float32Array(3);
+      const glintGeo = new THREE.BufferGeometry();
+      glintGeo.setAttribute("position", new THREE.BufferAttribute(glintPos, 3));
+      const glintMat = new THREE.PointsMaterial({
+        color: 0xfff6d0,
+        size: 0.2,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        sizeAttenuation: true,
+      });
+      const glint = new THREE.Points(glintGeo, glintMat);
+      points.add(glint);
+
       const fit = () => {
         const w = canvas.clientWidth || window.innerWidth;
         const h = canvas.clientHeight || window.innerHeight;
@@ -72,13 +64,28 @@ export function FieldBackdrop() {
       window.addEventListener("resize", onResize);
 
       let raf = 0;
+      let next = 2500 + Math.random() * 6000;
+      let start = 0;
+      let until = 0;
       const tick = (t: number) => {
-        const s = t * 0.00012;
-        ribbons.forEach((m, i) => {
-          m.rotation.y = s * (0.6 + i * 0.2);
-          m.rotation.x = s * 0.25;
-        });
-        points.rotation.y = s * 0.35;
+        points.rotation.y = t * 0.000042;
+        if (t >= next) {
+          const i = Math.floor(Math.random() * count);
+          glintPos[0] = pos[i * 3];
+          glintPos[1] = pos[i * 3 + 1];
+          glintPos[2] = pos[i * 3 + 2];
+          glintGeo.attributes.position.needsUpdate = true;
+          start = t;
+          until = t + 600 + Math.random() * 500;
+          next = t + 3500 + Math.random() * 9000;
+        }
+        if (t < until) {
+          const envelope = Math.sin(((t - start) / (until - start)) * Math.PI);
+          glintMat.opacity = envelope * 0.95;
+          glintMat.size = 0.12 + envelope * 0.55;
+        } else {
+          glintMat.opacity = 0;
+        }
         renderer.render(scene, camera);
         raf = requestAnimationFrame(tick);
       };
@@ -88,11 +95,9 @@ export function FieldBackdrop() {
         cancelAnimationFrame(raf);
         window.removeEventListener("resize", onResize);
         dots.dispose();
-        ribbons.forEach((m) => {
-          m.geometry.dispose();
-          (m.material as { dispose: () => void }).dispose();
-        });
+        glintGeo.dispose();
         (points.material as { dispose: () => void }).dispose();
+        (glint.material as { dispose: () => void }).dispose();
         renderer.dispose();
       };
     });
