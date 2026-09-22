@@ -108,6 +108,7 @@ for (const file of ["src/app/create/page.tsx", "src/components/studio/job-runner
   assert(readFileSync(file, "utf8").includes("Model review can miss identity, color and count errors. Inspect reference edits yourself."), "Known review limits must be visible beside the QA control");
 }
 assert.equal(readFileSync("src/components/studio/video-composer.tsx", "utf8").match(/id="brief"[\s\S]*?placeholder="([^"]*)"/)?.[1], "", "Shared video brief must stay blank, without sample prompt text");
+assert.match(readFileSync("src/components/studio/video-composer.tsx", "utf8"), /"music:music-video" : "director:tiktok"/, "New Director work must use its own watch, not the mixed legacy key");
 assert.equal(marketplace.find(p => p.id === "motion-director")?.href, "/music?mode=music-video&look=animated", "Music-video preset must land in Music");
 const gallery = readFileSync("src/app/gallery/page.tsx", "utf8");
 assert.match(gallery, /music: "Music"/, "Music Gallery label must cover audio and video");

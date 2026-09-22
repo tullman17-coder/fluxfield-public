@@ -54,7 +54,7 @@ export function VideoComposer({ tool, values = {} }: { tool: "music" | "director
   const [lyricMode, setLyricMode] = useState("write");
   const [lyrics, setLyrics] = useState("");
   // Separate from the existing song watch; switching modes cannot show the wrong job.
-  const { job, setJob } = useJobWatch(tool === "music" ? "music:music-video" : "director", 1500);
+  const { job, setJob } = useJobWatch(tool === "music" ? "music:music-video" : "director:tiktok", 1500);
   const [error, setError] = useState<string | null>(null);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);

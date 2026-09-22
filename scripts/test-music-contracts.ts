@@ -273,7 +273,15 @@ async function main() {
       return { job: watched as StudioJob | null, setJob: watch.setJob };
     };
     try {
+      assert.equal((await hydrate("director:tiktok")).job, null, "Director must not hydrate a legacy music video");
       assert.equal((await hydrate("music:music-video")).job?.id, legacyWatch.id, "Music video must recover a remembered legacy Director video");
+      const tiktokWatch = { ...legacyWatch, id: "tiktok-watch", inputs: { mode: "tiktok" } };
+      watchJobs.set(tiktokWatch.id, tiktokWatch);
+      (await hydrate("director:tiktok")).setJob(tiktokWatch);
+      assert.equal(stored.get("fluxfield:job:director"), legacyWatch.id, "A new TikTok must not overwrite the legacy music-video watch");
+      assert.equal((await hydrate("director:tiktok")).job?.id, tiktokWatch.id);
+      assert.equal((await hydrate("music:music-video")).job?.id, legacyWatch.id);
+      stored.delete("fluxfield:job:director:tiktok");
       const watch = await hydrate("music:music-video");
       watch.setJob(newVideoWatch);
       assert.equal(stored.get("fluxfield:job:music:music-video"), newVideoWatch.id);
@@ -281,8 +289,12 @@ async function main() {
       assert.equal((await hydrate("music")).job?.id, songWatch.id, "Song reload must not show the video");
       assert.equal(stored.get("fluxfield:job:director"), legacyWatch.id, "Leave the old watch and persisted ID untouched");
       stored.delete("fluxfield:job:music:music-video");
+      stored.set("fluxfield:job:director", newVideoWatch.id);
+      assert.equal((await hydrate("music:music-video")).job?.id, newVideoWatch.id, "A cached legacy page may remember the canonical Music response under its old key");
+      stored.set("fluxfield:job:director", legacyWatch.id);
       legacyWatch.inputs.mode = "tiktok";
       assert.equal((await hydrate("music:music-video")).job, null, "Director TikTok jobs must never migrate into Music's watch");
+      assert.equal((await hydrate("director:tiktok")).job?.id, legacyWatch.id, "Director can recover its old TikTok watch");
     } finally {
       mock.restoreAll();
       if (windowBefore) Object.defineProperty(globalThis, "window", windowBefore);
