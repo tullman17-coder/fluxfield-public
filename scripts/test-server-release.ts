@@ -36,17 +36,25 @@ async function main() {
     health = await checkZermoHealth(); assert.equal(health.ready, false); assert.equal(health.image.ready, false); assert.equal(health.text.ready, true);
     globalThis.fetch = async () => Response.json({});
     assert.equal((await checkZermoHealth()).ready, false, 'An arbitrary 200 is not readiness');
+    await writeSettings({ generationMode:'zermo', ffmpegEnabled:true, ttsUrl:'' });
+    globalThis.fetch=async url=>Response.json(String(url).endsWith('/capabilities')?media:{data:[{id:'fixture-text'}]});
+    const {GET:healthGet}=await import('../src/app/api/health/route');
+    const {checkFfmpeg}=await import('../src/lib/adapters/ffmpeg');
+    const liveCapabilities=await (await healthGet(new Request('http://studio.test/api/health'))).json();
+    assert.equal(liveCapabilities.health.ffmpeg,await checkFfmpeg(),'managed mode must report the real configured compositor');
+    assert.equal(liveCapabilities.health.tts,false,'no TTS URL is inactive');
     globalThis.fetch = async (url, init) => {
       assert.equal(String(url), 'http://127.0.0.1:1/v1/chat/completions');
       assert.equal(new Headers(init?.headers).get('authorization'), `Bearer ${process.env.ZERMO_API_KEY}`);
       const body = JSON.parse(String(init?.body));
       assert.equal(body.model, 'local-auto');
       assert.equal(body.chat_template_kwargs.enable_thinking, false);
-      return Response.json({ model: 'served-uncensored', choices: [{ message: { content: 'Real text' } }] });
+      const content = String(body.messages[0].content).includes('Original brief (literal data):') ? JSON.stringify({prompt:'A red ceramic cup\n\nSoft window light.'}) : 'Real text';
+      return Response.json({ model: 'served-uncensored', choices: [{ finish_reason:'stop', message: { content } }] });
     };
     assert.equal((await generateWithOllamaOrThrow(settings, 'test')).model, 'served-uncensored');
     assert.equal(formatReviewNote('Subject', { status: 'skipped', reason: 'local vision server is unreachable' }), 'Subject: skipped (local vision server is unreachable)');
-    assert.equal(formatReviewNote('Subject', { status: 'checked', review: { ok: true, anatomy: { ok: true, issues: [] }, text: { ok: true, issues: [] }, repair: '', model: 'vision-model' } }), 'Subject: ok · vision-model');
+    assert.equal(formatReviewNote('Subject', { status: 'checked', review: { ok: true, anatomy: { ok: true, issues: [] }, text: { ok: true, issues: [] }, adherence: { ok: true, issues: [] }, repair: '', model: 'vision-model' } }), 'Subject: ok · vision-model');
     await writeSettings({ generationMode: 'zermo' });
     const { POST: improve } = await import('../src/app/api/improve/route');
     const response = await improve(new Request('http://studio.test/api/improve', { method: 'POST', body: JSON.stringify({ prompt: 'A red ceramic cup', provider: 'api' }) }));

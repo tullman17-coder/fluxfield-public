@@ -19,20 +19,15 @@ export type FittedText = {
   maxLineWidth: number;
   blockHeight: number;
   truncated: boolean;
+  overflow: boolean;
 };
 
-function normalizedParagraphs(text: string): string[] {
-  const paragraphs = text
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .map((line) => line.trim().replace(/\s+/g, " "));
-  while (paragraphs[0] === "") paragraphs.shift();
-  while (paragraphs.at(-1) === "") paragraphs.pop();
-  return paragraphs;
+function literalParagraphs(text: string): string[] {
+  return text === "" ? [] : text.split(/\r\n|\r|\n/);
 }
 
 function textWidth(text: string, size: number, options: TextFitOptions) {
-  return measureSvgText(text, {
+  return measureSvgText(text.replace(/[ \t]/g, "\u00a0"), {
     family: options.family,
     size,
     weight: options.weight,
@@ -54,8 +49,8 @@ function wrapAtSize(
       continue;
     }
     let line = "";
-    for (const word of paragraph.split(" ")) {
-      const next = line ? `${line} ${word}` : word;
+    for (const word of paragraph.match(/\s+|\S+/g) ?? []) {
+      const next = line + word;
       if (!line || textWidth(next, size, options) <= options.maxWidth) {
         line = next;
       } else {
@@ -87,28 +82,6 @@ function metricsFor(lines: string[], size: number, options: TextFitOptions) {
   };
 }
 
-function ellipsize(text: string, size: number, options: TextFitOptions) {
-  const suffix = "…";
-  if (textWidth(`${text}${suffix}`, size, options) <= options.maxWidth) {
-    return `${text}${suffix}`;
-  }
-  const chars = [...text];
-  let low = 0;
-  let high = chars.length;
-  let best = suffix;
-  while (low <= high) {
-    const middle = Math.floor((low + high) / 2);
-    const candidate = `${chars.slice(0, middle).join("").trimEnd()}${suffix}`;
-    if (textWidth(candidate, size, options) <= options.maxWidth) {
-      best = candidate;
-      low = middle + 1;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return best;
-}
-
 /** Fit caller copy to a compositor-owned box without changing copy that fits. */
 export function fitTextToBox(
   text: string,
@@ -120,7 +93,7 @@ export function fitTextToBox(
     maxFontSize,
     Math.max(1, Math.floor(options.minFontSize)),
   );
-  const paragraphs = normalizedParagraphs(text);
+  const paragraphs = literalParagraphs(text);
   if (!paragraphs.length) {
     return {
       lines: [],
@@ -129,6 +102,7 @@ export function fitTextToBox(
       maxLineWidth: 0,
       blockHeight: 0,
       truncated: false,
+      overflow: false,
     };
   }
 
@@ -144,7 +118,7 @@ export function fitTextToBox(
       metrics.maxLineWidth <= options.maxWidth &&
       metrics.blockHeight <= options.maxHeight;
     if (fits) {
-      best = { lines, fontSize, ...metrics, truncated: false };
+      best = { lines, fontSize, ...metrics, truncated: false, overflow: false };
       low = fontSize + 1;
     } else {
       high = fontSize - 1;
@@ -152,34 +126,13 @@ export function fitTextToBox(
   }
   if (best) return best;
 
-  const fontSize = minFontSize;
-  const lineHeight = options.lineHeight ?? 1.2;
-  const heightLines = Math.max(
-    1,
-    Math.floor((options.maxHeight - fontSize) / (fontSize * lineHeight)) + 1,
-  );
-  const visibleCount = Math.min(maxLines, heightLines);
-  const wrapped = wrapAtSize(paragraphs, fontSize, options, visibleCount);
-  const lines = wrapped.slice(0, visibleCount).map((line) =>
-    textWidth(line, fontSize, options) <= options.maxWidth
-      ? line
-      : ellipsize(line, fontSize, options),
-  );
-  const omitted = wrapped.length > visibleCount;
-  if (omitted && lines.length) {
-    lines[lines.length - 1] = ellipsize(
-      lines[lines.length - 1] || "",
-      fontSize,
-      options,
-    );
-  }
-  const metrics = metricsFor(lines, fontSize, options);
+  // ponytail: stop bounded fitting at the minimum size; never rewrite the copy.
+  // Return original paragraphs for diagnosis; the compositor refuses overflow.
   return {
-    lines,
-    fontSize,
-    ...metrics,
-    truncated:
-      omitted ||
-      lines.some((line, index) => line !== wrapped[index]),
+    lines: paragraphs,
+    fontSize: minFontSize,
+    ...metricsFor(paragraphs, minFontSize, options),
+    truncated: false,
+    overflow: true,
   };
 }

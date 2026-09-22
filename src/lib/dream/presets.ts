@@ -4,6 +4,7 @@
  */
 
 export type DreamPresetId =
+  | "auto"
   | "dream"
   | "photo"
   | "anime"
@@ -36,6 +37,7 @@ export const DREAM_PRESETS: {
   suffix: string;
   example: string;
 }[] = [
+  { id: "auto", example: "Playful unless your prompt names another look", label: "Auto · playful", suffix: "playful, silly cartoon illustration" },
   { id: "dream", example: "A moonlit observatory above a quiet sea", label: "Dream", suffix: "soft dreamlike atmosphere, luminous details" },
   { id: "photo", example: "A ceramic cup beside a sunlit window", label: "Photo", suffix: "natural light, realistic texture, photographic composition" },
   { id: "anime", example: "A traveler at a rain-lit train station", label: "Anime", suffix: "expressive anime illustration, clean cel shading" },
@@ -101,31 +103,9 @@ export const MATURE_PRESETS: {
   },
 ];
 
-/**
- * Content terms Fluxfield adds on its own. With unrestricted mode on these
- * come back out, including any the layout catalog carries.
- */
-const CONTENT_FILTER_TERMS = [
-  "nsfw",
-  "nude",
-  "nudity",
-  "explicit",
-  "sexual",
-  "suggestive",
-  "gore",
-  "blood",
-];
-
+/** @deprecated A merged negative has no provenance: never remove user terms. */
 export function stripContentFilters(negative: string): string {
-  return negative
-    .split(",")
-    .map((part) => part.trim())
-    .filter(
-      (part) =>
-        part.length > 0 &&
-        !CONTENT_FILTER_TERMS.includes(part.toLowerCase()),
-    )
-    .join(", ");
+  return negative;
 }
 
 export function dreamPresets(unrestricted: boolean) {
@@ -189,10 +169,11 @@ export function applyDreamPreset(
   const preset = [...DREAM_PRESETS, ...MATURE_PRESETS].find(
     (p) => p.id === presetId,
   );
-  if (!preset) return prompt.trim();
-  const base = prompt.trim();
-  const suffix = `, ${preset.suffix}`;
-  return base.endsWith(suffix) ? base : `${base}${suffix}`;
+  if (!preset) return prompt;
+  // ponytail: conservative style vocabulary, not semantic intent detection.
+  if (preset.id === "auto" && /\b(photo(?:graph(?:ic|y)?)?|photo[- ]?real\w*|realistic|realism|hyper[- ]?real\w*|lifelike|live[- ]action|documentary|editorial|cinematic|anime|cartoon|illustration|fantasy|pixel|line art|vaporwave|noir|watercolou?r|gouache|concept art|product photography|surreal|dreamlike|oil paint\w*|sketch|3d|claymation|horror|dark|unsettling|disturbing|grim|adult|mature|grindhouse|boudoir|figure study|pin[- ]?up)\b/i.test(prompt)) return prompt;
+  const suffix = `\n\n${preset.id === "auto" ? "Default style" : "Selected style (takes precedence)"}: ${preset.suffix}`;
+  return prompt.endsWith(suffix) ? prompt : `${prompt}${suffix}`;
 }
 
 export function applyFraming(
@@ -200,9 +181,9 @@ export function applyFraming(
   framingId: string | undefined,
 ): { prompt: string; negativeExtra: string } {
   const framing = FRAMINGS.find((f) => f.id === framingId) ?? FRAMINGS[0];
-  if (!framing.suffix) return { prompt: prompt.trim(), negativeExtra: "" };
+  if (!framing.suffix) return { prompt, negativeExtra: "" };
   return {
-    prompt: `${prompt.trim()}, ${framing.suffix}`,
+    prompt: `${prompt}\n\nFraming (takes precedence): ${framing.suffix}`,
     negativeExtra: framing.negative,
   };
 }
@@ -238,7 +219,8 @@ export function dreamRatio(id: string | undefined) {
 
 /** Auto-detect framing from prompt wording (ported from local-dream-studio). */
 export function resolveFraming(prompt: string, requested: string): FramingId {
-  if (requested && requested !== "auto") return requested as FramingId;
+  const chosen = FRAMINGS.find((f) => f.id === requested && f.id !== "auto");
+  if (chosen) return chosen.id;
   const text = prompt.toLowerCase();
   if (/\b(extreme[- ]wide|ultra[- ]?wide|wide[- ]angle|far[- ]out|far away|distant view|long shot|establishing shot|panoramic)\b/.test(text))
     return "extreme-wide";
@@ -256,15 +238,7 @@ const PERSON_WORDS =
 export function promptHasFigure(prompt: string): boolean {
   return PERSON_WORDS.test(prompt.toLowerCase());
 }
-const ENV_WORDS =
-  /\b(background|environment|room|street|forest|mountain|city|landscape|interior|exterior|sky|sea|ocean|field|studio|space)\b/;
-const LIGHT_WORDS =
-  /\b(light|lighting|sun|moon|glow|shadow|dawn|dusk|night|daylight|backlit|rim[- ]light|chiaroscuro)\b/;
-
-/**
- * Deterministic prompt assist (ported): preset suffix + resolved framing +
- * fills for missing environment / lighting / structure.
- */
+/** Append chosen controls; assist only resolves framing, never invents anatomy. */
 export function enhancePrompt(
   prompt: string,
   presetId: string,
@@ -276,31 +250,7 @@ export function enhancePrompt(
     requestedFraming === "auto" && !enabled
       ? "auto"
       : resolveFraming(prompt, requestedFraming);
-  const framingDef = FRAMINGS.find((f) => f.id === framing) ?? FRAMINGS[0];
-  const composed = [styled, framingDef.suffix].filter(Boolean).join(", ");
-  if (!enabled) return composed;
-
-  const additions: string[] = [];
-  if (!ENV_WORDS.test(prompt.toLowerCase())) {
-    additions.push(
-      "fully described environment with foreground, middle ground, and background",
-    );
-  }
-  if (!LIGHT_WORDS.test(prompt.toLowerCase())) {
-    additions.push(
-      "intentional directional lighting with believable shadow direction",
-    );
-  }
-  if (PERSON_WORDS.test(prompt.toLowerCase())) {
-    additions.push(
-      "correct anthropomorphic anatomy: matching pair of eyes, intact face, the right number of limbs, natural hands and fingers",
-    );
-  } else {
-    additions.push(
-      "coherent structure, physically plausible geometry, consistent perspective, clean silhouettes",
-    );
-  }
-  return [composed, ...additions].join(", ");
+  return applyFraming(styled, framing).prompt;
 }
 
 export function enhanceNegativePrompt(
@@ -309,19 +259,21 @@ export function enhanceNegativePrompt(
   requestedFraming: string,
   enabled: boolean,
 ): string {
-  const userNegative = negativePrompt.trim();
   const framing =
     requestedFraming === "auto" && !enabled
       ? "auto"
       : resolveFraming(prompt, requestedFraming);
   const framingNegative =
     FRAMINGS.find((f) => f.id === framing)?.negative ?? "";
-  if (!enabled)
-    return [userNegative, framingNegative].filter(Boolean).join(", ");
-  const defects = PERSON_WORDS.test(prompt.toLowerCase())
-    ? "extra limbs, missing limbs, fused fingers, extra digits, crossed or missing eyes, collapsed face, mismatched pupils, broken jaw"
-    : "warped geometry, duplicated objects, fused forms, inconsistent perspective, malformed structure";
-  return [userNegative, defects, "watermark, blurry, low-res", framingNegative]
+  return [negativePrompt, framingNegative]
     .filter(Boolean)
     .join(", ");
+}
+
+/** Append-only proposals protect every name/quote, not just guessed proper nouns. */
+export function isPromptProposal(original: string, value: unknown): value is string {
+  if (typeof value !== "string" || !value.startsWith(`${original}\n\n`)) return false;
+  const details = value.slice(original.length + 2);
+  return details.length <= 4000 && details.trim().split(/\s+/u).length <= 120
+    && /[.!?。！？]["'”’)]?\s*$/u.test(details) && !details.includes("```");
 }

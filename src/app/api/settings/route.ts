@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { readSettings, writeSettings, publicSettings } from "@/lib/settings";
-import type { GenerationMode } from "@/lib/adapters/types";
+import { readRequestPayload } from "@/lib/jobs/input";
+import { readSettings, writeSettings, publicSettings, settingsPatchSchema } from "@/lib/settings";
 
 export async function GET() {
   const settings = await readSettings();
@@ -8,75 +8,15 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const body = (await request.json()) as Partial<{
-    comfyUrl: string;
-    ollamaUrl: string;
-    ollamaModel: string;
-    generationMode: GenerationMode;
-    comfyCheckpoint: string;
-    ttsUrl: string;
-    ttsVoice: string;
-    musicUrl: string;
-    musicModel: string;
-    ffmpegEnabled: boolean;
-    studioUrl: string;
-    studioApiKey: string;
-    improveProvider: "local" | "api";
-    improveApiBase: string;
-    improveApiKey: string;
-    improveApiModel: string;
-    unrestricted: boolean;
-    clearStudioApiKey: boolean;
-    clearImproveApiKey: boolean;
-  }>;
-
-  const settings = await writeSettings({
-    clearStudioApiKey: body.clearStudioApiKey === true,
-    clearImproveApiKey: body.clearImproveApiKey === true,
-    ...(body.comfyUrl !== undefined ? { comfyUrl: body.comfyUrl.trim() } : {}),
-    ...(body.ollamaUrl !== undefined
-      ? { ollamaUrl: body.ollamaUrl.trim() }
-      : {}),
-    ...(body.ollamaModel !== undefined
-      ? { ollamaModel: body.ollamaModel.trim() }
-      : {}),
-    ...(body.generationMode !== undefined
-      ? { generationMode: body.generationMode }
-      : {}),
-    ...(body.comfyCheckpoint !== undefined
-      ? { comfyCheckpoint: body.comfyCheckpoint.trim() }
-      : {}),
-    ...(body.ttsUrl !== undefined ? { ttsUrl: body.ttsUrl.trim() } : {}),
-    ...(body.ttsVoice !== undefined ? { ttsVoice: body.ttsVoice.trim() } : {}),
-    ...(body.musicUrl !== undefined ? { musicUrl: body.musicUrl.trim() } : {}),
-    ...(body.musicModel !== undefined
-      ? { musicModel: body.musicModel.trim() }
-      : {}),
-    ...(body.ffmpegEnabled !== undefined
-      ? { ffmpegEnabled: body.ffmpegEnabled }
-      : {}),
-    ...(body.studioUrl !== undefined
-      ? { studioUrl: body.studioUrl.trim() }
-      : {}),
-    ...(body.studioApiKey !== undefined
-      ? { studioApiKey: body.studioApiKey.trim() }
-      : {}),
-    ...(body.improveProvider !== undefined
-      ? { improveProvider: body.improveProvider }
-      : {}),
-    ...(body.improveApiBase !== undefined
-      ? { improveApiBase: body.improveApiBase.trim() }
-      : {}),
-    ...(body.improveApiKey !== undefined
-      ? { improveApiKey: body.improveApiKey.trim() }
-      : {}),
-    ...(body.improveApiModel !== undefined
-      ? { improveApiModel: body.improveApiModel.trim() }
-      : {}),
-    ...(body.unrestricted !== undefined
-      ? { unrestricted: body.unrestricted }
-      : {}),
-  });
+  let body: unknown;
+  try { body = await readRequestPayload(request, "json", 64 * 1024); }
+  catch { return NextResponse.json({ error: "Invalid settings JSON" }, { status: 400 }); }
+  const parsed = settingsPatchSchema.safeParse(body);
+  if (!parsed.success) {
+    // Never echo values: validation failures can contain credentials.
+    return NextResponse.json({ error: "Invalid settings fields or values" }, { status: 400 });
+  }
+  const settings = await writeSettings(parsed.data);
 
   return NextResponse.json({ settings: publicSettings(settings) });
 }

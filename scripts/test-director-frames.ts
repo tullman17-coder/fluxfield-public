@@ -69,7 +69,7 @@ async function main() {
     const parent = job("director-shot-defaults");
     const ctx = {
       job: parent,
-      settings: { generationMode: "zermo" },
+      settings: { generationMode: "zermo", ffmpegEnabled: true },
     } as AdapterContext;
     await saveJob(parent);
 
@@ -142,13 +142,15 @@ async function main() {
       "-f",
       "lavfi",
       "-i",
-      "color=c=black:s=64x64:d=1",
+      "color=c=black:s=96x160:r=16:d=3.0625",
       "-frames:v",
-      "1",
+      "49",
       mp4Path,
     ]);
     const MP4 = await fs.readFile(mp4Path);
-    const FLAC = Buffer.from("fLaC");
+    const flacPath = path.join(tmp, "score.flac");
+    await execFileAsync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "sine=duration=30", flacPath]);
+    const FLAC = await fs.readFile(flacPath);
     const directorRequests: ZermoRequest[] = [];
     globalThis.fetch = async (_url, init) => {
       if (init?.method === "POST") {
@@ -353,7 +355,7 @@ async function main() {
     assert.deepEqual(resumedIntent?.request, acceptedIntent?.request);
 
     console.log(
-      "PASS: Director brief/look/defaults/explicit settings reach live requests; accepted frame resumes without POST",
+      "PASS: Director contracts use real tiny FFmpeg media and hermetic transport; accepted frame resumes without POST",
     );
   } finally {
     globalThis.fetch = originalFetch;

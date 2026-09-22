@@ -1,5 +1,5 @@
 /**
- * GPT Image-2 style marketing wrappers.
+ * Composed art layouts; stable slugs are retained for saved jobs.
  * Each wrapper is a composed mini-app: layout chrome + generated hero art + copy zones.
  */
 
@@ -12,6 +12,8 @@ export type WrapperField = {
   options?: { label: string; value: string }[];
   help?: string;
 };
+
+export type PromptPreset = { id: string; label: string; description: string; style?: string };
 
 export type Image2Wrapper = {
   slug: string;
@@ -38,7 +40,7 @@ export type Image2Wrapper = {
     | "tryon-ui"
     | "jersey-lockup";
   inputs: WrapperField[];
-  presets: { id: string; label: string; description: string }[];
+  presets: PromptPreset[];
   promptTemplate: string;
   negativePrompt: string;
   aspectDefault: string;
@@ -76,7 +78,7 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
         label: "Look + vibe",
         type: "textarea",
         required: true,
-        placeholder: "Heavyweight hoodie, puff-print graphic, night flash photo",
+        placeholder: "A grinning raccoon in an oversized hoodie, playful exaggerated pose",
       },
       {
         id: "cta",
@@ -92,9 +94,16 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
     ],
     presets: [
       {
+        id: "silly-cartoon",
+        label: "Silly & flattering",
+        description: "Cheerful character pose, sticker-shaped accents, bold clothing silhouette",
+        style: "playful cartoon illustration, flattering kind caricature, silly expressive gesture",
+      },
+      {
         id: "new-drop",
         label: "New Drop",
-        description: "Sticker callouts + flash photography",
+        description: "Sticker-shaped callouts, punchy contrast and bold apparel",
+        style: "direct-flash fashion photography",
       },
       {
         id: "archive",
@@ -108,9 +117,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Streetwear product photo for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, centered subject with clean margins, fashion editorial flash photography, bold graphic apparel, high contrast, correct anatomy if a person is present: matching eyes, intact face, natural hands and limbs",
+      "Streetwear key art for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, complete subject with clean margins, bold apparel silhouette",
     negativePrompt:
-      "blurry, watermark, low-res, extra limbs, missing limbs, fused fingers, crossed eyes, collapsed face",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "9:16",
     copyHints: ["Drop badge", "Shop CTA", "Sticker overlays"],
   },
@@ -177,9 +186,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Editorial product still for {{brandName}} featuring {{productName}}, {{productDescription}}, {{preset}}, clean magazine lighting, object centered left-of-frame with soft negative space, premium brand still, correct hands and face if a person appears",
+      "Editorial key art for {{brandName}} featuring {{productName}}, {{productDescription}}, {{preset}}, subject with generous margins, soft negative space",
     negativePrompt:
-      "clutter, harsh flash, watermark, comic style, neon, extra limbs, fused fingers, collapsed face",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "4:5",
     copyHints: ["Split layout", "Room for long copy", "Brand masthead"],
   },
@@ -240,9 +249,9 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
     ],
     promptTemplate:
-      "Event key art portrait for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, strong silhouette, print-ready photographic subject, matching eyes and intact face, the right number of limbs",
+      "Event key art for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, strong silhouette, generous margins for the separate printed copy",
     negativePrompt:
-      "soft lifestyle stock, pastel gradients, watermark, extra limbs, missing limbs, fused fingers, crossed eyes, collapsed face",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "2:3",
     copyHints: ["Venue stack", "Date and time", "Ticket line"],
   },
@@ -295,31 +304,31 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       {
         id: "soft-float",
         label: "Soft Float",
-        description: "Products hovering on pastel field",
+        description: "Products hovering on pastel field, soft shadows beneath each object",
       },
       {
         id: "grid-shelf",
         label: "Grid Shelf",
-        description: "Catalogue shelf arrangement",
+        description: "Catalogue shelf arrangement, orderly rows resting on shelves",
       },
       {
         id: "hero-single",
         label: "Hero Single",
-        description: "One SKU dominates",
+        description: "One SKU dominates, isolated single object, uncluttered backdrop",
       },
     ],
     promptTemplate:
-      "Ecommerce product hero for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, soft commercial lighting, floating product on a clean field, correct hands if someone is holding the product",
+      "Product hero for {{brandName}} {{productName}}, {{productDescription}}, {{preset}}, clear material detail and clean margins",
     negativePrompt:
-      "busy background, harsh shadows, watermark, unreadably small props, extra limbs, fused fingers",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "1.91:1",
     copyHints: ["Price chip", "Shop CTA", "Collection title"],
   },
   {
     slug: "virtual-tryon",
-    name: "Virtual Try-On",
+    name: "Outfit Board",
     brandSample: "FITTING ROOM",
-    tagline: "Fitting-room screen with a model and a rail of outfits.",
+    tagline: "Fashion concept art with outfit notes — not garment transfer or a fitting simulation.",
     category: "tryon",
     span: "wide",
     accent: "#22c55e",
@@ -335,7 +344,7 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       },
       {
         id: "productName",
-        label: "Avatar name",
+        label: "Character / outfit title",
         type: "text",
         required: true,
         placeholder: "AVATAR 01",
@@ -351,14 +360,14 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
         id: "cta",
         label: "Primary CTA",
         type: "text",
-        placeholder: "Start Fitting",
+        placeholder: "Explore the look",
       },
     ],
     presets: [
       {
         id: "fitting-room",
         label: "Fitting Room",
-        description: "Avatar + grid of outfits",
+        description: "Full-body character with a coordinated outfit, relaxed fitting-room pose",
       },
       {
         id: "runway",
@@ -368,15 +377,15 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       {
         id: "closet",
         label: "Closet",
-        description: "Wardrobe rail UI energy",
+        description: "Coordinated wardrobe beside the character, hanging clothes on a rail",
       },
     ],
     promptTemplate:
-      "Full-body fashion avatar for {{brandName}}, avatar {{productName}}, {{productDescription}}, {{preset}}, clean studio character plate, soft studio lighting, correct anthropomorphic anatomy: two matching eyes, intact face, two arms, two legs, natural hands",
+      "Full-body outfit concept for {{brandName}}, character {{productName}}, {{productDescription}}, {{preset}}, complete outfit and character in frame, generous margins",
     negativePrompt:
-      "extra limbs, missing limbs, fused fingers, extra digits, crossed eyes, collapsed face, watermark",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "16:9",
-    copyHints: ["Outfit grid", "Start Fitting", "How it works"],
+    copyHints: ["Fashion concept", "Outfit notes", "No garment transfer"],
   },
   {
     slug: "sports-lockup",
@@ -415,25 +424,27 @@ export const IMAGE2_WRAPPERS: Image2Wrapper[] = [
       {
         id: "anime-athletic",
         label: "Anime Athletic",
-        description: "Illustrated sports portrait",
+        description: "Energetic athletic portrait, triumphant silly pose, flattering expression",
+        style: "expressive anime illustration, clean cel shading",
       },
       {
         id: "photo-real",
         label: "Photo Real",
-        description: "Stadium flash portrait",
+        description: "Stadium setting, dramatic flash, athletic portrait",
+        style: "photorealistic sports photography",
       },
       {
         id: "logo-mark",
         label: "Logo Mark",
-        description: "Emblem-first composition",
+        description: "Emblem-first composition, isolated team symbol, no portrait",
       },
     ],
     promptTemplate:
-      "Sports portrait for {{brandName}}, {{productName}}, {{productDescription}}, {{preset}}, bold athletic key art, strong silhouette, matching eyes, intact face, natural hands and the right number of limbs",
+      "Sports key art for {{brandName}}, {{productName}}, {{productDescription}}, {{preset}}, strong silhouette with generous margins",
     negativePrompt:
-      "weak contrast, watermark, muddy colors, extra limbs, missing limbs, fused fingers, crossed eyes, collapsed face",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "1:1",
-    copyHints: ["Wordmark", "Name and number", "Season mark"],
+    copyHints: ["Team name", "Subject title", "Athletic key art"],
   },
 ];
 
@@ -463,17 +474,31 @@ export function sampleValues(wrapper: Image2Wrapper): Record<string, string> {
   return values;
 }
 
+/** Replace original tokens once; user values are literal, never templates. */
+export function interpolatePrompt(template: string, values: Record<string, string>) {
+  return template.replace(/\{\{(\w+)\}\}/g, (token, key: string) => values[key] ?? token);
+}
+
+/** Style defaults yield to a selected Look or a rendering style stated in the brief. */
+export function presetDirection(preset: PromptPreset, values: Record<string, string>) {
+  const brief = [values.productDescription, values.prompt, values.brief].filter(Boolean).join(" ");
+  // ponytail: conservative style vocabulary; select Look explicitly for ambiguous briefs.
+  const explicitStyle = (values.dreamStyle && values.dreamStyle !== "auto") || /\b(?:photo\w*|realis(?:m|tic)|anime|cartoon|caricature|illustrat\w*|watercolou?r|gouache|pixel|line art|oil paint\w*|3d|clay)\b/i.test(brief);
+  return [preset.description, !explicitStyle && preset.style].filter(Boolean).join(". ");
+}
+
 export function fillWrapperPrompt(
   template: string,
   values: Record<string, string>,
   presetLabel: string,
 ) {
-  return template
-    .replaceAll("{{brandName}}", values.brandName?.trim() || "Brand")
-    .replaceAll("{{productName}}", values.productName?.trim() || "Product")
-    .replaceAll(
-      "{{productDescription}}",
-      values.productDescription?.trim() || "featured subject",
-    )
-    .replaceAll("{{preset}}", presetLabel);
+  const wrapper = IMAGE2_WRAPPERS.find((w) => w.promptTemplate === template);
+  const preset = wrapper?.presets.find((p) => p.label === presetLabel || p.id === presetLabel);
+  return interpolatePrompt(template, {
+    brandName: "Brand",
+    productName: "Product",
+    productDescription: "featured subject",
+    ...values,
+    preset: preset ? presetDirection(preset, values) : presetLabel,
+  });
 }

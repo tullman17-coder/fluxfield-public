@@ -1,17 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { use, useMemo, useState } from "react";
 import {
-  EXPLAINER_DURATIONS,
   EXPLAINER_PRESETS,
-  EXPLAINER_VOICES,
 } from "@/lib/explainer/presets";
 import { useStudioConnection } from "@/lib/studio/use-studio-connection";
+import { MANAGED_MOTION_LENGTHS, formQueryValues } from "@/lib/workflows";
 import { JobRunner } from "@/components/studio/job-runner";
 
-export default function ExplainerPage() {
-  const { settings, zermo, error } = useStudioConnection();
-  const [presetId, setPresetId] = useState(EXPLAINER_PRESETS[0].id);
+export default function ExplainerPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const values = formQueryValues(use(searchParams));
+  const { settings, error } = useStudioConnection();
+  const [presetId, setPresetId] = useState(EXPLAINER_PRESETS.find((p) => p.id === values.preset)?.id || "stickman-cartoon");
   const preset =
     EXPLAINER_PRESETS.find((p) => p.id === presetId) ?? EXPLAINER_PRESETS[0];
 
@@ -36,33 +36,15 @@ export default function ExplainerPage() {
       },
       {
         id: "duration",
-        label: "Planned duration",
+        label: "Length (10–90 seconds)",
         type: "select" as const,
-        options: EXPLAINER_DURATIONS.map((d) => ({
+        options: MANAGED_MOTION_LENGTHS.map((d) => ({
           label: d.label,
           value: d.id,
         })),
       },
-      {
-        id: "voice",
-        label: "Voice",
-        type: "select" as const,
-        options: EXPLAINER_VOICES.map((v) => ({
-          label: v.label,
-          value: v.id,
-        })),
-      },
-      {
-        id: "subtitles",
-        label: "Subtitles",
-        type: "select" as const,
-        options: [
-          { label: "Off", value: "off" },
-          { label: "On", value: "on" },
-        ],
-      },
-    ].filter((field) => (settings && !zermo) || !["voice", "subtitles"].includes(field.id)),
-    [settings, zermo],
+    ],
+    [],
   );
 
   return (
@@ -72,10 +54,10 @@ export default function ExplainerPage() {
           Explainer
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl text-white md:text-5xl">
-          Explain with a script and scene art
+          Explain with a short visual story
         </h1>
         <p className="mt-2 max-w-2xl text-[#b8aebb]">
-          Script, Qwen Image 2.1 stills, WAN 49f last-frame chain, and VO when TTS is up.
+          Script and generated motion scenes. Managed narration is unavailable; optional TTS on other connections must be configured and reachable.
         </p>
       </div>
 
@@ -136,20 +118,17 @@ export default function ExplainerPage() {
         </div>
 
         <JobRunner
-          key={presetId}
           tool="explainer"
           workflowSlug="explainer"
           fields={fields}
-          presets={[
-            {
-              id: preset.id,
-              label: preset.name,
-              description: preset.blurb,
-            },
-          ]}
+          presets={EXPLAINER_PRESETS.map((p) => ({ id: p.id, label: p.name, description: p.blurb }))}
+          selectedPresetId={presetId}
+          onPresetChange={setPresetId}
+          showPresets={false}
+          initialValues={values}
           accent="#e77ae6"
           disabled={!settings}
-          submitLabel={zermo || !settings ? "Make script + scene art" : "Make the explainer"}
+          submitLabel="Make the visual story"
         />
       </div>
     </div>

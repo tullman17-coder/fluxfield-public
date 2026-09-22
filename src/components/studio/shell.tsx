@@ -8,17 +8,10 @@ import { AuthStatus } from "@/components/studio/auth-status";
 import { FieldBackdrop } from "@/components/studio/field-backdrop";
 
 const NAV = [
-  { href: "/supercomputer", label: "Super", icon: "cpu" },
   { href: "/create", label: "Create", icon: "create" },
-  { href: "/", label: "Wrappers", icon: "grid" },
-  { href: "/studio", label: "Studio", icon: "studio" },
-  { href: "/explainer", label: "Explainer", icon: "play" },
+  { href: "/", label: "Catalog", icon: "grid" },
   { href: "/director", label: "Director", icon: "clapper" },
-  { href: "/ugc", label: "UGC", icon: "ugc" },
-  { href: "/ad-multiplier", label: "Ads", icon: "ads" },
-  { href: "/faceless", label: "Faceless", icon: "faceless" },
   { href: "/music", label: "Music", icon: "note" },
-  { href: "/workflows", label: "Marketing", icon: "megaphone" },
   { href: "/gallery", label: "Gallery", icon: "image" },
   { href: "/settings", label: "Settings", icon: "gear" },
 ] as const;
@@ -56,13 +49,6 @@ function RailIcon({ name }: { name: string }) {
     "aria-hidden": true,
   } as const;
   switch (name) {
-    case "cpu":
-      return (
-        <svg {...common}>
-          <rect x="6" y="6" width="12" height="12" rx="2" />
-          <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
-        </svg>
-      );
     case "create":
       return (
         <svg {...common}>
@@ -93,47 +79,12 @@ function RailIcon({ name }: { name: string }) {
           <path d="m8.5 5.7 1.8 3.9M13.5 5.4l1.8 3.9" />
         </svg>
       );
-    case "studio":
-      return (
-        <svg {...common}>
-          <rect x="3" y="4" width="18" height="14" rx="2" />
-          <path d="M8 18v2M16 18v2M7 9h4M7 13h10" />
-        </svg>
-      );
-    case "ugc":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="8" r="3.5" />
-          <path d="M5 19c1.5-3 4-4.5 7-4.5S17.5 16 19 19" />
-        </svg>
-      );
-    case "ads":
-      return (
-        <svg {...common}>
-          <path d="M4 8h10l6-3v14l-6-3H4z" />
-          <path d="M8 12v4" />
-        </svg>
-      );
-    case "faceless":
-      return (
-        <svg {...common}>
-          <rect x="4" y="5" width="16" height="14" rx="2" />
-          <path d="M8 15h8M9 10h.01M15 10h.01" />
-        </svg>
-      );
     case "note":
       return (
         <svg {...common}>
           <path d="M9 18V6l11-2v12" />
           <circle cx="6.5" cy="18" r="2.5" />
           <circle cx="17.5" cy="16" r="2.5" />
-        </svg>
-      );
-    case "megaphone":
-      return (
-        <svg {...common}>
-          <path d="m3 11 14-5v12L3 13v-2z" />
-          <path d="M11.5 16.5a4.5 4.5 0 0 1-4.5 4.5" />
         </svg>
       );
     case "image":
@@ -192,7 +143,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
           own. Padding keeps it clear of the notch and the home indicator. */}
       <aside className="shell-rail glass-strong sticky top-0 z-40 flex h-dvh min-w-0 flex-col items-stretch overflow-y-auto overscroll-contain border-y-0 border-l-0">
         <Link
-          href="/supercomputer"
+          href="/create"
           aria-label="Fluxfield home"
           className="grid min-h-11 w-full place-items-center rounded-[10px] border border-white/15 bg-[#2c162f] text-sm font-extrabold tracking-[0.12em] text-[#e77ae6]"
         >
@@ -203,7 +154,7 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
           {NAV.map((item) => {
             const active =
               item.href === "/"
-                ? pathname === "/" || pathname.startsWith("/image-2")
+                ? pathname === "/" || ["/image-2", "/workflows", "/studio", "/ugc", "/ad-multiplier", "/faceless", "/explainer"].some((route) => pathname.startsWith(route))
                 : pathname.startsWith(item.href);
             return (
               <Link

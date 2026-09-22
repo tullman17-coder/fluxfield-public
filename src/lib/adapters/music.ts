@@ -19,7 +19,7 @@ import {
   type LyricSheet,
 } from "@/lib/music/lyrics";
 import { generateLyrics } from "@/lib/adapters/ollama";
-import { applyMusicChip, interpretMusicBrief } from "@/lib/music/brief";
+import { applyMusicChip, interpretMusicBrief, type MusicBrief } from "@/lib/music/brief";
 import { runZermoJob, uploadZermoAsset } from "./zermo";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
@@ -99,9 +99,9 @@ async function buildLyrics(
   ctx: AdapterContext,
   arrangement: Arrangement,
   title: string,
+  parsed: MusicBrief,
 ): Promise<LyricSheet | null> {
   const inputs = ctx.job.inputs;
-  const parsed = applyMusicChip(inputs.genre, interpretMusicBrief(inputs.brief || ctx.job.prompt));
   const lyricBrief = inputs.lyricTopic || parsed.topic;
   const mode = inputs.lyricMode || "instrumental";
   if (mode === "instrumental") return null;
@@ -119,7 +119,7 @@ async function buildLyrics(
     const raw = await generateLyrics(ctx.settings, {
       brief: lyricBrief,
       title,
-      genre: inputs.genre || parsed.genre,
+      genre: parsed.genre,
       mood: inputs.mood || "neutral",
       cadence: parsed.cadence,
       sections: sung,
@@ -150,15 +150,19 @@ export async function runMusicAdapter(
   }
 > {
   const inputs = ctx.job.inputs;
-  const parsed = applyMusicChip(inputs.genre, interpretMusicBrief(inputs.brief || ctx.job.prompt));
-  const tags = inputs.acePrompt || parsed.tags;
+  const parsed = applyMusicChip(
+    inputs.genre,
+    interpretMusicBrief(inputs.brief || ctx.job.prompt, inputs.acePrompt),
+    inputs.lyricMode || "instrumental",
+  );
+  const tags = parsed.tags;
   const targetSec = Math.max(
     10,
     Math.min(MAX_RENDER_SEC, Number(inputs.seconds || 60)),
   );
 
   const arrangement = planArrangement({
-    genre: inputs.genre || parsed.genre,
+    genre: parsed.genre,
     mood: inputs.mood || "neutral",
     targetSec,
     key: inputs.key || undefined,
@@ -174,7 +178,7 @@ export async function runMusicAdapter(
     const saved = ctx.job.zermoJobs?.["music:track"]?.request;
     const duration = saved?.settings.duration ?? Number(inputs.seconds || 60);
     if (!Number.isFinite(duration) || duration < 10 || duration > 90) throw new Error("Zermo ACE supports 10–90 seconds; choose a shorter track");
-    const sheet = saved ? null : await buildLyrics(ctx, arrangement, title);
+    const draft = saved ? null : await buildLyrics(ctx, arrangement, title, parsed);
     let audioId: string | undefined;
     const sample = inputs.voiceSample?.trim();
     if (!saved && sample) {
@@ -186,26 +190,50 @@ export async function runMusicAdapter(
     }
     const requested = saved ?? {
       operation: "music.generate" as const, model: "ace-step-1.5-turbo" as const,
-      prompt: `${tags}, ${inputs.genre || parsed.genre}, ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
+      prompt: [tags, inputs.mood, `${arrangement.bpm} BPM`, keyLabel(arrangement)].filter(Boolean).join(", "),
       ...(audioId ? { inputs: { audio: audioId } } : {}),
-      settings: { duration, lyrics: sheet ? lyricPlainText(sheet) : "", bpm: arrangement.bpm, keyscale: keyLabel(arrangement) },
+      settings: { duration, lyrics: inputs.lyricMode === "own" ? inputs.lyrics || "" : draft ? lyricPlainText(draft) : "", bpm: arrangement.bpm, keyscale: keyLabel(arrangement) },
     };
+    // Rebuild the same editorial timing from durable request data on first run AND
+    // resume. Never regenerate lyrics or use changed UI inputs for a saved track.
+    const savedKey = requested.settings.keyscale?.match(/^(\S+) (major|minor)$/);
+    const timing = planArrangement({
+      genre: interpretMusicBrief(requested.prompt.split(",")[0]).genre,
+      targetSec: duration,
+      bpm: requested.settings.bpm,
+      key: savedKey?.[1],
+      seedText: ctx.job.id,
+    });
+    if (savedKey) timing.scale = savedKey[2];
+    // ponytail: proportional section estimates, not measured vocal alignment.
+    const factor = duration / timing.durationSec;
+    for (const section of timing.sections) {
+      section.startSec *= factor;
+      section.endSec *= factor;
+    }
+    timing.durationSec = duration;
+    const sheet = requested.settings.lyrics ? placeLyrics({
+      text: requested.settings.lyrics.replace(/^[ \t]*\[(?:intro|verse|pre(?:-chorus)?|chorus|bridge|break|outro)(?: \d+)?\][ \t]*$/gim, ""),
+      title,
+      arrangement: timing,
+    }) : null;
     const result = await runZermoJob(ctx.job, "music:track", requested);
     if (requested.settings.lyrics) result.outputs.push({ id: nanoid(8), kind: "script", label: "Lyrics requested", text: requested.settings.lyrics });
-    result.outputs.push({ id: nanoid(8), kind: "script", label: "ACE tags", text: tags });
-    return { ...result, arrangement, usedServer: true, lyrics: sheet };
+    result.outputs.push({ id: nanoid(8), kind: "script", label: "ACE tags", text: requested.prompt });
+    result.outputs.push({ id: nanoid(8), kind: "storyboard", label: "Arrangement · timing estimate", text: arrangementSummary(timing) });
+    return { ...result, arrangement: timing, usedServer: true, lyrics: sheet };
   }
 
-  const sheet = await buildLyrics(ctx, arrangement, title);
+  const sheet = await buildLyrics(ctx, arrangement, title, parsed);
   let audio: Buffer | null = null;
 
   if (ctx.settings.musicUrl) {
     audio = await generateOnServer(
       ctx.settings.musicUrl,
       ctx.settings.musicModel,
-      `${tags}, ${inputs.genre || parsed.genre}, ${inputs.mood || ""}, ${arrangement.bpm} BPM, ${keyLabel(arrangement)}`,
+      [tags, inputs.mood, `${arrangement.bpm} BPM`, keyLabel(arrangement)].filter(Boolean).join(", "),
       targetSec,
-      sheet ? lyricPlainText(sheet) : undefined,
+      inputs.lyricMode === "own" ? inputs.lyrics : sheet ? lyricPlainText(sheet) : undefined,
     );
   }
   const usedServer = Boolean(audio);

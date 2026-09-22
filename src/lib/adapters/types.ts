@@ -3,6 +3,7 @@ export type GenerationMode = "auto" | "mock" | "comfyui" | "local-studio" | "zer
 export type StudioSettings = {
   hasStudioApiKey?: boolean;
   hasImproveApiKey?: boolean;
+  hasHiggsfieldApiKey?: boolean;
   comfyUrl: string;
   ollamaUrl: string;
   ollamaModel: string;
@@ -78,11 +79,14 @@ export type StudioJob = {
   negativePrompt: string;
   aspect: string;
   inputs: Record<string, string>;
+  originalInputs?: Record<string, string>;
+  requested?: { tool: JobTool; workflowSlug: string; presetId: string };
   modeUsed: ModeUsed;
   remotePromptId?: string;
   generationMode?: GenerationMode;
   referenceImagePath?: string;
   zermoJobs?: Record<string, import("./zermo").ZermoIntent>;
+  qualityChecks?: { key: string; outputId: string; sourceSha256?: string; at: string; attempt: import("./ollama").ImageReviewAttempt }[];
   error?: string;
   outputs: JobOutput[];
   script?: string;

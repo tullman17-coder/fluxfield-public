@@ -1,18 +1,25 @@
 import { NextResponse } from "next/server";
-import { readSettings } from "@/lib/settings";
+import { publicEndpoint, readSettings } from "@/lib/settings";
 import { checkZermoHealth } from "@/lib/adapters/zermo";
 import { pickMode } from "@/lib/adapters/effective-mode";
 import { checkFfmpeg } from "@/lib/adapters/ffmpeg";
+import { checkTtsHealth } from "@/lib/adapters/tts";
 import { discoverAndHeal } from "@/lib/adapters/discover";
+import type { ProbeResult } from "@/lib/adapters/probe";
 import { peerRole } from "@/lib/mesh/factory";
 import { netbirdHint } from "@/lib/netbird";
+
+const publicProbe = (probe: ProbeResult) => ({ ...probe, url: publicEndpoint(probe.url) });
 
 export async function GET(request: Request) {
   const force = new URL(request.url).searchParams.get("refresh") === "1";
   const current = await readSettings();
   if (current.generationMode === "zermo") {
-    const zermo = await checkZermoHealth();
-    return NextResponse.json({ settings: { generationMode: "zermo" }, health: { zermo, comfy: false, studio: false, ollama: false, tts: false, ffmpeg: false, effectiveMode: zermo.ready ? "zermo" : "zermo-unreachable", netbirdHint: null } });
+    const [zermo, ffmpeg, tts] = await Promise.all([
+      checkZermoHealth(), current.ffmpegEnabled ? checkFfmpeg() : Promise.resolve(false),
+      current.ttsUrl ? checkTtsHealth(current.ttsUrl) : Promise.resolve(false),
+    ]);
+    return NextResponse.json({ settings: { generationMode: "zermo" }, health: { zermo, comfy: false, studio: false, ollama: false, tts, ffmpeg, effectiveMode: zermo.ready ? "zermo" : "zermo-unreachable", netbirdHint: null } });
   }
   const [discovered, ffmpeg] = await Promise.all([
     discoverAndHeal(current, { force }),
@@ -30,12 +37,12 @@ export async function GET(request: Request) {
   return NextResponse.json({
     settings: {
       generationMode: settings.generationMode,
-      comfyUrl: settings.comfyUrl,
-      ollamaUrl: settings.ollamaUrl,
+      comfyUrl: publicEndpoint(settings.comfyUrl),
+      ollamaUrl: publicEndpoint(settings.ollamaUrl),
       ollamaModel: settings.ollamaModel,
-      ttsUrl: settings.ttsUrl,
+      ttsUrl: publicEndpoint(settings.ttsUrl),
       ffmpegEnabled: settings.ffmpegEnabled,
-      studioUrl: settings.studioUrl,
+      studioUrl: publicEndpoint(settings.studioUrl),
       hasStudioApiKey: Boolean(settings.studioApiKey),
     },
     health: {
@@ -47,9 +54,9 @@ export async function GET(request: Request) {
       studioReady,
       effectiveMode,
       netbirdHint: netbirdHint(settings.studioUrl),
-      probes: { studio, comfy, ollama, tts },
-      applied,
-      found: found.filter((f) => f.ok || f.reachable),
+      probes: { studio: publicProbe(studio), comfy: publicProbe(comfy), ollama: publicProbe(ollama), tts: publicProbe(tts) },
+      applied: applied.map((message) => message.replace(/https?:\/\/\S+/gi, publicEndpoint)),
+      found: found.filter((f) => f.ok || f.reachable).map(publicProbe),
       factory: "dgx-spark",
       mesh: {
         provider: mesh.provider,

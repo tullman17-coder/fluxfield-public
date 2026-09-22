@@ -1,144 +1,82 @@
 import Link from "next/link";
 import { IMAGE2_WRAPPERS } from "@/lib/wrappers/catalog";
-import { ENGINE_LABEL, readCardEngines } from "@/lib/wrappers/card-art";
+import { WORKFLOWS } from "@/lib/workflows";
+import { MARKETPLACE_PRESETS, PRESET_CATEGORIES } from "@/lib/studio/presets-marketplace";
 
-const CATEGORY_LABEL: Record<string, string> = {
-  streetwear: "Streetwear",
-  editorial: "Editorial",
-  event: "Event",
-  ecommerce: "Shop",
-  tryon: "Try-on",
-  sports: "Sports",
-};
+const VIDEO_TOOLS = [
+  { href: "/explainer", name: "Explainer", description: "Script and stylized motion scenes." },
+  { href: "/ugc", name: "Creator clips", description: "Reviews, demos, outfit ideas and unboxing concepts." },
+  { href: "/ad-multiplier", name: "Ad sequence", description: "One cut with hook, benefit and CTA beats." },
+  { href: "/faceless", name: "Faceless story", description: "Visual stories without an on-camera host." },
+  { href: "/director", name: "Director", description: "Short motion cut with a generated or uploaded soundtrack." },
+];
+const card = "glass min-w-0 rounded-[14px] border border-white/10 p-4 transition hover:border-white/30";
 
-// The cards report which machine drew them, which is only known at the moment
-// the page is asked for. Left to prerender, a hosted copy would show whatever
-// was true when it was built and never change.
-export const dynamic = "force-dynamic";
-
-export default async function HomePage() {
-  const engines = await readCardEngines();
+export default function HomePage() {
   return (
-    <div className="w-full min-w-0 space-y-8">
-      <section className="glass-strong relative overflow-hidden rounded-[14px] px-5 py-8 sm:px-8 sm:py-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-32 right-[-5rem] h-72 w-72 rounded-full opacity-60 blur-3xl"
-          style={{
-            background:
-              "conic-gradient(from 40deg, rgb(138 73 190 / 45%), rgb(205 64 154 / 35%), rgb(88 56 160 / 40%), rgb(138 73 190 / 45%))",
-          }}
-        />
-        <p className="relative text-[11px] font-bold uppercase tracking-[0.12em] text-[#d4a017]">
-          Campaign layouts
-        </p>
-        <h1 className="relative mt-3 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[#d4a017] md:text-6xl">
-          Fluxfield
-        </h1>
-        <p className="relative mt-4 max-w-2xl text-base text-pretty text-[#c4957d] md:text-lg">
-          Drop posters, catalog spreads, event bills, shop banners, fitting-room
-          screens. Pick a layout, describe the product, and get finished art with
-          the words already set. House stills are Qwen Image 2.1, video is WAN 2.2 5B, music is ACE. Seedance 2.5 is optional Higgsfield cloud.
-        </p>
-        <div className="relative mt-6 flex min-w-0 flex-wrap gap-3">
-          <Link
-            href="/supercomputer"
-            className="grid min-h-11 place-items-center rounded-[10px] border border-[#d4a017] bg-[#d4a017] px-5 text-sm font-bold text-[#1a0505] transition-colors hover:border-[#f5deb3] hover:bg-[#f5deb3]"
-          >
-            Run superComputer
-          </Link>
-          <Link
-            href="/create"
-            className="grid min-h-11 place-items-center rounded-[10px] border border-white/15 bg-[#8b0000] px-5 text-sm font-bold text-[#d4a017] transition-colors hover:border-[#d4a017]"
-          >
-            Make an image
-          </Link>
-          <Link
-            href="/settings"
-            className="grid min-h-11 place-items-center rounded-[10px] px-5 text-sm font-bold text-[#c4957d] transition-colors hover:text-[#fdf0e6]"
-          >
-            Settings
-          </Link>
+    <div className="min-w-0 space-y-8">
+      <header className="glass-strong rounded-[14px] p-5 sm:p-8">
+        <p className="text-xs uppercase tracking-wider text-[#e77ae6]">Fluxfield · personal art studio</p>
+        <h1 className="mt-3 text-4xl font-semibold text-balance text-[#f5eff6] md:text-5xl">Make something delightfully silly.</h1>
+        <p className="mt-4 max-w-2xl text-pretty text-[#b8aebb]">Start with a playful character or your own visual direction. Realism remains your choice. Create makes images and campaigns; this catalog keeps the distinct layouts, clean product art and short-motion tools together.</p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link href="/create" className="grid min-h-11 place-items-center rounded-[10px] bg-[#e77ae6] px-5 text-sm font-semibold text-black">Create an image</Link>
+          <Link href="/create?mode=campaign" className="grid min-h-11 place-items-center rounded-[10px] border border-white/20 px-5 text-sm">Create a campaign</Link>
         </div>
-      </section>
+        <p className="mt-4 text-xs text-[#8d838f]">House image, motion and music connections are managed in Settings. Optional cloud connections remain opt-in. Examples below are historical samples, not newly tested outputs.</p>
+      </header>
 
-      <section className="min-w-0">
-        <div className="mb-4 flex min-w-0 flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-2xl font-semibold text-balance text-[#f5eff6]">
-              Layouts
-            </h2>
-            <p className="text-sm text-[#8d838f]">
-              Your art and your words drop straight into the design. Each card
-              is a finished sample of that layout — connect your own studio in{" "}
-              <Link href="/settings" className="text-[#b8aebb] underline-offset-2 hover:underline">
-                Settings
-              </Link>{" "}
-              when you want live redraws from your machine.
-            </p>
-          </div>
-        </div>
-
-        <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
-          {IMAGE2_WRAPPERS.map((w) => (
-            <Link
-              key={w.slug}
-              href={`/image-2/${w.slug}`}
-              className="glass mb-4 block break-inside-avoid overflow-hidden rounded-[14px] transition hover:shadow-[0_16px_48px_rgb(90_70_110/16%)]"
-              style={{ background: `${w.surface}55` }}
-            >
-              {/* The example is a finished piece with its own words in it, so
-                  it gets its own panel instead of sitting under the caption. */}
-              <div
-                className="relative flex items-center justify-center overflow-hidden p-3"
-                style={{ background: `${w.surface}33` }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/card-bg/${w.slug}`}
-                  alt={`Example made with ${w.name}`}
-                  loading="lazy"
-                  className={
-                    w.span === "tall"
-                      ? "max-h-[22rem] w-auto max-w-full rounded-[8px] shadow-[0_10px_30px_rgb(0_0_0/45%)]"
-                      : "max-h-[14rem] w-auto max-w-full rounded-[8px] shadow-[0_10px_30px_rgb(0_0_0/45%)]"
-                  }
-                />
-                <span
-                  className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm"
-                  style={{ background: w.accent }}
-                >
-                  {CATEGORY_LABEL[w.category] ?? w.category}
-                </span>
-                {/* Say which machine drew it, so nobody has to guess whether
-                    they are looking at their own model's work. */}
-                <span className="absolute right-3 top-3 rounded-full bg-black/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70 backdrop-blur-sm">
-                  {engines[w.slug]
-                    ? `Example · ${ENGINE_LABEL[engines[w.slug]]}`
-                    : "Example"}
-                </span>
-              </div>
-              <div className="min-w-0 border-t border-white/10 p-5">
-                <div className="text-lg font-medium text-[#f5eff6]">
-                  {w.name}
-                </div>
-                <p className="mt-1 text-sm text-pretty text-[#b8aebb]">
-                  {w.tagline}
-                </p>
-                <div className="mt-4 flex min-w-0 flex-wrap gap-2">
-                  {w.copyHints.slice(0, 3).map((hint) => (
-                    <span
-                      key={hint}
-                      className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] text-white/75"
-                    >
-                      {hint}
-                    </span>
-                  ))}
-                </div>
-              </div>
+      <section id="layouts" className="min-w-0 space-y-3">
+        <h2 className="text-2xl font-semibold">Six composed layouts</h2>
+        <p className="text-sm text-[#b8aebb]">Literal copy over generated or reused art. Text that cannot fit is reported, never silently shortened.</p>
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {IMAGE2_WRAPPERS.map((wrapper) => (
+            <Link key={wrapper.slug} href={`/image-2/${wrapper.slug}`} className={card}>
+              {/* Static shipped samples never trigger generation while browsing. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/examples/wrappers/${wrapper.slug}.webp`} alt={`Historical ${wrapper.name} layout sample`} loading="lazy" decoding="async" className="mb-3 h-48 w-full rounded-lg object-contain" />
+              <h3 className="font-semibold">{wrapper.name}</h3>
+              <p className="mt-1 text-sm text-[#b8aebb]">{wrapper.tagline}</p>
+              <p className="mt-2 text-xs text-[#8d838f]">{wrapper.presets.length} directions · historical layout sample</p>
             </Link>
           ))}
         </div>
+      </section>
+
+      <section className="min-w-0 space-y-3">
+        <h2 className="text-2xl font-semibold">Product art &amp; campaigns</h2>
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          {WORKFLOWS.filter((w) => w.kind !== "video").map((workflow) => (
+            <Link key={workflow.slug} href={`/workflows/${workflow.slug}`} className={card}>
+              <h3 className="font-semibold">{workflow.name}</h3>
+              <p className="mt-1 text-sm text-[#b8aebb]">{workflow.tagline}</p>
+              <p className="mt-2 text-xs text-[#8d838f]">{workflow.outputKind === "image" ? "Clean images — no layout overlays" : "Composed artwork with printed copy"}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="min-w-0 space-y-3">
+        <h2 className="text-2xl font-semibold">Short motion</h2>
+        <p className="text-sm text-[#b8aebb]">10–90 seconds. Managed narration, lip-sync and source-clip remixing are unavailable. Director can add a music soundtrack.</p>
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {VIDEO_TOOLS.map((tool) => <Link key={tool.href} href={tool.href} className={card}><h3 className="font-semibold">{tool.name}</h3><p className="mt-1 text-sm text-[#b8aebb]">{tool.description}</p></Link>)}
+        </div>
+      </section>
+
+      <section id="presets" className="min-w-0 space-y-3">
+        <h2 className="text-2xl font-semibold">Preset shortcuts</h2>
+        <p className="text-sm text-[#b8aebb]">Open an existing tool with this direction selected — not another generator.</p>
+        {PRESET_CATEGORIES.map((category) => (
+          <details key={category.id} className="glass rounded-xl border border-white/10 p-3">
+            <summary className="min-h-11 cursor-pointer content-center font-medium">{category.label}</summary>
+            <div className="mt-2 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {MARKETPLACE_PRESETS.filter((p) => p.category === category.id).map((preset) => (
+                <Link key={preset.id} href={preset.href} className="min-w-0 rounded-lg border border-white/10 p-3 hover:border-white/30"><h3 className="text-sm font-semibold">{preset.name}</h3><p className="mt-1 text-xs text-[#b8aebb]">{preset.description}</p></Link>
+              ))}
+            </div>
+          </details>
+        ))}
       </section>
     </div>
   );

@@ -23,6 +23,8 @@ const devOrigins = [
 ];
 
 const nextConfig: NextConfig = {
+  // Bound build worker memory on the always-on house control machine.
+  experimental: { cpus: 2 },
   allowedDevOrigins: devOrigins,
   // Native optional binding — Turbopack cannot bundle @resvg/resvg-js-darwin-arm64.
   serverExternalPackages: ["@resvg/resvg-js"],

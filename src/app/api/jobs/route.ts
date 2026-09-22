@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAndRunJob } from "@/lib/jobs/runner";
-import { listJobs } from "@/lib/jobs/store";
-import { promises as fs } from "fs";
-import path from "path";
-import { nanoid } from "nanoid";
-import type { JobTool } from "@/lib/adapters/types";
-import { fetchReferenceImage, saveReferenceBytes } from "@/lib/jobs/reference";
+import { listJobs, getJob } from "@/lib/jobs/store";
+import { promises as fs } from "node:fs";
+import { fetchReferenceImage, saveUpload, validateUpload, reuseReferenceImage, ReferenceInputError } from "@/lib/jobs/reference";
+import { validateJobInput, readRequestPayload, JobInputError, type UploadField } from "@/lib/jobs/input";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -30,106 +28,69 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const contentType = request.headers.get("content-type") || "";
-
-  let tool: JobTool = "workflow";
-  let workflowSlug = "";
-  let presetId = "";
-  let inputs: Record<string, string> = {};
-  let referenceImagePath: string | undefined;
-
-  if (contentType.includes("multipart/form-data")) {
-    const form = await request.formData();
-    tool = (String(form.get("tool") || "workflow") as JobTool) || "workflow";
-    workflowSlug = String(form.get("workflowSlug") || "");
-    presetId = String(form.get("presetId") || "");
-    inputs = JSON.parse(String(form.get("inputs") || "{}")) as Record<
-      string,
-      string
-    >;
-    const file = form.get("referenceImage");
-    if (file && typeof file !== "string" && file.size > 0) {
-      const bytes = Buffer.from(await file.arrayBuffer());
-      const ext = path.extname(file.name || "") || ".png";
-      const saved = await saveReferenceBytes(bytes, ext);
-      referenceImagePath = saved.dest;
-      inputs.referenceImage = saved.name;
-    }
-    const imageUrl = String(form.get("referenceImageUrl") || inputs.referenceImageUrl || "").trim();
-    if (!referenceImagePath && imageUrl) {
-      const saved = await fetchReferenceImage(imageUrl);
-      referenceImagePath = saved.dest;
-      inputs.referenceImage = saved.name;
-      inputs.referenceImageUrl = imageUrl;
-    }
-    const score = form.get("soundtrack");
-    if (score && typeof score !== "string" && score.size > 0) {
-      const bytes = Buffer.from(await score.arrayBuffer());
-      const ext = path.extname(score.name || "") || ".flac";
-      const name = `${nanoid(8)}${ext}`;
-      const dest = path.join(process.cwd(), ".data", "uploads", name);
-      await fs.mkdir(path.dirname(dest), { recursive: true });
-      await fs.writeFile(dest, bytes);
-      inputs.soundtrack = name;
-      inputs.scoreSource = inputs.scoreSource || "upload";
-    }
-    const voice = form.get("voiceSample");
-    if (voice && typeof voice !== "string" && voice.size > 0) {
-      if (voice.size > 8 * 1024 * 1024) {
-        return NextResponse.json({ error: "Voice sample must be under 8 MB" }, { status: 400 });
-      }
-      const bytes = Buffer.from(await voice.arrayBuffer());
-      const ext = path.extname(voice.name || "") || ".wav";
-      if (!/^\.(wav|flac)$/i.test(ext)) {
-        return NextResponse.json({ error: "Voice sample must be WAV or FLAC" }, { status: 400 });
-      }
-      const name = `${nanoid(8)}${ext}`;
-      const dest = path.join(process.cwd(), ".data", "uploads", name);
-      await fs.mkdir(path.dirname(dest), { recursive: true });
-      await fs.writeFile(dest, bytes);
-      inputs.voiceSample = name;
-    }
-  } else {
-    const body = (await request.json()) as {
-      tool?: JobTool;
-      workflowSlug: string;
-      presetId: string;
-      inputs: Record<string, string>;
-    };
-    tool = body.tool || "workflow";
-    workflowSlug = body.workflowSlug;
-    presetId = body.presetId;
-    inputs = body.inputs || {};
-    const imageUrl = String(inputs.referenceImageUrl || "").trim();
-    if (imageUrl) {
-      const saved = await fetchReferenceImage(imageUrl);
-      referenceImagePath = saved.dest;
-      inputs.referenceImage = saved.name;
-    }
-  }
-
-  if (!workflowSlug || !presetId) {
-    return NextResponse.json(
-      { error: "workflowSlug and presetId are required" },
-      { status: 400 },
-    );
-  }
-
+  const created: string[] = [];
   try {
-    const job = await createAndRunJob({
-      tool,
-      workflowSlug,
-      presetId,
-      inputs,
-      referenceImagePath,
-    });
+    let body: unknown;
+    const files: Partial<Record<UploadField, File>> = {};
+    if (request.headers.get("content-type")?.includes("multipart/form-data")) {
+      const form = await readRequestPayload(request, "form", 81 * 1024 * 1024);
+      const fields = new Set(["tool", "workflowSlug", "presetId", "inputs", "referenceImageUrl", "referenceJobId", "referenceImage", "soundtrack", "voiceSample"]);
+      for (const key of form.keys()) {
+        if (!fields.has(key) || form.getAll(key).length !== 1) throw new JobInputError("Unknown or duplicate form field");
+      }
+      const text = (key: string) => {
+        const value = form.get(key);
+        if (value !== null && typeof value !== "string") throw new JobInputError(`Expected text for ${key}`);
+        return value ?? undefined;
+      };
+      const inputs: unknown = JSON.parse(text("inputs") ?? "{}");
+      for (const key of ["referenceImageUrl", "referenceJobId"]) {
+        if (text(key) === undefined) continue;
+        if (!inputs || typeof inputs !== "object" || Array.isArray(inputs)) throw new JobInputError("inputs must be an object");
+        const record = inputs as Record<string, unknown>;
+        if (record[key] !== undefined && record[key] !== text(key)) throw new JobInputError("Conflicting reference sources");
+        record[key] = text(key);
+      }
+      body = { tool: text("tool"), workflowSlug: text("workflowSlug"), presetId: text("presetId"), inputs };
+      for (const key of ["referenceImage", "soundtrack", "voiceSample"] as const) {
+        const file = form.get(key);
+        if (file !== null) {
+          if (typeof file === "string") throw new JobInputError(`Expected a file for ${key}`);
+          files[key] = file;
+        }
+      }
+    } else {
+      body = await readRequestPayload(request, "json", 1024 * 1024);
+    }
+    const input = validateJobInput(body, { uploads: Object.keys(files) as UploadField[] });
+    // Validate every file before buffering any file or contacting a URL/provider.
+    for (const key of Object.keys(files) as UploadField[]) validateUpload(files[key]!, key);
+    for (const key of Object.keys(files) as UploadField[]) {
+      const saved = await saveUpload(files[key]!, key);
+      created.push(saved.dest);
+      input.inputs[key] = saved.name;
+      if (key === "referenceImage") input.referenceImagePath = saved.dest;
+      if (key === "soundtrack" && !input.inputs.scoreSource) input.inputs.scoreSource = "upload";
+    }
+    if (!input.referenceImagePath && input.inputs.referenceImageUrl) {
+      const saved = await fetchReferenceImage(input.inputs.referenceImageUrl);
+      created.push(saved.dest);
+      input.referenceImagePath = saved.dest;
+      input.inputs.referenceImage = saved.name;
+    }
+    if (input.inputs.referenceJobId) {
+      const source = await getJob(input.inputs.referenceJobId);
+      if (source?.id !== input.inputs.referenceJobId) throw new JobInputError("Reference source is unavailable");
+      const saved = await reuseReferenceImage(source);
+      created.push(saved.dest);
+      input.referenceImagePath = saved.dest;
+      input.inputs.referenceImage = saved.name;
+    }
+    const job = await createAndRunJob(input);
     return NextResponse.json({ job }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to create job",
-      },
-      { status: 500 },
-    );
+    await Promise.all(created.map((file) => fs.unlink(file).catch(() => undefined)));
+    const invalid = error instanceof JobInputError || error instanceof ReferenceInputError || error instanceof SyntaxError;
+    return NextResponse.json({ error: invalid ? (error instanceof SyntaxError ? "Invalid request JSON" : error.message) : "Failed to create job" }, { status: invalid ? 400 : 500 });
   }
 }

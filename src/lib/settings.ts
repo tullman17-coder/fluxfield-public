@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
@@ -88,9 +89,33 @@ export async function readSettings(): Promise<StudioSettings> {
   }
 }
 
+const settingText = z.string().max(4096);
+const endpoint = settingText.refine((value) => {
+  if (value === "") return true;
+  try {
+    const url = new URL(value);
+    return /^https?:$/.test(url.protocol) && !url.username && !url.password && !url.search && !url.hash;
+  } catch { return false; }
+}, "Expected an HTTP(S) endpoint without embedded credentials or query parameters");
+
+export const settingsPatchSchema = z.object({
+  comfyUrl: endpoint, ollamaUrl: endpoint, studioUrl: endpoint, ttsUrl: endpoint,
+  musicUrl: endpoint, improveApiBase: endpoint,
+  ollamaModel: settingText, comfyCheckpoint: settingText, ttsVoice: settingText,
+  musicModel: settingText, improveApiModel: settingText,
+  generationMode: z.enum(["auto", "mock", "comfyui", "local-studio", "zermo", "higgsfield"]),
+  improveProvider: z.enum(["local", "api"]),
+  ffmpegEnabled: z.boolean(), unrestricted: z.boolean(),
+  studioApiKey: settingText, improveApiKey: settingText, higgsfieldApiKey: settingText,
+  clearStudioApiKey: z.boolean(), clearImproveApiKey: z.boolean(), clearHiggsfieldApiKey: z.boolean(),
+  // The existing UI round-trips public presence flags; they are never persisted.
+  hasStudioApiKey: z.boolean(), hasImproveApiKey: z.boolean(), hasHiggsfieldApiKey: z.boolean(),
+}).partial().strict();
+
 export async function writeSettings(
-  next: Partial<StudioSettings> & { clearStudioApiKey?: boolean; clearImproveApiKey?: boolean },
+  patch: z.input<typeof settingsPatchSchema>,
 ): Promise<StudioSettings> {
+  const next = settingsPatchSchema.parse(patch);
   await ensureDataDir();
   let persisted: Partial<StudioSettings> = {};
   try {
@@ -98,15 +123,18 @@ export async function writeSettings(
   } catch {
     persisted = {};
   }
-  next = { ...next };
   if (!next.studioApiKey?.trim() && !next.clearStudioApiKey) delete next.studioApiKey;
   if (!next.improveApiKey?.trim() && !next.clearImproveApiKey) delete next.improveApiKey;
+  if (!next.higgsfieldApiKey?.trim() && !next.clearHiggsfieldApiKey) delete next.higgsfieldApiKey;
   if (next.clearStudioApiKey) next.studioApiKey = "";
   if (next.clearImproveApiKey) next.improveApiKey = "";
+  if (next.clearHiggsfieldApiKey) next.higgsfieldApiKey = "";
   delete next.clearStudioApiKey;
   delete next.clearImproveApiKey;
+  delete next.clearHiggsfieldApiKey;
   delete next.hasStudioApiKey;
   delete next.hasImproveApiKey;
+  delete next.hasHiggsfieldApiKey;
   const merged: StudioSettings = {
     ...DEFAULT_SETTINGS,
     ...persisted,
@@ -123,7 +151,37 @@ export async function writeSettings(
   return readSettings();
 }
 
+export function publicEndpoint(value: string) {
+  if (!value) return value;
+  try {
+    const url = new URL(value);
+    if (!/^https?:$/.test(url.protocol)) return "";
+    if (!url.username && !url.password && !url.search && !url.hash) return value;
+    url.username = ""; url.password = ""; url.search = ""; url.hash = "";
+    return url.href;
+  } catch { return ""; }
+}
+
 export function publicSettings(settings: StudioSettings) {
-  const { studioApiKey, improveApiKey, ...safe } = settings;
-  return { ...safe, hasStudioApiKey: Boolean(studioApiKey), hasImproveApiKey: Boolean(improveApiKey) };
+  // Allowlist rather than a rest spread: new/persisted secret fields stay private.
+  return {
+    comfyUrl: publicEndpoint(settings.comfyUrl),
+    ollamaUrl: publicEndpoint(settings.ollamaUrl),
+    ollamaModel: settings.ollamaModel,
+    generationMode: settings.generationMode,
+    comfyCheckpoint: settings.comfyCheckpoint,
+    ttsUrl: publicEndpoint(settings.ttsUrl),
+    ttsVoice: settings.ttsVoice,
+    musicUrl: publicEndpoint(settings.musicUrl),
+    musicModel: settings.musicModel,
+    ffmpegEnabled: settings.ffmpegEnabled,
+    studioUrl: publicEndpoint(settings.studioUrl),
+    improveProvider: settings.improveProvider,
+    improveApiBase: publicEndpoint(settings.improveApiBase),
+    improveApiModel: settings.improveApiModel,
+    unrestricted: settings.unrestricted,
+    hasStudioApiKey: Boolean(settings.studioApiKey),
+    hasImproveApiKey: Boolean(settings.improveApiKey),
+    hasHiggsfieldApiKey: Boolean(settings.higgsfieldApiKey),
+  };
 }

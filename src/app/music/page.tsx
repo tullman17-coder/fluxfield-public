@@ -3,6 +3,7 @@ import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
 
 import { useCallback, useRef, useState } from "react";
 import { GENRES, MOODS, NOTE_NAMES } from "@/lib/music/theory";
+import { applyMusicChip, interpretMusicBrief } from "@/lib/music/brief";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
 import { musicEffectiveSettings, musicLengths, musicSeconds } from "@/lib/studio/presentation";
@@ -77,7 +78,9 @@ export default function MusicPage() {
   const running = !!job && (job.status === "queued" || job.status === "running");
   const track = job?.outputs.find((o) => o.kind === "audio");
   const arrangement = job?.outputs.find((o) => o.kind === "storyboard");
-  const lyricSheet = job?.outputs.find((o) => o.kind === "script");
+  const lyricSheet = job?.outputs.find((o) => o.kind === "script" && o.label.startsWith("Lyrics"));
+  const aceTags = job?.outputs.find((o) => o.label === "ACE tags");
+  const preview = applyMusicChip(genre, interpretMusicBrief(brief), lyricMode);
   const effectiveSettings = musicEffectiveSettings(job);
   const activeGenre = GENRES.find((g) => g.id === genre) ?? GENRES[0];
 
@@ -116,11 +119,11 @@ export default function MusicPage() {
               ref={briefRef}
               value={brief}
               onChange={(e) => setBrief(e.currentTarget.value)}
-              placeholder="Rap style of Eminem about calling out of work when GTA VI drops"
+              placeholder=""
               className="min-h-24 w-full min-w-0 resize-y rounded-[10px] border border-white/15 bg-white/15 p-3 text-base leading-normal text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
             <p className="text-xs text-[#8d838f]">
-              ACE gets style tags, not a voice clone from a name. Upload a WAV/FLAC you recorded if you want timbre from a sample.
+              ACE gets style tags, not a voice clone from a name. Brief matching is a keyword heuristic; the selected style wins. Upload your own WAV/FLAC (up to 8 MB) for timbre guidance, not guaranteed voice identity.
             </p>
             <label className="mt-3 block min-w-0 text-sm text-[#b8aebb]">
               Voice sample (optional, yours)
@@ -206,7 +209,7 @@ export default function MusicPage() {
             <div className="grid min-w-0 grid-cols-2 gap-3">
               <div className="min-w-0">
                 <label htmlFor="key" className={labelClass}>
-                  Key {zermo ? "suggestion" : ""}
+                  Key root
                 </label>
                 <select
                   id="key"
@@ -224,7 +227,7 @@ export default function MusicPage() {
               </div>
               <div className="min-w-0">
                 <label htmlFor="bpm" className={labelClass}>
-                  Tempo {zermo ? "suggestion" : ""}
+                  Tempo (BPM)
                 </label>
                 <input
                   id="bpm"
@@ -238,7 +241,7 @@ export default function MusicPage() {
             </div>
           </div>
 
-          {zermo ? <p className="mb-4 text-xs text-[#b8aebb]">Key and BPM are prompt suggestions, not fixed model controls. The result shows the effective settings returned by Zermo.</p> : null}
+          {zermo ? <p className="mb-4 text-xs text-[#b8aebb]">BPM and key are sent as ACE settings. Scale is chosen from style and feel. Reported settings are not measured audio guarantees. A=432 applies a 432/440 pitch shift assuming an A=440 source; it does not measure or calibrate the generated tuning.</p> : null}
           <fieldset className="min-w-0 border-t border-white/10 py-5">
             <legend className="text-sm font-medium text-[#b8aebb]">Words</legend>
             <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
@@ -260,6 +263,7 @@ export default function MusicPage() {
                 </button>
               ))}
             </div>
+            <p className="mt-3 text-xs text-[#8d838f]">Want explicit language or a clean version? Say so in the brief. No automatic rewrite of your own lyrics.</p>
             {lyricMode === "own" ? (
               <div className="mt-4 min-w-0">
                 <label htmlFor="lyrics" className={labelClass}>
@@ -305,17 +309,23 @@ export default function MusicPage() {
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
             Arrangement
           </p>
-          <h2 className="mt-1 text-lg text-[#f5eff6]">Structure</h2>
+          <h2 className="mt-1 text-lg text-[#f5eff6]">Structure · timing estimate</h2>
+          <p className="mt-2 text-xs text-[#8d838f]">Editorial section and lyric timing, not measured vocal alignment or guaranteed ACE structure.</p>
           {arrangement?.text ? (
             <pre className="mt-4 max-h-96 overflow-y-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-[#b8aebb]">
               {arrangement.text}
             </pre>
           ) : (
             <p className="mt-4 text-sm text-[#8d838f]">
-              The section map shows up here once the track is written — where
-              the hook lands, and how loud each part gets.
+              The estimated section map shows up here once the track is written.
             </p>
           )}
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <h3 className="text-sm font-bold text-[#f5eff6]">ACE tags</h3>
+            <p className="mt-1 text-xs text-[#8d838f]">{aceTags ? "Exact submitted tags and settings for this track." : "Style preview · keyword heuristic, not an audio guarantee."}</p>
+            <pre className="mt-3 whitespace-pre-wrap font-mono text-xs leading-relaxed text-[#b8aebb]">{aceTags?.text || preview.tags}</pre>
+          </div>
 
           {lyricSheet?.text ? (
             <div className="mt-6 border-t border-white/10 pt-5">
@@ -342,7 +352,7 @@ export default function MusicPage() {
                 Effective Zermo settings
               </h3>
               <p className="mt-1 text-xs text-[#8d838f]">
-                Returned by Zermo. Requested key and BPM above are suggestions and may differ.
+                Returned by Zermo, not measured from the audio. Requested BPM and key are sent as model settings; generated adherence may vary.
               </p>
               <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {effectiveSettings.map((setting) => (

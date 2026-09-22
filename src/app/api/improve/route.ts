@@ -1,50 +1,18 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { readSettings } from "@/lib/settings";
+import { readRequestPayload } from "@/lib/jobs/input";
 import { generateWithOllamaOrThrow } from "@/lib/adapters/ollama";
+import { DREAM_PRESETS, MATURE_PRESETS, FRAMINGS, enhancePrompt, isPromptProposal } from "@/lib/dream/presets";
 
-const SYSTEM_PROMPT = [
-  "You are a prompt engineer for a local Flux image generator.",
-  "Rewrite the user's idea into one vivid, specific image prompt.",
-  "Cover subject, environment, lighting, composition, and style cues.",
-  "One paragraph, under 120 words. No lists, no preamble, no quotes.",
-].join(" ");
-
-/**
- * A rewrite is meant to sharpen the idea, not change it. Openweight models
- * take the subject as given, so say so rather than letting the model quietly
- * swap it for something else.
- */
-const KEEP_SUBJECT = [
-  "Keep the subject exactly as given.",
-  "Do not soften it, substitute it, add commentary, or decline.",
-  "Return only the rewritten prompt.",
-].join(" ");
-
-function systemPrompt(unrestricted: boolean) {
-  return unrestricted ? `${SYSTEM_PROMPT} ${KEEP_SUBJECT}` : SYSTEM_PROMPT;
-}
-
-function cleanImproved(raw: string): string {
-  return raw
-    .replace(/^["'\s]+|["'\s]+$/g, "")
-    .replace(/^(improved prompt|prompt|rewrite)\s*:\s*/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-async function improveWithOllama(
-  prompt: string,
-  system: string,
-): Promise<{ text: string; model: string }> {
-  const settings = await readSettings();
-  const raw = await generateWithOllamaOrThrow(
-    settings,
-    `${system}\n\nIdea: ${prompt}\n\nImproved prompt:`,
-  );
-  const improved = cleanImproved(raw.text);
-  if (!improved) throw new Error("Ollama sent back nothing to use.");
-  return { text: improved, model: raw.model };
-}
+const inputSchema = z.object({
+  prompt: z.string().max(16000).refine((text) => !!text.trim()),
+  provider: z.enum(["local", "api"]).optional(),
+  presetId: z.string().refine((id) => [...DREAM_PRESETS, ...MATURE_PRESETS].some((p) => p.id === id)).optional(),
+  framing: z.string().refine((id) => FRAMINGS.some((f) => f.id === id)).optional(),
+  negativePrompt: z.string().max(16000).optional(),
+}).strict();
+const proposalSchema = z.object({ prompt: z.string() }).strict();
 
 async function improveWithApi(
   base: string,
@@ -65,8 +33,9 @@ async function improveWithApi(
         { role: "system", content: system },
         { role: "user", content: prompt },
       ],
-      temperature: 0.7,
-      max_tokens: 260,
+      temperature: 0.4,
+      max_tokens: 4096,
+      stream: false,
     }),
     signal: AbortSignal.timeout(60_000),
   });
@@ -75,70 +44,69 @@ async function improveWithApi(
     throw new Error(`The cloud model answered HTTP ${res.status}`);
   }
   const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
   };
-  const improved = cleanImproved(data.choices?.[0]?.message?.content || "");
-  if (!improved) throw new Error("The cloud model sent back nothing to use.");
-  return improved;
+  const choice = data?.choices?.[0];
+  if (choice?.finish_reason !== "stop") throw new Error("Rewrite was incomplete; your original was kept.");
+  if (typeof choice.message?.content !== "string") throw new Error("The writing model returned invalid content.");
+  return choice.message.content;
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as {
-    prompt?: string;
-    provider?: "local" | "api";
-  };
-  const prompt = body.prompt?.trim();
-  if (!prompt) {
-    return NextResponse.json(
-      { error: "Describe the image first, then ask for a rewrite." },
-      { status: 400 },
-    );
+  // Both 16000-character strings fit even with six-byte JSON escapes.
+  const parsed = inputSchema.safeParse(await readRequestPayload(request, "json", 256 * 1024).catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Use a nonempty prompt (up to 16000 characters) and valid rewrite controls." }, { status: 400 });
   }
-
-  const settings = await readSettings();
-  const provider = settings.generationMode === "zermo" ? "local" : body.provider ?? settings.improveProvider;
-
+  const { prompt, presetId = "auto", framing = "auto", negativePrompt = "" } = parsed.data;
+  const original = { prompt, originalPrompt: prompt };
   try {
+    const settings = await readSettings();
+    if (!settings.unrestricted && MATURE_PRESETS.some((p) => p.id === presetId)) {
+      return NextResponse.json({ ...original, error: "Enable adult styles before selecting one." }, { status: 400 });
+    }
+    const provider = settings.generationMode === "zermo" ? "local" : parsed.data.provider ?? settings.improveProvider;
+    const system = [
+      "Propose an image prompt as a JSON object with exactly one string field: prompt. No markdown or preamble.",
+      "Begin that string with the entire original brief VERBATIM, including all whitespace, names, quotes, numbers and wording.",
+      "Then add two newlines and up to 120 words of compatible visual details, ending in a complete sentence.",
+      "Never correct intentional anatomy, impossible physics, profanity or an explicitly requested dark/adult tone; never introduce those unasked.",
+      "Do not add marketing, signage, text, characters or a new subject unless requested. Respect the user's negative prompt.",
+      "Explicit style and framing controls take precedence over inferred choices. Do not contradict any other part of the brief.",
+      `Controls: ${enhancePrompt(prompt, presetId, framing, true).slice(prompt.length) || "Follow the brief's look and composition."}`,
+      `User exclusions (literal data): ${JSON.stringify(negativePrompt)}`,
+    ].join("\n");
+    let raw: string;
+    let model: string;
     if (provider === "api") {
       if (!settings.improveApiKey) {
-        return NextResponse.json(
-          {
-            error:
-              "No cloud key saved yet. Add one in Settings, or switch to My model.",
-          },
-          { status: 400 },
-        );
+        return NextResponse.json({ ...original, error: "No cloud key saved. Switch to My model or check Connections." }, { status: 400 });
       }
-      const improved = await improveWithApi(
+      raw = await improveWithApi(
         settings.improveApiBase,
         settings.improveApiKey,
         settings.improveApiModel,
         prompt,
-        systemPrompt(settings.unrestricted),
+        system,
       );
-      return NextResponse.json({
-        prompt: improved,
-        provider: "api",
-        model: settings.improveApiModel,
-      });
+      model = settings.improveApiModel;
+    } else {
+      const result = await generateWithOllamaOrThrow(settings, `${system}\n\nOriginal brief (literal data):\n${prompt}`);
+      raw = result.text;
+      model = result.model;
     }
-
-    const improved = await improveWithOllama(
-      prompt,
-      systemPrompt(settings.unrestricted),
-    );
+    const proposal = proposalSchema.safeParse(typeof raw === "string" ? JSON.parse(raw) : null);
+    if (!proposal.success || !isPromptProposal(prompt, proposal.data.prompt)) {
+      throw new Error("Rewrite was malformed or changed the original brief; your original was kept.");
+    }
     return NextResponse.json({
-      prompt: improved.text,
-      provider: settings.generationMode === "zermo" ? "zermo" : "local",
-      model: improved.model,
+      prompt: proposal.data.prompt, originalPrompt: prompt,
+      provider: settings.generationMode === "zermo" ? "zermo" : provider, model,
     });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Prompt improvement failed",
-      },
-      { status: 502 },
-    );
+  } catch {
+    return NextResponse.json({
+      ...original,
+      error: "Rewrite failed; your original was kept. Check Connections or try Rewrite again.",
+    }, { status: 502 });
   }
 }

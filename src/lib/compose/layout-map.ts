@@ -3,13 +3,14 @@ import { IMAGE2_WRAPPERS } from "@/lib/wrappers/catalog";
 
 /** Map marketing desk categories onto Image-2 layout chrome. */
 const CATEGORY_LAYOUT: Record<string, Image2Wrapper["layout"]> = {
-  product: "shop-banner",
   ads: "poster-cta",
-  ugc: "tryon-ui",
-  motion: "poster-cta",
-  marketplace: "shop-banner",
   poster: "event-stack",
 };
+
+/** Clean product/listing images and real video must not acquire layout chrome. */
+export function workflowNeedsComposition(category: string) {
+  return category in CATEGORY_LAYOUT;
+}
 
 export function layoutForWorkflowCategory(
   category: string,

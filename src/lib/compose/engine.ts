@@ -87,6 +87,9 @@ function fittedTextSvg(options: FittedTextSvgOptions) {
     maxLines: options.maxLines,
     lineHeight: options.lineHeight,
   });
+  if (fit.overflow) {
+    throw new Error(`Copy overflow in ${options.role}: text does not fit at the minimum readable size. Shorten the copy or choose another layout; no words were removed.`);
+  }
   if (!fit.lines.length) return "";
 
   const align = options.align ?? "left";
@@ -113,7 +116,7 @@ function fittedTextSvg(options: FittedTextSvgOptions) {
   return `
     <defs><clipPath id="${clipId}"><rect x="${options.x}" y="${options.y}" width="${options.width}" height="${options.height}"/></clipPath></defs>
     <g data-role="${options.role}" data-truncated="${fit.truncated}" clip-path="url(#${clipId})">
-      <text x="${textX}" y="${firstBaseline}" text-anchor="${anchor}" fill="${options.fill}" font-family="${options.family}" font-size="${fit.fontSize}" font-weight="${options.weight ?? 400}"${options.letterSpacing === undefined ? "" : ` letter-spacing="${options.letterSpacing}"`}>${spans}</text>
+      <text x="${textX}" y="${firstBaseline}" text-anchor="${anchor}" fill="${options.fill}" font-family="${options.family}" font-size="${fit.fontSize}" xml:space="preserve" font-weight="${options.weight ?? 400}"${options.letterSpacing === undefined ? "" : ` letter-spacing="${options.letterSpacing}"`}>${spans}</text>
     </g>`;
 }
 
@@ -125,8 +128,14 @@ export function sizeForAspect(aspect: string): { w: number; h: number } {
     "2:3": { w: 1080, h: 1620 },
     "16:9": { w: 1920, h: 1080 },
     "1.91:1": { w: 1200, h: 628 },
+    "3:4": { w: 1080, h: 1440 },
+    "3:2": { w: 1620, h: 1080 },
+    "21:9": { w: 2520, h: 1080 },
+    "2.39:1": { w: 2390, h: 1000 },
   };
-  return map[aspect] ?? { w: 1080, h: 1350 };
+  const size = map[aspect];
+  if (!size) throw new Error(`Unsupported composition aspect: ${aspect}`);
+  return size;
 }
 
 /** Safe-zone plate as fractions of canvas — subjects should fill this region. */
@@ -155,17 +164,9 @@ export function renderCreativeSvg(args: ComposeInput): string {
   const { w, h } = sizeForAspect(args.aspect);
   const brand = args.values.brandName || args.wrapper.brandSample;
   const product = args.values.productName || "Product";
-  const headline =
-    args.values.headline ||
-    args.values.cta ||
-    args.wrapper.copyHints[0] ||
-    args.values.productName ||
-    "Product";
-  const bodyRaw =
-    args.values.bodyCopy ||
-    args.values.productDescription ||
-    args.values.venue ||
-    args.wrapper.tagline;
+  const headline = args.values.headline || product;
+  const bodyRaw = args.values.bodyCopy || args.values.productDescription || args.wrapper.tagline;
+  const venue = args.values.venue || bodyRaw;
   const cta = args.values.cta || "Shop now";
   const price = args.values.price || "";
   const preset = args.presetLabel;
@@ -208,7 +209,7 @@ export function renderCreativeSvg(args: ComposeInput): string {
       ? `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${sw}" height="${sh}" rx="${rx}"/></clipPath></defs>
          <image href="${img}" x="${x}" y="${y}" width="${sw}" height="${sh}" preserveAspectRatio="${subjectAspectFit}" clip-path="url(#${clipId})"/>
          <rect x="${x}" y="${y}" width="${sw}" height="${sh}" rx="${rx}" fill="none" stroke="#ffffff33" stroke-width="2"/>`
-      : `<rect x="${x}" y="${y}" width="${sw}" height="${sh}" rx="${rx}" fill="#00000022"/>`;
+      : "";
 
   let chrome = "";
   switch (args.wrapper.layout) {
@@ -220,7 +221,7 @@ export function renderCreativeSvg(args: ComposeInput): string {
         <text x="${w * 0.82}" y="${h * 0.175}" text-anchor="middle" fill="${accentTextColor}" font-family="${sans}" font-size="${Math.round(w * 0.032)}" font-weight="700" transform="rotate(-14 ${w * 0.82} ${h * 0.16})">NEW</text>
         ${copyText({ role: "poster-brand", text: brand, x: w * 0.1, y: h * 0.04, width: w * 0.6, height: h * 0.12, baselineY: h * 0.12, maxFontSize: Math.round(w * 0.07), minFontSize: Math.round(w * 0.025), fill: lightTextColor, family: sans, weight: 700 })}
         <rect x="${w * 0.08}" y="${h * 0.8}" width="${w * 0.84}" height="${h * 0.14}" rx="20" fill="#0b0b0bee"/>
-        ${copyText({ role: "poster-product", text: product, x: w * 0.12, y: h * 0.81, width: w * 0.76, height: h * 0.075, baselineY: h * 0.87, maxFontSize: Math.round(w * 0.048), minFontSize: Math.round(w * 0.02), fill: "#fff", family: sans, weight: 700 })}
+        ${copyText({ role: "poster-product", text: headline, x: w * 0.12, y: h * 0.81, width: w * 0.76, height: h * 0.075, baselineY: h * 0.87, maxFontSize: Math.round(w * 0.048), minFontSize: Math.round(w * 0.02), fill: "#fff", family: sans, weight: 700 })}
         ${copyText({ role: "poster-cta", text: cta, x: w * 0.12, y: h * 0.885, width: w * 0.76, height: h * 0.05, baselineY: h * 0.915, maxFontSize: Math.round(w * 0.03), minFontSize: Math.round(w * 0.014), fill: accentOnDark, family: sans, weight: 600 })}
       `;
       break;
@@ -239,9 +240,9 @@ export function renderCreativeSvg(args: ComposeInput): string {
         <rect width="${w}" height="${h}" fill="${surface}"/>
         ${subjectImage(w * 0.05, h * 0.06, w * 0.9, h * 0.52, 0)}
         <rect x="${w * 0.06}" y="${h * 0.62}" width="${w * 0.72}" height="${h * 0.08}" fill="${accent}"/>
-        ${copyText({ role: "event-product", text: product.toUpperCase(), x: w * 0.08, y: h * 0.625, width: w * 0.68, height: h * 0.07, baselineY: h * 0.675, maxFontSize: Math.round(w * 0.045), minFontSize: Math.round(w * 0.018), fill: accentTextColor, family: sans, weight: 800 })}
+        ${copyText({ role: "event-product", text: headline, x: w * 0.08, y: h * 0.625, width: w * 0.68, height: h * 0.07, baselineY: h * 0.675, maxFontSize: Math.round(w * 0.045), minFontSize: Math.round(w * 0.018), fill: accentTextColor, family: sans, weight: 800 })}
         ${copyText({ role: "event-brand", text: brand, x: w * 0.08, y: h * 0.705, width: w * 0.84, height: h * 0.1, baselineY: h * 0.78, maxFontSize: Math.round(w * 0.09), minFontSize: Math.round(w * 0.025), fill: readableTextColor(accent, surface), family: sans, weight: 800 })}
-        ${copyText({ role: "event-body", text: bodyRaw, x: w * 0.08, y: h * 0.84, width: w * 0.84, height: h * 0.1, baselineY: h * 0.88, maxFontSize: Math.round(w * 0.028), minFontSize: Math.round(w * 0.016), fill: readableTextColor("#dddddd", surface), family: mono, maxLines: 2, lineHeight: 1.45, weight: 500, baselineMode: "first" })}
+        ${copyText({ role: "event-body", text: venue, x: w * 0.08, y: h * 0.84, width: w * 0.84, height: h * 0.1, baselineY: h * 0.88, maxFontSize: Math.round(w * 0.028), minFontSize: Math.round(w * 0.016), fill: readableTextColor("#dddddd", surface), family: mono, maxLines: 2, lineHeight: 1.45, weight: 500, baselineMode: "first" })}
       `;
       break;
     case "shop-banner":
@@ -249,7 +250,7 @@ export function renderCreativeSvg(args: ComposeInput): string {
         <rect width="${w}" height="${h}" fill="${surface}"/>
         ${subjectImage(w * 0.52, h * 0.08, w * 0.44, h * 0.84, 24)}
         ${copyText({ role: "shop-brand", text: brand, x: w * 0.06, y: h * 0.11, width: w * 0.42, height: h * 0.14, baselineY: h * 0.22, maxFontSize: Math.round(h * 0.1), minFontSize: Math.round(Math.min(w, h) * 0.025), fill: textColor, family: sans, weight: 700 })}
-        ${copyText({ role: "shop-product", text: product, x: w * 0.06, y: h * 0.28, width: w * 0.42, height: h * 0.12, baselineY: h * 0.36, maxFontSize: Math.round(h * 0.07), minFontSize: Math.round(Math.min(w, h) * 0.024), fill: mutedTextColor, family: display })}
+        ${copyText({ role: "shop-product", text: headline, x: w * 0.06, y: h * 0.28, width: w * 0.42, height: h * 0.12, baselineY: h * 0.36, maxFontSize: Math.round(h * 0.07), minFontSize: Math.round(Math.min(w, h) * 0.024), fill: mutedTextColor, family: display })}
         ${
           price
             ? `<circle cx="${w * 0.14}" cy="${h * 0.52}" r="${h * 0.09}" fill="${accent}"/>${copyText({ role: "shop-price", text: price, x: w * 0.07, y: h * 0.45, width: w * 0.14, height: h * 0.14, baselineY: h * 0.535, maxFontSize: Math.round(h * 0.04), minFontSize: Math.round(Math.min(w, h) * 0.016), fill: accentTextColor, family: sans, weight: 700, align: "center" })}`
@@ -261,18 +262,11 @@ export function renderCreativeSvg(args: ComposeInput): string {
       break;
     case "tryon-ui": {
       const thumbs = args.outfitThumbs ?? [];
-      const grid = [0, 1, 2, 3]
-        .map((i) => {
-          const x = w * 0.52 + (i % 2) * w * 0.2;
-          const y = h * 0.24 + Math.floor(i / 2) * h * 0.28;
-          const thumb = thumbs[i];
-          if (thumb) {
-            return `<image href="${thumb}" x="${x}" y="${y}" width="${w * 0.18}" height="${h * 0.22}" preserveAspectRatio="xMidYMid slice" rx="16"/>
-              <rect x="${x}" y="${y}" width="${w * 0.18}" height="${h * 0.22}" rx="16" fill="none" stroke="#ffffff44"/>`;
-          }
-          return `<rect x="${x}" y="${y}" width="${w * 0.18}" height="${h * 0.22}" rx="16" fill="#334155"/>`;
-        })
-        .join("");
+      const grid = thumbs.slice(0, 4).map((thumb, i) => {
+        const x = w * 0.52 + (i % 2) * w * 0.2;
+        const y = h * 0.24 + Math.floor(i / 2) * h * 0.28;
+        return `<image href="${esc(thumb)}" x="${x}" y="${y}" width="${w * 0.18}" height="${h * 0.22}" preserveAspectRatio="xMidYMid meet"/>`;
+      }).join("");
       chrome = `
         <rect width="${w}" height="${h}" fill="${surface}"/>
         <rect x="${w * 0.04}" y="${h * 0.08}" width="${w * 0.42}" height="${h * 0.84}" rx="24" fill="#1e293b"/>
@@ -281,7 +275,7 @@ export function renderCreativeSvg(args: ComposeInput): string {
         <rect x="${w * 0.08}" y="${h * 0.8}" width="${w * 0.34}" height="${h * 0.08}" rx="12" fill="${accent}"/>
         ${copyText({ role: "tryon-cta", text: cta, x: w * 0.1, y: h * 0.81, width: w * 0.3, height: h * 0.06, baselineY: h * 0.855, maxFontSize: Math.round(w * 0.026), minFontSize: Math.round(w * 0.012), fill: readableTextColor("#052e16", accent), family: sans, weight: 700 })}
         ${copyText({ role: "tryon-brand", text: brand, x: w * 0.52, y: h * 0.11, width: w * 0.42, height: h * 0.07, baselineY: h * 0.16, maxFontSize: Math.round(w * 0.036), minFontSize: Math.round(w * 0.014), fill: readableTextColor("#e2e8f0", surface), family: sans, weight: 700 })}
-        ${grid}
+        ${grid || copyText({ role: "outfit-notes", text: bodyRaw, x: w * 0.52, y: h * 0.24, width: w * 0.42, height: h * 0.58, baselineY: h * 0.29, maxFontSize: Math.round(w * 0.022), minFontSize: Math.round(w * 0.012), fill: lightTextColor, family: sans, maxLines: 10, lineHeight: 1.4, baselineMode: "first" })}
       `;
       break;
     }
@@ -290,7 +284,7 @@ export function renderCreativeSvg(args: ComposeInput): string {
         <rect width="${w}" height="${h}" fill="${surface}"/>
         ${subjectImage(w * 0.12, h * 0.18, w * 0.76, h * 0.58, 20)}
         ${copyText({ role: "lockup-brand", text: brand, x: w * 0.08, y: h * 0.035, width: w * 0.84, height: h * 0.12, baselineY: h * 0.12, maxFontSize: Math.round(w * 0.08), minFontSize: Math.round(w * 0.025), fill: readableTextColor(accent, surface), family: sans, weight: 800 })}
-        ${copyText({ role: "lockup-product", text: product, x: w * 0.08, y: h * 0.85, width: w * 0.84, height: h * 0.07, baselineY: h * 0.9, maxFontSize: Math.round(w * 0.036), minFontSize: Math.round(w * 0.016), fill: lightTextColor, family: sans, weight: 600 })}
+        ${copyText({ role: "lockup-product", text: headline, x: w * 0.08, y: h * 0.85, width: w * 0.84, height: h * 0.07, baselineY: h * 0.9, maxFontSize: Math.round(w * 0.036), minFontSize: Math.round(w * 0.016), fill: lightTextColor, family: sans, weight: 600 })}
       `;
   }
 

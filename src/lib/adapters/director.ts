@@ -28,8 +28,9 @@ import {
   MAX_DIRECTOR_FRAMES,
 } from "@/lib/adapters/director-frames";
 import { runMusicAdapter } from "@/lib/adapters/music";
-import { runChainedWanClips, WAN_FAST, wanClipsForDuration } from "@/lib/adapters/zermo";
-import { audioDurationSec, concatClips } from "@/lib/adapters/ffmpeg";
+import { WAN_FAST, wanClipsForDuration } from "@/lib/adapters/zermo";
+import { audioDurationSec, assembleExplainerVideo, checkFfmpeg, videoSize } from "@/lib/adapters/ffmpeg";
+import { parseVideoDuration, runManagedSceneVideo } from "@/lib/adapters/video-workflow";
 import { updateJob } from "@/lib/jobs/store";
 import type { LyricSheet } from "@/lib/music/lyrics";
 import { lyricSheetToSrt, timedLyricCues, wanLyricPrompt } from "@/lib/music/lyrics";
@@ -71,16 +72,10 @@ function pickKeyShots(p: Production): Shot[] {
   return picked;
 }
 
-const ASPECTS: Record<string, { w: number; h: number }> = {
-  "16:9": { w: 960, h: 540 },
-  "9:16": { w: 540, h: 960 },
-  "2.39:1": { w: 1020, h: 427 },
-  "1:1": { w: 720, h: 720 },
-};
 
 export async function runDirectorAdapter(
   ctx: AdapterContext,
-): Promise<AdapterResult & { production: Production; modeUsed: ModeUsed }> {
+): Promise<AdapterResult & { production: Production; modeUsed: ModeUsed; cut: JobOutput }> {
   const inputs = ctx.job.inputs;
   const mode = normalizeDirectorMode(inputs.mode);
   const brief = inputs.brief?.trim() || ctx.job.prompt.trim();
@@ -111,14 +106,21 @@ export async function runDirectorAdapter(
     !refName.includes("..")
       ? path.join(process.cwd(), ".data", "uploads", refName)
       : "");
-  let runtimeSec =
-    mode === "tiktok"
-      ? Math.max(8, Math.min(60, Number(inputs.runtime || 15)))
-      : Math.max(30, Math.min(3600, Number(inputs.runtime || 180)));
+  let runtimeSec = parseVideoDuration(inputs.runtime, mode === "tiktok" ? 15 : 60);
+  if (inputs.sourceVideoPath) throw new Error("Source video remix is unsupported; remove the source clip path");
+  const aspect = inputs.aspect || (mode === "tiktok" ? "9:16" : "16:9");
+  const size = videoSize(aspect);
+  if (!ctx.settings.ffmpegEnabled || !(await checkFfmpeg())) throw new Error("Enable FFmpeg before rendering a video");
+  const narration = inputs.script || (inputs.voice && inputs.voice !== "none")
+    ? { text: inputs.script || brief, voice: inputs.voice }
+    : undefined;
+  if (narration && (mode === "music-video" || ctx.settings.generationMode !== "zermo")) throw new Error("Director narration cannot be mixed with a score; use a narrated managed scene video");
+  if (inputs.subtitles === "on") throw new Error("Director timed subtitles are unavailable as a separate option; lyric captions require a timed lyric sheet");
   if (mode === "music-video" && scoreSource === "upload") {
     if (!soundtrackFile) throw new Error("Drop a soundtrack, or switch Score to write.");
     const probed = await audioDurationSec(soundtrackFile);
-    if (probed) runtimeSec = Math.max(10, Math.min(90, Math.round(probed)));
+    if (!probed) throw new Error("Dropped soundtrack is unreadable or has no audio");
+    runtimeSec = parseVideoDuration(String(probed));
   }
   const pacing: Pacing =
     inputs.cutSpeed !== undefined && inputs.cutSpeed !== ""
@@ -136,12 +138,17 @@ export async function runDirectorAdapter(
     seedText: `${ctx.job.id}:${brief}`,
     template: inputs.template,
   });
+  // Section/bar estimates must not relabel a ten-second requested cut as a longer plan.
+  const timingScale = runtimeSec / production.runtimeSec;
+  production.runtimeSec = runtimeSec;
+  production.shots = production.shots.map(s => ({ ...s, startSec: s.startSec * timingScale, endSec: s.endSec * timingScale, timecode: timecode(s.startSec * timingScale) }));
+  production.windows = production.windows.map(w => ({ ...w, startSec: w.startSec * timingScale, endSec: w.endSec * timingScale }));
 
   await fs.mkdir(OUT_DIR, { recursive: true });
   const outputs: JobOutput[] = [];
 
-  // Shot list first — it is the deliverable even before any frame exists.
-  const fullList = shotListText(production);
+  // Persist the plan for progress; it is not the finished-video deliverable.
+  const fullList = shotListText(production).replace("cuts land on the beat", "editorial timing estimate; WAN is not beat- or lip-synced");
   const listName = `${ctx.job.id}-shot-list.txt`;
   await fs.writeFile(path.join(OUT_DIR, listName), fullList);
 
@@ -232,7 +239,7 @@ export async function runDirectorAdapter(
   await mark(25, "Score done · stills next");
 
   } else {
-    ctx.job.inputs.seconds = String(Math.min(90, Math.max(10, runtimeSec)));
+    ctx.job.inputs.seconds = String(runtimeSec);
     ctx.job.inputs.genre = genreId;
     ctx.job.inputs.mood = moodId;
     ctx.job.inputs.acePrompt = parsed.acePrompt;
@@ -246,17 +253,7 @@ export async function runDirectorAdapter(
     await mark(25, "TikTok · stills next");
   }
 
-  // Key frames — live GPU when Studio/Comfy is up, otherwise local art.
-  const size =
-    ctx.settings.generationMode === "zermo"
-      ? mode === "tiktok"
-        ? { w: 352, h: 640 }
-        : { w: 640, h: 352 }
-      : ASPECTS[inputs.aspect || (mode === "tiktok" ? "9:16" : "16:9")] ??
-        ASPECTS["16:9"];
-  if (ctx.settings.generationMode === "zermo") {
-    ctx.job.inputs.size = mode === "tiktok" ? "352x640" : "640x352";
-  }
+  // Distinct scene prompts; only the opening frame needs a Qwen render.
   const keyShots = pickKeyShots(production);
   const baseHue = hash32(`${production.title}:${production.look}`) % 360;
   const frameShots = keyShots.map((shot) => {
@@ -281,80 +278,43 @@ export async function runDirectorAdapter(
       seed: hash32(`${production.title}:${shot.index}:${shot.move}`),
     };
   });
-  let frameMode: ModeUsed = ctx.settings.generationMode === "zermo" ? "zermo" : "mock";
-  if (referenceFile) {
-    const ext = path.extname(referenceFile) || ".png";
-    const copied = `${ctx.job.id}-ref${ext}`;
-    await fs.mkdir(OUT_DIR, { recursive: true });
-    await fs.copyFile(referenceFile, path.join(OUT_DIR, copied));
-    outputs.push({
-      id: nanoid(8),
-      kind: "image",
-      label: "Reference still",
-      url: `/api/outputs/${copied}`,
-    });
-    await mark(50, "Ref still · WAN next");
-  } else {
-  const frames = await generateDirectorFrames(
-    ctx,
-    frameShots.slice(0, DIRECTOR_RENDER_STILLS),
-    size,
-    async (done, total, frameOut) => {
-    const kept = outputs.filter((o) => o.kind !== "image");
-    outputs.length = 0;
-    outputs.push(...kept, ...frameOut);
-    await mark(25 + Math.round((done / total) * 25), `Still ${done}/${total} · ${total - done} left`);
-  });
-  const haveFrames = outputs.some((o) => o.kind === "image");
-  if (!haveFrames) outputs.push(...frames.outputs);
-  frameMode = frames.modeUsed;
-  }
-
+  let frameMode: ModeUsed = "zermo";
+  let cut: JobOutput;
   if (ctx.settings.generationMode === "zermo") {
-    const stills = outputs.filter((o) => o.kind === "image" && o.url);
-    const startStill = stills[0];
-    const wanCount = wanClipsForDuration(runtimeSec);
     const clipSec = WAN_FAST.frames / WAN_FAST.fps;
-    const fade = WAN_FAST.xfade;
     const cues = lyricSheet ? timedLyricCues(lyricSheet) : [];
-    if (startStill?.url) {
-    await mark(50, `WAN 0/${wanCount} · ${wanCount} left`);
-    const startPath = path.join(OUT_DIR, path.basename(startStill.url));
-    const chained = await runChainedWanClips(
-      ctx,
-      Array.from({ length: wanCount }, (_, i) => ({
-        imagePath: startPath,
-        prompt: [
-          frameShots[i % frameShots.length]?.prompt || brief,
-          wanLyricPrompt(cues, i * (clipSec - fade)),
-        ].join(" "),
-      })),
-      async (done, total, clips) => {
-        const kept = outputs.filter((o) => o.kind !== "video");
-        outputs.length = 0;
-        outputs.push(...kept, ...clips);
-        await mark(50 + Math.round((done / total) * 40), `WAN ${done}/${total} · ${total - done} left`);
-      },
-    );
-    const haveClips = outputs.some((o) => o.kind === "video");
-    if (!haveClips) outputs.push(...chained.outputs);
-    await mark(92, "Stitching WAN clips");
-    const audioUrl = outputs.find((o) => o.kind === "audio")?.url;
     let srtPath: string | undefined;
-    if (lyricSheet && timedLyricCues(lyricSheet).length) {
+    if (lyricSheet && cues.length) {
       srtPath = path.join(OUT_DIR, `${ctx.job.id}-lyrics.srt`);
       await fs.writeFile(srtPath, lyricSheetToSrt(lyricSheet));
     }
-    const cut = await concatClips({
-      jobId: ctx.job.id,
-      videoUrls: chained.clipUrls,
-      audioUrl,
-      clipSec: WAN_FAST.frames / WAN_FAST.fps,
-      xfade: WAN_FAST.xfade,
+    const prefix = outputs.filter(o => o.id !== "run-progress");
+    const managed = await runManagedSceneVideo(ctx, {
+      durationSec: runtimeSec, aspect, narration,
+      openerImagePath: referenceFile || undefined,
+      audioUrl: outputs.find(o => o.kind === "audio")?.url,
       srtPath,
+      shots: Array.from({ length: wanCount }, (_, i) => {
+        const shot = frameShots[Math.floor(i * frameShots.length / wanCount)];
+        return { ...shot, prompt: [shot.prompt, mode === "music-video" ? wanLyricPrompt(cues, i * (clipSec - WAN_FAST.xfade)) : ""].filter(Boolean).join(" ") };
+      }),
+      onProgress: async (progress, label, generated) => {
+        outputs.splice(0, outputs.length, ...prefix, ...generated);
+        await mark(progress, label);
+      },
     });
-    if (cut) outputs.push(cut);
-    }
+    outputs.splice(0, outputs.length, ...prefix, ...managed.outputs);
+    cut = managed.cut;
+  } else {
+    // Non-managed engines deliver a labelled slideshow, never pretend to run WAN.
+    const frames = await generateDirectorFrames(ctx, frameShots, size);
+    outputs.push(...frames.outputs);
+    frameMode = frames.modeUsed;
+    const imageUrls = frames.outputs.filter(o => o.kind === "image" && o.url).map(o => o.url!);
+    cut = await assembleExplainerVideo({ jobId: ctx.job.id, imageUrls,
+      audioUrl: outputs.find(o => o.kind === "audio")?.url,
+      secondsPerBeat: runtimeSec / imageUrls.length, durationSec: runtimeSec, aspect });
+    outputs.push(cut);
   }
 
   // Window plan — what is rendered and what is still queued.
@@ -362,7 +322,7 @@ export async function runDirectorAdapter(
     const done = keyShots.filter(
       (s) => s.startSec >= w.startSec && s.startSec < w.endSec,
     ).length;
-    return `Window ${w.index + 1}  ${timecode(w.startSec)}–${timecode(w.endSec)}  ${w.shots} shots  ${done} keyframed`;
+    return `Window ${w.index + 1}  ${timecode(w.startSec)}–${timecode(w.endSec)}  ${w.shots} planned shots  ${done} scene prompts`;
   });
   outputs.push({
     id: nanoid(8),
@@ -370,11 +330,11 @@ export async function runDirectorAdapter(
     label: "Windows",
     text: [
       `${production.shots.length} shots across ${production.windows.length} windows.`,
-      `${DIRECTOR_RENDER_STILLS} key still on this pass.`,
+      `${outputs.filter(o => o.kind === "image").length} rendered opener/still(s). Final cut required; planned shots are not independent clip deliverables.`,
       "",
       ...windowLines,
     ].join("\n"),
   });
 
-  return { outputs, production, modeUsed: frameMode };
+  return { outputs, production, modeUsed: frameMode, cut };
 }

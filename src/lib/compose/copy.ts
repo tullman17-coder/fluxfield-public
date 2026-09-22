@@ -6,33 +6,16 @@ export type CampaignCopy = {
   cta: string;
 };
 
-function cleanPhrase(value: string = "", fallback = ""): string {
-  const text = value.replace(/\s+/g, " ").trim();
-  if (!text) return fallback;
-  return text;
-}
-
-/** Drop a dangling last fragment so body copy ends on a complete phrase. */
-export function completeSentences(text: string): string {
-  const trimmed = cleanPhrase(text);
-  if (!trimmed) return "";
-  if (/[.!?…]"?$/.test(trimmed)) return trimmed;
-  const parts = trimmed.split(/(?<=[.!?])\s+/);
-  if (parts.length > 1) return parts.slice(0, -1).join(" ");
-  return trimmed;
-}
-
+/** Literal user copy wins; the compositor reports text that cannot fit. */
 export function localCohereCopy(values: Record<string, string>): CampaignCopy {
-  const brandName = cleanPhrase(values.brandName || values.productName, "Brand");
-  const productName = cleanPhrase(values.productName, brandName);
+  const brandName = values.brandName || values.productName || "Brand";
+  const productName = values.productName || brandName;
   return {
     brandName,
     productName,
-    headline: cleanPhrase(values.headline || values.cta || productName),
-    bodyCopy: completeSentences(
-      values.bodyCopy || values.productDescription || values.venue || "",
-    ),
-    cta: cleanPhrase(values.cta, "Shop now"),
+    headline: values.headline || productName,
+    bodyCopy: values.bodyCopy || values.venue || values.productDescription || "",
+    cta: values.cta || "Shop now",
   };
 }
 
@@ -56,7 +39,7 @@ export function applyMarketingCopy(
 ): Record<string, string> {
   const next = { ...values };
   if (!next.headline && parsed.headline) next.headline = parsed.headline;
-  if (!next.bodyCopy && parsed.bodyCopy) next.bodyCopy = parsed.bodyCopy;
+  if (!next.bodyCopy && !next.venue && parsed.bodyCopy) next.bodyCopy = parsed.bodyCopy;
   if (!next.cta && parsed.cta) next.cta = parsed.cta;
   return next;
 }

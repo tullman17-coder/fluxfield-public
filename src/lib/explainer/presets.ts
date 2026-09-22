@@ -1,3 +1,5 @@
+import { MANAGED_MOTION_LENGTHS } from "@/lib/workflows";
+
 export type ExplainerPreset = {
   id: string;
   name: string;
@@ -95,21 +97,17 @@ export const EXPLAINER_PRESETS: ExplainerPreset[] = [
 ];
 
 export const EXPLAINER_VOICES = [
+  { id: "none", label: "No narration" },
   { id: "narrator-warm", label: "Warm Narrator" },
   { id: "narrator-f", label: "Narrator F" },
   { id: "narrator-m", label: "Narrator M" },
   { id: "bright", label: "Bright" },
 ];
 
-export const EXPLAINER_DURATIONS = [
-  { id: "30s", label: "30s", beats: 4, sec: 30 },
-  { id: "1m", label: "1 min", beats: 6, sec: 60 },
-  { id: "2m", label: "2 min", beats: 8, sec: 120 },
-  { id: "3m", label: "3 min", beats: 10, sec: 180 },
-  { id: "5m", label: "5 min", beats: 12, sec: 300 },
-  { id: "10m", label: "10 min", beats: 12, sec: 600 },
-  { id: "15m", label: "15 min", beats: 12, sec: 900 },
-];
+export const EXPLAINER_DURATIONS = MANAGED_MOTION_LENGTHS.map(d => ({
+  id: d.id, label: d.label, sec: d.seconds,
+  beats: d.seconds <= 15 ? 3 : d.seconds <= 30 ? 4 : d.seconds <= 60 ? 6 : 8,
+}));
 
 export function getExplainerPreset(id: string) {
   return EXPLAINER_PRESETS.find((p) => p.id === id) ?? EXPLAINER_PRESETS[0];

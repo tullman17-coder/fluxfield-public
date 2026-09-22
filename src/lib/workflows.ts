@@ -1,3 +1,5 @@
+import { interpolatePrompt, presetDirection, type PromptPreset } from "@/lib/wrappers/catalog";
+
 export type WorkflowKind = "image" | "video" | "pack";
 
 export type WorkflowField = {
@@ -16,10 +18,11 @@ export type WorkflowDefinition = {
   tagline: string;
   category: "product" | "ads" | "ugc" | "motion" | "marketplace" | "poster";
   kind: WorkflowKind;
+  outputKind: "image" | "composition" | "video";
   accent: string;
   durationHint: string;
   inputs: WorkflowField[];
-  presets: { id: string; label: string; description: string }[];
+  presets: PromptPreset[];
   promptTemplate: string;
   negativePrompt: string;
   aspectDefault: string;
@@ -33,8 +36,9 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     tagline: "Catalogue, lifestyle, and model-held stills from one product brief.",
     category: "product",
     kind: "image",
+    outputKind: "image",
     accent: "#e85d04",
-    durationHint: "Usually under a minute",
+    durationHint: "Clean image · no typography",
     inputs: [
       {
         id: "productName",
@@ -54,7 +58,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
         id: "referenceImage",
         label: "Product photo (optional)",
         type: "file",
-        help: "Optional. The result will follow this image.",
+        help: "Optional reference. Exact product identity is not guaranteed; inspect the result.",
       },
       {
         id: "aspect",
@@ -72,22 +76,25 @@ export const WORKFLOWS: WorkflowDefinition[] = [
         id: "studio",
         label: "Studio",
         description: "Seamless backdrop, catalogue lighting",
+        style: "clean product photography",
       },
       {
         id: "lifestyle",
         label: "Lifestyle",
         description: "Real-world scene with soft daylight",
+        style: "natural product photography",
       },
       {
         id: "with-model",
         label: "With Model",
         description: "Hands / person using the product",
+        style: "natural product photography",
       },
     ],
     promptTemplate:
-      "Professional advertising product photography of {{productName}}, {{productDescription}}, {{preset}}, commercial brand campaign, crisp detail, controlled lighting, high-end ecommerce still",
+      "Clean product image of {{productName}}, {{productDescription}}, {{preset}}, crisp detail, controlled lighting, no added poster frame, headline or CTA",
     negativePrompt:
-      "blurry, low quality, watermark, extra limbs, missing limbs, fused fingers, collapsed face",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "1:1",
     comfyMode: "img2img",
   },
@@ -97,6 +104,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     tagline: "Meta and Google placement packs — volume variants for testing.",
     category: "ads",
     kind: "pack",
+    outputKind: "composition",
     accent: "#1d4e89",
     durationHint: "3 variants per run",
     inputs: [
@@ -150,20 +158,21 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       },
     ],
     promptTemplate:
-      "Paid social ad creative for {{productName}}, {{productDescription}}, audience {{audience}}, {{preset}} composition, scroll-stopping commercial advertising still, clean layout space for headline, brand photography",
+      "Paid social ad creative for {{productName}}, {{productDescription}}, audience {{audience}}, {{preset}} composition, scroll-stopping commercial advertising still, clean layout space for headline, clear subject separation",
     negativePrompt:
-      "watermark, low contrast, amateur snapshot, extra limbs, fused fingers, crossed eyes",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "4:5",
     comfyMode: "txt2img",
   },
   {
     slug: "ugc-ad",
     name: "UGC Ad",
-    tagline: "Phone-shot creator energy: talking head, faceless, or silent.",
+    tagline: "Creator-style motion concepts in the shared video tool; no lip-sync or narration.",
     category: "ugc",
     kind: "video",
+    outputKind: "video",
     accent: "#0f7a5f",
-    durationHint: "Script plus key frames",
+    durationHint: "Opens Creator clips · 10–90 seconds",
     inputs: [
       {
         id: "productName",
@@ -199,23 +208,23 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       {
         id: "talking-head",
         label: "Talking Head",
-        description: "Face-to-camera creator review",
+        description: "Face-to-camera creator review gestures and product close-ups; silent, no lip-sync",
       },
       {
         id: "faceless",
         label: "Faceless",
-        description: "Hands + product POV",
+        description: "Hands + product POV; no visible host face",
       },
       {
         id: "silent",
         label: "Silent",
-        description: "Caption-led, no spoken VO needed",
+        description: "Silent product demonstration with expressive gestures; no generated speech or captions",
       },
     ],
     promptTemplate:
       "Full-bleed candid creator photograph featuring {{productName}}, {{productDescription}}, {{preset}} style, casual bathroom or desk scene, natural skin texture, authentic available-light photography, edge-to-edge composition",
     negativePrompt:
-      "studio softbox, cinematic anamorphic, celebrity face, heavy makeup glam, CGI plastic look",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "9:16",
     comfyMode: "img2img",
   },
@@ -225,8 +234,9 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     tagline: "Cinematic camera moves and hypermotion product heroes.",
     category: "motion",
     kind: "video",
+    outputKind: "video",
     accent: "#7a1f3d",
-    durationHint: "Keyframe board + motion brief",
+    durationHint: "Opens Creator clips with product-motion direction",
     inputs: [
       {
         id: "productName",
@@ -276,9 +286,9 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       },
     ],
     promptTemplate:
-      "Cinematic product motion keyframe of {{productName}}, {{productDescription}}, {{preset}}, dramatic camera path, premium commercial lighting, reflective surfaces, launch film still",
+      "Product-motion concept of {{productName}}, {{productDescription}}, {{preset}}, dramatic camera path, premium commercial lighting, reflective surfaces, launch film still",
     negativePrompt:
-      "static snapshot, flat lighting, busy background clutter, soft focus fail",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "16:9",
     comfyMode: "video",
   },
@@ -288,6 +298,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     tagline: "Listing imagery set: hero, detail, lifestyle, size context.",
     category: "marketplace",
     kind: "pack",
+    outputKind: "image",
     accent: "#5b4b8a",
     durationHint: "4 listing frames",
     inputs: [
@@ -338,9 +349,9 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       },
     ],
     promptTemplate:
-      "Ecommerce marketplace listing photo of {{productName}}, {{productDescription}}, {{preset}}, accurate product representation, bright even lighting, conversion-focused product image",
+      "Clean marketplace listing image of {{productName}}, {{productDescription}}, {{preset}}, accurate product representation, bright even lighting, conversion-focused product image",
     negativePrompt:
-      "misleading props, heavy stylization, watermark, extra limbs, fused fingers",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "1:1",
     comfyMode: "img2img",
   },
@@ -350,6 +361,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     tagline: "Print and digital posters with room for headline lockups.",
     category: "poster",
     kind: "image",
+    outputKind: "composition",
     accent: "#b45309",
     durationHint: "Single key art",
     inputs: [
@@ -369,7 +381,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       },
       {
         id: "headline",
-        label: "Headline (leave space)",
+        label: "Headline (printed literally)",
         type: "text",
         placeholder: "Stay Out Longer",
       },
@@ -404,7 +416,7 @@ export const WORKFLOWS: WorkflowDefinition[] = [
     promptTemplate:
       "Campaign poster key art for {{productName}}, {{productDescription}}, headline concept '{{headline}}', {{preset}}, advertising poster composition with clear focal point and space for typography, print-ready commercial art",
     negativePrompt:
-      "stock photo watermark, muddy colors, extra limbs, missing limbs, collapsed face",
+      "watermark, unreadable accidental lettering, low resolution",
     aspectDefault: "2:3",
     comfyMode: "txt2img",
   },
@@ -419,13 +431,44 @@ export function fillPrompt(
   values: Record<string, string>,
   presetLabel: string,
 ) {
-  return template
-    .replaceAll("{{productName}}", values.productName?.trim() || "the product")
-    .replaceAll(
-      "{{productDescription}}",
-      values.productDescription?.trim() || "featured product",
-    )
-    .replaceAll("{{audience}}", values.audience?.trim() || "general audience")
-    .replaceAll("{{headline}}", values.headline?.trim() || "campaign headline")
-    .replaceAll("{{preset}}", presetLabel);
+  const workflow = WORKFLOWS.find((w) => w.promptTemplate === template);
+  const preset = workflow?.presets.find((p) => p.label === presetLabel || p.id === presetLabel);
+  return interpolatePrompt(template, {
+    productName: "the product",
+    productDescription: "featured product",
+    audience: "general audience",
+    headline: "campaign headline",
+    ...values,
+    preset: preset ? presetDirection(preset, values) : presetLabel,
+  });
+}
+
+/** Managed motion lengths. UI sends both the legacy token and numeric seconds. */
+export const MANAGED_MOTION_LENGTHS = [
+  { id: "10s", label: "10 sec", seconds: 10 },
+  { id: "15s", label: "15 sec", seconds: 15 },
+  { id: "30s", label: "30 sec", seconds: 30 },
+  { id: "1m", label: "60 sec", seconds: 60 },
+  { id: "90s", label: "90 sec", seconds: 90 },
+];
+
+/** Compatibility only: use the real motion adapter, retaining the original direction. */
+export function legacyVideoEntry(slug: string, presetId: string, inputs: Record<string, string> = {}) {
+  const workflow = getWorkflow(slug);
+  if (!workflow || !["ugc-ad", "product-motion"].includes(slug)) return undefined;
+  const preset = workflow.presets.find((p) => p.id === presetId) ?? workflow.presets[0];
+  return {
+    tool: "ugc" as const,
+    workflowSlug: "ugc",
+    presetId: slug === "ugc-ad" && preset.id === "talking-head" ? "review" : "product",
+    inputs: {
+      ...inputs,
+      aspect: inputs.aspect || workflow.aspectDefault,
+      brief: [inputs.brief, inputs.productName, inputs.productDescription, presetDirection(preset, inputs)].filter(Boolean).join("\n"),
+    },
+  };
+}
+
+export function formQueryValues(query: Record<string, string | string[] | undefined>) {
+  return Object.fromEntries(Object.entries(query).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }

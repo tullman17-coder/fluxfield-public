@@ -18,9 +18,9 @@ assert.equal(musicSeconds("zermo", "300"), "90");
 assert.equal(musicSeconds("zermo", "5"), "10");
 assert.equal(musicSeconds("zermo", "60"), "60");
 assert.equal(musicSeconds("zermo", "oops"), "60");
-assert.equal(getDurationSeconds("15m"), 900);
-assert.equal(getDurationBeats("15m"), 12);
-assert.equal(getDurationSeconds("2m"), 120);
+assert.equal(getDurationSeconds("90s"), 90);
+assert.equal(getDurationBeats("90s"), 8);
+assert.equal(getDurationSeconds("10s"), 10);
 assert.equal(musicSeconds("mock", "300"), "300");
 assert(musicLengths("zermo").every((x) => Number(x.id) >= 10 && Number(x.id) <= 90));
 assert.equal(preferredImproveProvider({ improveProvider: "api", hasImproveApiKey: true }), "api");
@@ -102,4 +102,7 @@ assert.equal(
   pastel.preview_sha256,
   createHash("sha256").update(pastelBytes).digest("hex"),
 );
+for (const file of ["src/app/create/page.tsx", "src/components/studio/job-runner.tsx"]) {
+  assert(readFileSync(file, "utf8").includes("Model review can miss identity, color and count errors. Inspect reference edits yourself."), "Known review limits must be visible beside the QA control");
+}
 console.log("Studio UI behavior checks passed");

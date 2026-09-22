@@ -66,6 +66,7 @@ export type Genre = {
 };
 
 export const GENRES: Genre[] = [
+  { id: "cartoon", label: "Cartoon score", blurb: "Playful pizzicato, xylophone, comic brass. Pick No words for a score bed.", bpm: [104, 132], scale: "major", progression: [0, 3, 4, 0], drums: 0.5, bass: 0.65, pad: 0.35, lead: 0.9, arp: 0.6, swing: 0.12, accent: "#facc15" },
   { id: "lofi", label: "Lo-fi", blurb: "Dusty keys, soft kit, late-night calm.", bpm: [72, 88], scale: "dorian", progression: [0, 5, 3, 4], drums: 0.6, bass: 0.7, pad: 0.9, lead: 0.4, arp: 0.2, swing: 0.18, accent: "#c58bff" },
   { id: "synthwave", label: "Synthwave", blurb: "Neon arps, gated drums, wide chorus.", bpm: [96, 112], scale: "minor", progression: [0, 5, 2, 4], drums: 0.85, bass: 0.9, pad: 0.8, lead: 0.7, arp: 0.9, swing: 0, accent: "#ff5fc8" },
   { id: "cinematic", label: "Cinematic", blurb: "Slow swells, low strings, wide air.", bpm: [60, 76], scale: "harmonicMinor", progression: [0, 3, 4, 0], drums: 0.25, bass: 0.6, pad: 1.0, lead: 0.5, arp: 0.1, swing: 0, accent: "#7fb2ff" },
@@ -169,7 +170,7 @@ function sectionPlan(barBudget: number, hasDrums: boolean): SectionName[] {
   }
   if (!middle.length) middle.push("Chorus");
   // Land on the hook before the outro.
-  if (middle[middle.length - 1] !== "Chorus" && middle.length > 1) {
+  if (middle[middle.length - 1] !== "Chorus") {
     middle[middle.length - 1] = "Chorus";
   }
   return [intro, ...middle, outro];
@@ -207,12 +208,10 @@ export function planArrangement(args: {
   const mood = MOODS[args.mood || "neutral"] ?? MOODS.neutral;
   const rand = rng(seedFromText(args.seedText));
 
-  const bpm =
-    args.bpm && args.bpm > 30
-      ? args.bpm
-      : Math.round(
-          genre.bpm[0] + rand() * (genre.bpm[1] - genre.bpm[0]) + mood.bpmShift,
-        );
+  if (args.bpm !== undefined && (!Number.isInteger(args.bpm) || args.bpm < 30 || args.bpm > 300)) throw new Error("BPM must be an integer from 30 to 300");
+  const bpm = args.bpm ?? Math.round(
+    genre.bpm[0] + rand() * (genre.bpm[1] - genre.bpm[0]) + mood.bpmShift,
+  );
 
   const root =
     args.key && NOTE_NAMES.includes(args.key as (typeof NOTE_NAMES)[number])

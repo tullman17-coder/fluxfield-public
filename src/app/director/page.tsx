@@ -3,8 +3,9 @@
 import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
 import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import Image from "next/image";
-import { useCallback, useRef, useState } from "react";
-import { LOOKS, RUNTIMES, TIKTOK_RUNTIMES, TIKTOK_TEMPLATES, CUT_SPEEDS } from "@/lib/director/plan";
+import { use, useCallback, useRef, useState } from "react";
+import { LOOKS, TIKTOK_TEMPLATES, CUT_SPEEDS } from "@/lib/director/plan";
+import { MANAGED_MOTION_LENGTHS, formQueryValues } from "@/lib/workflows";
 import { DIRECTOR_GENRES, MOODS } from "@/lib/music/theory";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
@@ -20,7 +21,7 @@ const MODES = [
   {
     id: "tiktok",
     label: "TikTok",
-    blurb: "15–60s vertical. Trend template, no song writing.",
+    blurb: "10–90s vertical. Story template, no song writing.",
   },
 ] as const;
 
@@ -46,12 +47,13 @@ const selectClass =
   "h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/10 px-3 text-sm text-[#f5eff6] transition-colors hover:border-white/15 focus-visible:outline-2 focus-visible:outline-[#f2a1ed]";
 const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
-export default function DirectorPage() {
+export default function DirectorPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const values = formQueryValues(use(searchParams));
   const { zermo } = useStudioConnection();
-  const [mode, setMode] = useState<"music-video" | "tiktok">("music-video");
-  const [brief, setBrief] = useState("");
-  const [runtime, setRuntime] = useState("180");
-  const [look, setLook] = useState("auto");
+  const [mode, setMode] = useState<"music-video" | "tiktok">(values.mode === "tiktok" ? "tiktok" : "music-video");
+  const [brief, setBrief] = useState(values.brief || "");
+  const [runtime, setRuntime] = useState("30");
+  const [look, setLook] = useState(LOOKS.find((l) => l.id === values.look)?.id || "auto");
   const [pacing, setPacing] = useState("steady");
   const [cutSpeed, setCutSpeed] = useState("0");
   const [cast, setCast] = useState("");
@@ -59,7 +61,7 @@ export default function DirectorPage() {
   const [scoreFile, setScoreFile] = useState<File | null>(null);
   const [refFile, setRefFile] = useState<File | null>(null);
   const [refUrl, setRefUrl] = useState("");
-  const [aspect, setAspect] = useState("16:9");
+  const [aspect, setAspect] = useState(values.mode === "tiktok" ? "9:16" : "16:9");
   const [template, setTemplate] = useState("hook-payoff");
   const [genre, setGenre] = useState("auto");
   const [mood, setMood] = useState("neutral");
@@ -107,7 +109,7 @@ export default function DirectorPage() {
           lyrics: mode === "music-video" ? lyrics : "",
           ...(refUrl.trim() && !refFile ? { referenceImageUrl: refUrl.trim() } : {}),
           ...(mode === "music-video"
-            ? { seconds: String(Math.min(90, Math.max(10, Number(runtime) || 180))) }
+            ? { seconds: String(Math.min(90, Math.max(10, Number(runtime) || 30))) }
             : {}),
         }),
       );
@@ -140,13 +142,13 @@ export default function DirectorPage() {
     <div className="w-full min-w-0">
       <header className="mb-8 grid gap-3 border-b border-white/10 pb-6">
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-          Long form
+          Short motion · 10–90 seconds
         </p>
         <h1 className="text-4xl font-semibold tracking-tight text-balance text-[#f5eff6] md:text-5xl">
           Director
         </h1>
         <p className="max-w-xl text-pretty text-[#b8aebb]">
-          Type the whole job. Voice, beat, topic. We split it into ACE + still + WAN.
+          Describe the visuals and music. Make a 10–90 second cut with an ACE score or your own soundtrack. Music vocals are not spoken narration or lip-sync.
         </p>
       </header>
 
@@ -177,7 +179,7 @@ export default function DirectorPage() {
                       setPacing("fast");
                       setLyricMode("instrumental");
                     } else {
-                      setRuntime("180");
+                      setRuntime("30");
                       setAspect("16:9");
                       setPacing("steady");
                       setLyricMode("write");
@@ -211,7 +213,7 @@ export default function DirectorPage() {
               ref={briefRef}
               value={brief}
               onChange={(e) => setBrief(e.currentTarget.value)}
-              placeholder=""
+              placeholder="A flattering cartoon portrait of a raccoon DJ, silly crowd dance, bright paper-cut stage. Or request realism in your own words."
               className="min-h-28 w-full min-w-0 resize-y rounded-[10px] border border-white/15 bg-white/15 p-3 text-base leading-normal text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
           </div>
@@ -294,8 +296,8 @@ export default function DirectorPage() {
                 onChange={(e) => setRuntime(e.currentTarget.value)}
                 className={selectClass}
               >
-                {(mode === "tiktok" ? TIKTOK_RUNTIMES : RUNTIMES).map((r) => (
-                  <option key={r.id} value={r.id}>
+                {MANAGED_MOTION_LENGTHS.map((r) => (
+                  <option key={r.id} value={String(r.seconds)}>
                     {r.label}
                   </option>
                 ))}
@@ -339,11 +341,12 @@ export default function DirectorPage() {
               </label>
               <select
                 id="aspect"
-                value={aspect}
+                disabled={mode === "tiktok"}
+                value={mode === "tiktok" ? "9:16" : aspect}
                 onChange={(e) => setAspect(e.currentTarget.value)}
                 className={selectClass}
               >
-                {ASPECTS.map((a) => (
+                {ASPECTS.filter((a) => mode !== "tiktok" || a.id === "9:16").map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.label} · {a.id}
                   </option>
@@ -369,7 +372,7 @@ export default function DirectorPage() {
                 </select>
               </div>
             ) : null}
-            {mode === "music-video" ? (
+            {mode === "music-video" && scoreSource === "write" ? (
               <div className="grid min-w-0 grid-cols-2 gap-3">
                 <div className="min-w-0">
                   <label htmlFor="genre" className={labelClass}>
@@ -442,7 +445,7 @@ export default function DirectorPage() {
               ) : null}
             </fieldset>
             ) : null}
-            {mode === "music-video" ? (
+            {mode === "music-video" && scoreSource === "write" ? (
             <fieldset className="min-w-0 border-t border-white/10 py-4">
               <legend className="text-sm font-medium text-[#b8aebb]">Words</legend>
               <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
@@ -466,6 +469,7 @@ export default function DirectorPage() {
               </div>
               {lyricMode === "own" ? (
                 <textarea
+                  aria-label="Your lyrics"
                   className="mt-3 min-h-28 w-full rounded-[10px] border border-white/10 bg-white/10 p-3 text-sm text-[#f5eff6]"
                   value={lyrics}
                   onChange={(e) => setLyrics(e.currentTarget.value)}
@@ -491,7 +495,7 @@ export default function DirectorPage() {
               disabled={running}
               className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/5 disabled:text-[#6e6570] sm:w-48"
             >
-              {running ? (runStatus?.text || "Working…") : "Build the plan"}
+              {running ? (runStatus?.text || "Working…") : "Make the cut"}
             </button>
           </div>
         </form>
@@ -500,15 +504,15 @@ export default function DirectorPage() {
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
             Schedule
           </p>
-          <h2 className="mt-1 text-lg text-[#f5eff6]">Windows</h2>
+          <h2 className="mt-1 text-lg text-[#f5eff6]">Cut plan</h2>
           {windows?.text ? (
             <pre className="mt-4 max-h-72 overflow-y-auto whitespace-pre-wrap font-mono text-xs leading-relaxed tabular-nums text-[#b8aebb]">
               {windows.text}
             </pre>
           ) : (
             <p className="mt-4 text-sm text-[#8d838f]">
-              Anything over two minutes gets split into windows, so a long piece
-              comes together a stretch at a time instead of all at once.
+              Short motion clips are stitched to the selected length. The shot plan
+              and actual outputs appear here after submission.
             </p>
           )}
 

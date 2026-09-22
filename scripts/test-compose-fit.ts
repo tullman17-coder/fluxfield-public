@@ -130,7 +130,7 @@ async function renderRegressionArtifacts() {
   const cta = textGroup(longSvg, "shop-cta");
   assert.equal(brand.lines.join(" "), "STUDIO SAMPLE");
   assert.equal(product.lines.join(" "), "AeroBrew Go Cup");
-  assert.equal(cta.lines.join(" "), "Shop the AeroBrew Go Cup");
+  assert.equal(cta.lines.join(""), "Shop the AeroBrew Go Cup");
   assertFitsWidth(brand, w * 0.48, "brand");
   assertFitsWidth(product, w * 0.48, "product");
   assertFitsWidth(cta, w * 0.37, "CTA");
@@ -222,8 +222,9 @@ async function renderRegressionArtifacts() {
     maxLines: 2,
   });
   const excessiveDuration = performance.now() - excessiveStartedAt;
-  assert.ok(excessiveFit.lines.length <= 2);
-  assert.equal(excessiveFit.truncated, true);
+  assert.equal(excessiveFit.lines.join(" "), excessiveCopy);
+  assert.equal(excessiveFit.truncated, false);
+  assert.equal(excessiveFit.overflow, true, "unfit copy must be exposed, never truncated");
   assert.ok(
     excessiveDuration < 750,
     `bounded copy fitting took ${excessiveDuration.toFixed(0)}ms`,

@@ -1,87 +1,33 @@
-"use client";
-
-import { useMemo } from "react";
 import { JobRunner } from "@/components/studio/job-runner";
 import { getVideoWorkflow } from "@/lib/video-workflows/catalog";
-import { EXPLAINER_DURATIONS } from "@/lib/explainer/presets";
+import { MANAGED_MOTION_LENGTHS, formQueryValues } from "@/lib/workflows";
 
 const def = getVideoWorkflow("ad-multiplier")!;
 
-export default function AdMultiplierPage() {
-  const fields = useMemo(
-    () => [
-      {
-        id: "brief",
-        label: "What should every cut sell?",
-        type: "textarea" as const,
-        required: true,
-        placeholder:
-          "Wireless earbuds — quiet commute, clear calls, all-day charge. Bold first second.",
-      },
-      {
-        id: "aspect",
-        label: "Aspect",
-        type: "select" as const,
-        options: [
-          { label: "9:16", value: "9:16" },
-          { label: "1:1", value: "1:1" },
-          { label: "16:9", value: "16:9" },
-        ],
-      },
-      {
-        id: "duration",
-        label: "Length",
-        type: "select" as const,
-        options: EXPLAINER_DURATIONS.map((d) => ({
-          label: d.label,
-          value: d.id,
-        })),
-      },
-      {
-        id: "sourceVideoPath",
-        label: "Source clip path (optional)",
-        type: "text" as const,
-        placeholder: "Leave blank to plan variants from the brief alone",
-        help: "If you already have a master clip on disk, paste its path. Otherwise we still build a full variant board.",
-      },
-      {
-        id: "voice",
-        label: "Voice",
-        type: "select" as const,
-        options: [
-          { label: "Default", value: "default" },
-          { label: "Urgent", value: "urgent" },
-          { label: "Calm", value: "calm" },
-        ],
-      },
-    ],
-    [],
-  );
-
+export default async function Page({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const values = formQueryValues(await searchParams ?? {});
+  const fields = [
+    { id: "brief", label: "What should this sequence show?", type: "textarea" as const, required: true, placeholder: "Wireless earbuds — a silly commuter escapes a noisy bus into a quiet cartoon bubble." },
+    { id: "aspect", label: "Aspect", type: "select" as const, options: [{"label": "9:16", "value": "9:16"}, {"label": "1:1", "value": "1:1"}, {"label": "16:9", "value": "16:9"}] },
+    { id: "duration", label: "Length", type: "select" as const, options: MANAGED_MOTION_LENGTHS.map((d) => ({ label: d.label, value: d.id })) },
+  ];
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#e77ae6]">
-          Video
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-balance text-[#f5eff6] md:text-5xl">
-          {def.name}
-        </h1>
-        <p className="mt-2 max-w-2xl text-pretty text-[#b8aebb]">{def.tagline}</p>
-      </div>
-
-      <div className="glass rounded-[14px] border border-white/10 p-5 md:p-6">
+    <div className="min-w-0 space-y-6">
+      <header>
+        <p className="text-xs uppercase tracking-wider text-[#e77ae6]">Video · 10–90 seconds</p>
+        <h1 className="mt-2 text-3xl font-semibold text-[#f5eff6] md:text-5xl">Ad sequence</h1>
+        <p className="mt-2 max-w-2xl text-pretty text-[#b8aebb]">One generated sequence per run: hook, benefit, proof and CTA. Independent A/B variants, hook packs, angle packs and source-clip remixing are unavailable.</p>
+      </header>
+      <div className="glass min-w-0 rounded-[14px] border border-white/10 p-4 md:p-6">
         <JobRunner
           tool="ad-multiplier"
           workflowSlug="ad-multiplier"
           fields={fields}
-          presets={def.modes.map((m) => ({
-            id: m.id,
-            label: m.label,
-            description: m.description,
-          }))}
+          presets={def.modes.filter((m) => m.id === "variants").map((m) => ({ ...m, label: "Ad sequence", description: "Hook, benefit, proof and CTA beats in one cut" }))}
+          initialPresetId={values.preset}
+          initialValues={values}
           accent={def.accent}
-          submitLabel="Make the variants"
+          submitLabel="Make the sequence"
         />
       </div>
     </div>

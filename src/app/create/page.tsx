@@ -4,7 +4,8 @@ import { jobStatusLabel, exactSeed, preferredImproveProvider, ZERMO_IMAGE_PROFIL
 import { useStudioConnection } from "@/lib/studio/use-studio-connection";
 import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 
-import { useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   visibleDreamPresets,
   MATURE_PRESETS,
@@ -12,6 +13,8 @@ import {
   FRAMINGS,
 
   enhancePrompt,
+  enhanceNegativePrompt,
+  isPromptProposal,
 } from "@/lib/dream/presets";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
 import type { StudioJob } from "@/lib/adapters/types";
@@ -20,6 +23,8 @@ import { MediaLightbox } from "@/components/studio/media-lightbox";
 
 type ImproveResult = {
   prompt: string;
+  originalPrompt: string;
+  context: string;
   provider: "local" | "api" | "zermo";
   model: string;
 };
@@ -30,26 +35,38 @@ const inputClass = selectClass;
 const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
 export default function CreatePage() {
-  const [prompt, setPrompt] = useState("");
-  const [negativePrompt, setNegativePrompt] = useState("");
-  const [preset, setPreset] = useState("dream");
-  const [ratio, setRatio] = useState("square");
-  const [framing, setFraming] = useState("auto");
-  const [count, setCount] = useState("1");
-  const [seed, setSeed] = useState("");
-  const [customSteps, setSteps] = useState("");
-  const [cfg, setCfg] = useState("1");
+  return <Suspense fallback={<p role="status">Loading Create…</p>}><CreateFromSearch /></Suspense>;
+}
+
+function CreateFromSearch() {
+  const params = useSearchParams();
+  return <CreateWorkbench key={params.toString()} initial={params} />;
+}
+
+function CreateWorkbench({ initial }: { initial: Pick<URLSearchParams, "get"> }) {
+  const [prompt, setPrompt] = useState(initial.get("prompt") ?? initial.get("brief") ?? "");
+  const [negativePrompt, setNegativePrompt] = useState(initial.get("negativePrompt") ?? "");
+  const [preset, setPreset] = useState(initial.get("preset") ?? initial.get("presetId") ?? initial.get("style") ?? "auto");
+  const [ratio, setRatio] = useState(initial.get("ratio") ?? "square");
+  const [framing, setFraming] = useState(initial.get("framing") ?? "auto");
+  const [count, setCount] = useState(initial.get("count") ?? "1");
+  const [seed, setSeed] = useState(initial.get("seed") ?? "");
+  const [customSteps, setSteps] = useState(initial.get("steps") ?? "");
+  const [cfg, setCfg] = useState(initial.get("cfg") ?? "1");
+  const [campaignCopy, setCampaignCopy] = useState(initial.get("campaignCopy") === "true" || (initial.get("campaignCopy") === null && initial.get("mode") === "campaign"));
+  const [brandName, setBrandName] = useState(initial.get("brandName") ?? initial.get("brand") ?? "");
   const { settings, health, zermo, error: connectionError } = useStudioConnection();
-  const [adultCategory, setAdultCategory] = useState(false);
+  const [adultCategory, setAdultCategory] = useState(MATURE_PRESETS.some((p) => p.id === preset));
   const steps = customSteps || (zermo ? "8" : "4");
-  const [assist, setAssist] = useState(true);
-  const [visualQa, setVisualQa] = useState(false);
+  const [assist, setAssist] = useState(initial.get("assist") !== "off");
+  const [visualQa, setVisualQa] = useState(initial.get("visualQa") !== "off");
   const [refFile, setRefFile] = useState<File | null>(null);
-  const [refUrl, setRefUrl] = useState("");
+  const [refUrl, setRefUrl] = useState(initial.get("referenceImageUrl") ?? "");
+  const [referenceJobId, setReferenceJobId] = useState(initial.get("referenceJobId") ?? "");
 
   const [improveProviderOverride, setImproveProviderOverride] = useState<
     "local" | "api" | null
-  >(null);
+  >(initial.get("provider") === "api" ? "api" : initial.get("provider") === "local" ? "local" : null);
   const improveProvider =
     improveProviderOverride ?? preferredImproveProvider(settings);
   const hasApiKey = !!settings?.hasImproveApiKey;
@@ -63,17 +80,25 @@ export default function CreatePage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  const referenceRef = useRef<HTMLInputElement>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
 
 
-  const running = !!job && (job.status === "queued" || job.status === "running");
+  const running = submitting || (!!job && (job.status === "queued" || job.status === "running"));
   const presets = visibleDreamPresets(unrestricted, adultCategory);
   const activePreset = presets.find((p) => p.id === preset) ?? presets[0];
   const ratios = DREAM_RATIOS.map((r) => zermo ? { ...r, ...fitZermoSize(r.width, r.height) } : r);
   const activeRatio = ratios.find((r) => r.id === ratio) ?? ratios[0];
   const assistedPrompt =
     prompt.trim() ? enhancePrompt(prompt, activePreset.id, framing, assist) : "";
+  const assistedNegative = enhanceNegativePrompt(prompt, negativePrompt, framing, assist);
+  const rewriteContext = JSON.stringify([activePreset.id, framing, negativePrompt]);
+  const controlError = !presets.some((p) => p.id === preset) || !ratios.some((r) => r.id === ratio)
+    || !FRAMINGS.some((f) => f.id === framing) || !["1", "2", "3", "4"].includes(count)
+    ? "This link or saved job has an unavailable style, ratio, composition, or count. Choose a supported control before creating." : null;
 
-  const improve = useCallback(async () => {
+  async function improve() {
     if (!prompt.trim() || improving) return;
     setImproving(true);
     setImproveError(null);
@@ -82,11 +107,14 @@ export default function CreatePage() {
       const res = await fetch("/api/improve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, provider: improveProvider }),
+        body: JSON.stringify({ prompt, provider: improveProvider, presetId: activePreset.id, framing, negativePrompt }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not rewrite that");
-      setImproved(data as ImproveResult);
+      if (data.originalPrompt !== prompt || !isPromptProposal(prompt, data.prompt) || typeof data.model !== "string") {
+        throw new Error("Invalid rewrite proposal; your original was kept.");
+      }
+      setImproved({ ...data, context: rewriteContext } as ImproveResult);
     } catch (err) {
       setImproveError(
         err instanceof Error ? err.message : "Could not rewrite that",
@@ -94,94 +122,95 @@ export default function CreatePage() {
     } finally {
       setImproving(false);
     }
-  }, [prompt, improving, improveProvider]);
+  }
 
-  async function generate(seedOverride?: string) {
+  async function submitDream(inputs: Record<string, string>, presetId: string, reference: { file?: File | null; url?: string; jobId?: string }) {
+    if (submitLock.current || running) return;
+    submitLock.current = true;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const form = new FormData();
+      form.set("tool", "dream");
+      form.set("workflowSlug", "dream");
+      form.set("presetId", presetId);
+      const reusable = { ...inputs };
+      delete reusable.referenceImage;
+      delete reusable.referenceImageUrl;
+      delete reusable.referenceJobId;
+      form.set("inputs", JSON.stringify(reusable));
+      if (reference.file) form.set("referenceImage", reference.file);
+      else if (reference.jobId) form.set("referenceJobId", reference.jobId);
+      else if (reference.url) form.set("referenceImageUrl", reference.url);
+      const res = await fetch("/api/jobs", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Job failed");
+      setJob(data.job as StudioJob);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      submitLock.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  async function generate() {
       if (!prompt.trim()) {
         setSubmitError("Describe the image you want first.");
         promptRef.current?.focus();
         return;
       }
-      setSubmitError(null);
-      setImproved(null);
-      try {
-        const form = new FormData();
-        form.set("tool", "dream");
-        form.set("workflowSlug", "dream");
-        form.set("presetId", activePreset.id);
-        form.set(
-          "inputs",
-          JSON.stringify({
+      if (controlError) { setSubmitError(controlError); return; }
+      await submitDream({
             prompt,
             negativePrompt,
             ratio,
             framing,
             count,
-            seed: seedOverride ?? seed,
+            seed,
             steps,
             cfg: zermo ? "1" : cfg,
             assist: assist ? "on" : "off",
             visualQa: visualQa ? "on" : "off",
-          }),
-        );
-        if (refFile) form.set("referenceImage", refFile);
-        else if (refUrl.trim()) form.set("referenceImageUrl", refUrl.trim());
-        const res = await fetch("/api/jobs", { method: "POST", body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Job failed");
-        setJob(data.job as StudioJob);
-      } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Failed");
-      }
+            campaignCopy: campaignCopy ? "true" : "false",
+            brandName,
+      }, activePreset.id, { file: refFile, url: refUrl, jobId: referenceJobId });
   }
 
   const reuseFromJob = useCallback((j: StudioJob) => {
     const i = j.inputs;
     setPrompt(i.prompt || "");
     setNegativePrompt(i.negativePrompt || "");
-    setPreset(j.presetId || "dream");
+    setPreset(j.presetId || "auto");
     setAdultCategory(MATURE_PRESETS.some((p) => p.id === j.presetId));
     setRatio(i.ratio || "square");
     setFraming(i.framing || "auto");
     setCount(i.count || "1");
     const effectiveSeed = Object.values(j.zermoJobs || {}).find((r) => r.effective?.seed !== undefined)?.effective?.seed;
-    setSeed(exactSeed(effectiveSeed) || exactSeed(i.seed));
+    setSeed(i.seed || exactSeed(effectiveSeed));
     setSteps(i.steps || "8");
     setCfg(i.cfg || "1");
     setAssist(i.assist !== "off");
     setVisualQa(i.visualQa === "on");
-    setRefUrl(i.referenceImageUrl || "");
+    setCampaignCopy(i.campaignCopy === "true");
+    setBrandName(i.brandName ?? i.productName ?? "");
+    setRefFile(null);
+    if (referenceRef.current) referenceRef.current.value = "";
+    const savedReference = !!(j.referenceImagePath || i.referenceImage);
+    setReferenceJobId(savedReference ? j.id : "");
+    setRefUrl(savedReference ? "" : i.referenceImageUrl || "");
+    setImproved(null);
     promptRef.current?.focus();
   }, []);
 
-  const varyFromJob = useCallback(
-    (j: StudioJob) => {
-      reuseFromJob(j);
-      setSeed("");
-      const i = j.inputs;
-      setTimeout(() => {
-        void (async () => {
-          setSubmitError(null);
-          try {
-            const form = new FormData();
-            form.set("tool", "dream");
-            form.set("workflowSlug", "dream");
-            form.set("presetId", j.presetId);
-            form.set("inputs", JSON.stringify({ ...i, seed: "" }));
-            if (refFile) form.set("referenceImage", refFile);
-            else if (refUrl.trim()) form.set("referenceImageUrl", refUrl.trim());
-            const res = await fetch("/api/jobs", { method: "POST", body: form });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Job failed");
-            setJob(data.job as StudioJob);
-          } catch (err) {
-            setSubmitError(err instanceof Error ? err.message : "Failed");
-          }
-        })();
-      }, 0);
-    },
-    [reuseFromJob, setJob, refFile, refUrl],
-  );
+  async function varyFromJob(j: StudioJob) {
+    reuseFromJob(j);
+    setSeed("");
+    await submitDream({ ...j.inputs, seed: "" }, j.presetId, {
+      jobId: j.referenceImagePath || j.inputs.referenceImage ? j.id : undefined,
+      url: j.inputs.referenceImageUrl,
+    });
+  }
 
   const images =
     job?.outputs.filter(
@@ -191,6 +220,9 @@ export default function CreatePage() {
         !/^Subject(\b| ·)/i.test(o.label),
     ) ?? [];
   const visualQaStatus = job?.outputs.find((output) => output.label === "Visual QA");
+  const campaignText = job?.inputs.campaignCopy === "true"
+    ? job.outputs.filter((o) => o.text && o.label !== "Visual QA").map((o) => o.text).join("\n\n") || job.script
+    : undefined;
 
   return (
     <div className="w-full min-w-0">
@@ -229,8 +261,8 @@ export default function CreatePage() {
               id="prompt"
               ref={promptRef}
               value={prompt}
-              onChange={(e) => setPrompt(e.currentTarget.value)}
-              placeholder="A moonlit observatory above a quiet violet sea…"
+              onChange={(e) => { setPrompt(e.currentTarget.value); setImproved(null); }}
+              placeholder="A silly three-eyed cartoon creature juggling teacups…"
               className="min-h-32 w-full min-w-0 resize-y rounded-[10px] border border-white/15 glass p-3 text-base leading-normal text-[#f5eff6] shadow-[0_1.25rem_3.75rem_rgb(0_0_0/44%)] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
             {submitError ? (
@@ -239,6 +271,20 @@ export default function CreatePage() {
               </p>
             ) : null}
           </div>
+
+          <section className="mb-4 grid gap-3 rounded-[10px] border border-white/10 glass p-4" aria-label="Campaign copy">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input id="campaign-copy" type="checkbox" checked={campaignCopy} onChange={(e) => setCampaignCopy(e.currentTarget.checked)} className="mt-1 size-4 accent-[#d565d6]" />
+              <span>
+                <strong className="block text-sm text-[#f5eff6]">Add campaign copy (optional)</strong>
+                <small className="mt-1 block text-xs text-[#8d838f]">Super now lives here. Copy and images belong to the same saved Dream job. Your image prompt is not automatically rewritten.</small>
+              </span>
+            </label>
+            {campaignCopy ? <label className="text-sm text-[#b8aebb]">
+              Brand name (optional, kept as written)
+              <input id="brand-name" value={brandName} onChange={(e) => setBrandName(e.currentTarget.value)} className={`${inputClass} mt-2`} />
+            </label> : null}
+          </section>
 
           <section
             aria-label="Rewrite your prompt"
@@ -250,7 +296,7 @@ export default function CreatePage() {
                   Rewrite my prompt
                 </strong>
                 <p className="mt-1 text-xs text-[#8d838f]">
-                  Turns a short line into a fully described scene
+                  Proposes details after your unchanged original. Review before using
                   {localModel ? `, using ${localModel}` : ""}.
                 </p>
               </div>
@@ -280,7 +326,7 @@ export default function CreatePage() {
                 <button
                   type="button"
                   onClick={() => void improve()}
-                  disabled={improving || !prompt.trim() || !settings}
+                  disabled={improving || !prompt.trim() || !settings || !!controlError}
                   className="min-h-11 rounded-[10px] border border-white/15 bg-[#2c162f] px-4 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
                 >
                   {improving ? "Rewriting…" : "Rewrite"}
@@ -300,30 +346,34 @@ export default function CreatePage() {
             ) : null}
             {improved ? (
               <div className="grid gap-3 border-t border-white/10 pt-3">
-                <p className="text-sm leading-normal text-[#b8aebb]">
-                  <strong className="text-[#f5eff6]">Rewritten:</strong>{" "}
+                <p className="whitespace-pre-wrap text-sm leading-normal text-[#b8aebb]">
+                  <strong className="text-[#f5eff6]">Proposed rewrite:</strong>{" "}
                   {improved.prompt}
                 <small className="block">Returned by {improved.model}</small>
                 </p>
                 <div>
+                  {improved.originalPrompt !== prompt || improved.context !== rewriteContext ? <p role="status" className="mb-2 text-sm text-[#b8aebb]">The brief or controls changed. Rewrite again; this proposal cannot replace your edits.</p> : null}
                   <button
                     type="button"
+                    disabled={improved.originalPrompt !== prompt || improved.context !== rewriteContext}
                     onClick={() => {
+                      if (improved.originalPrompt !== prompt || improved.context !== rewriteContext) return;
                       setPrompt(improved.prompt);
                       setImproved(null);
                       promptRef.current?.focus();
                     }}
                     className="min-h-11 rounded-[10px] border border-white/15 px-4 text-sm font-bold text-[#b8aebb] transition-colors hover:border-[#d565d6] hover:text-[#f5eff6]"
                   >
-                    Use this
+                    Use this proposal
                   </button>
+                  <button type="button" onClick={() => setImproved(null)} className="ml-2 min-h-11 px-3 text-sm text-[#b8aebb]">Keep original</button>
                 </div>
               </div>
             ) : null}
           </section>
 
           <section
-            aria-label="Fill in the details"
+            aria-label="Composition assist"
             className="mb-2 grid gap-3 rounded-[10px] border border-white/10 glass p-4"
           >
             <label className="flex min-w-0 cursor-pointer items-start gap-3">
@@ -335,24 +385,25 @@ export default function CreatePage() {
               />
               <span className="min-w-0">
                 <strong className="block text-sm text-[#f5eff6]">
-                  Fill in the details
+                  Recognize composition words
                 </strong>
                 <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
-                  Adds composition, setting, light, and material when you leave
-                  them out.
+                  Auto recognizes framing in your prompt. Explicit style and composition choices win. No generic anatomy, lighting, or setting is added.
                 </small>
               </span>
             </label>
             {assistedPrompt ? (
-              <p className="max-h-32 overflow-y-auto border-t border-white/10 pt-3 text-sm leading-normal text-[#b8aebb]">
-                <strong className="text-[#f5eff6]">What gets made:</strong>{" "}
+              <p className="max-h-48 overflow-y-auto whitespace-pre-wrap border-t border-white/10 pt-3 text-sm leading-normal text-[#b8aebb]">
+                <strong className="text-[#f5eff6]">Prompt to send:</strong>{" "}
                 {assistedPrompt}
               </p>
             ) : null}
+            {assistedNegative ? <p className="whitespace-pre-wrap text-xs text-[#b8aebb]"><strong>Negative prompt to send:</strong>{" "}{assistedNegative}</p> : null}
           </section>
 
           <label className="mb-4 flex min-w-0 cursor-pointer items-start gap-3 rounded-[10px] border border-white/10 glass p-4">
             <input
+              id="visual-qa"
               type="checkbox"
               checked={visualQa}
               onChange={(event) => setVisualQa(event.currentTarget.checked)}
@@ -363,8 +414,7 @@ export default function CreatePage() {
                 Optional visual QA
               </strong>
               <small className="mt-1 block text-xs leading-normal text-[#8d838f]">
-                Uses a compatible vision model when one is connected. The job
-                reports checked or skipped; this is off by default.
+                On by default. Reports checked, failed, or unavailable. If review fails, outputs are retained for review—not automatically regenerated. Model review can miss identity, color and count errors. Inspect reference edits yourself.
               </small>
             </span>
           </label>
@@ -376,7 +426,7 @@ export default function CreatePage() {
             <p className="mb-3 text-xs text-[#8d838f]">{zermo ? "Qwen-Image-2.1 · one model, different prompt styles." : "Prompt styles for the selected image provider."}</p>
             <label className="mb-3 flex min-h-11 items-center gap-3 text-sm text-[#b8aebb]">
               <input type="checkbox" checked={adultCategory && unrestricted} disabled={!unrestricted}
-                onChange={(e) => { setAdultCategory(e.target.checked); setPreset(e.target.checked ? "boudoir" : "dream"); }} />
+                onChange={(e) => { setAdultCategory(e.target.checked); setPreset(e.target.checked ? "boudoir" : "auto"); }} />
               Adult / NSFW (18+) — opt in to adult styles
             </label>
             {!unrestricted ? <p className="mb-3 text-xs text-[#8d838f]">Adult styles are off. Enable Adult styles in <a href="/settings" className="underline">Connections</a>, then opt in here.</p> : null}
@@ -401,16 +451,17 @@ export default function CreatePage() {
               ))}
             </div>
             <p className="mt-3 text-sm text-[#8d838f]">
-              Adds: {activePreset.suffix}
+              {preset === "auto" ? "Default: playful, silly cartoon unless your brief specifies another look." : `Selected style takes precedence: ${activePreset.suffix}`}
             </p>
             <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
               <label className="min-w-0 text-sm text-[#b8aebb]">
                 Reference still
                 <input
+                  ref={referenceRef}
                   type="file"
                   accept="image/png,image/jpeg"
                   className="mt-2 block w-full min-w-0 text-sm text-[#f5eff6] file:mr-3 file:rounded-[10px] file:border file:border-white/15 file:bg-white/10 file:px-3 file:py-2"
-                  onChange={(e) => setRefFile(e.currentTarget.files?.[0] || null)}
+                  onChange={(e) => { setRefFile(e.currentTarget.files?.[0] || null); setReferenceJobId(""); setRefUrl(""); }}
                 />
               </label>
               <label className="min-w-0 text-sm text-[#b8aebb]">
@@ -418,12 +469,16 @@ export default function CreatePage() {
                 <input
                   type="url"
                   value={refUrl}
-                  onChange={(e) => setRefUrl(e.currentTarget.value)}
+                  onChange={(e) => { setRefUrl(e.currentTarget.value); setReferenceJobId(""); setRefFile(null); if (referenceRef.current) referenceRef.current.value = ""; }}
                   placeholder="https://"
                   className={`${inputClass} mt-2`}
                 />
               </label>
             </div>
+            {referenceJobId ? <p role="status" className="mt-3 break-words text-sm text-[#b8aebb]">
+              Retained reference from job {referenceJobId}. The server reuses the saved image; no re-upload needed.
+              <button type="button" onClick={() => setReferenceJobId("")} className="ml-2 min-h-11 px-2 underline">Remove retained reference</button>
+            </p> : null}
           </fieldset>
 
           <div className="grid min-w-0 gap-5 py-5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.75fr)] md:items-end">
@@ -562,11 +617,11 @@ export default function CreatePage() {
             >
               <div className="min-w-0">
                 <p className="mb-1 font-bold text-[#ff8ea0]">
-                  That did not finish
+                  {images.length ? "Outputs retained — needs review" : "That did not finish"}
                 </p>
                 <p className="text-sm text-[#f5eff6]">{job.error}</p>
                 <p className="mt-1 text-sm text-[#b8aebb]">
-                  {zermo ? "Resume the same job below to recover completed media. A new attempt creates new work." : "Try again, or check your connections in Settings."}
+                  {images.length ? "Inspect the retained outputs and review report. Nothing is automatically regenerated." : zermo ? "Resume the same job below to recover completed media. A new attempt creates new work." : "Try again, or check your connections in Settings."}
                 </p>
               </div>
               <div className="flex min-w-0 flex-wrap gap-2">
@@ -588,12 +643,13 @@ export default function CreatePage() {
           ) : null}
 
           <div className="grid pt-5 sm:justify-items-end">
+            {controlError ? <p role="alert" className="mb-3 text-sm text-[#ff8ea0]">{controlError}</p> : null}
             <button
               type="submit"
-              disabled={running || !settings}
+              disabled={running || !settings || !!controlError}
               className="min-h-11 w-full min-w-0 rounded-[10px] border border-[#d565d6] bg-[#d565d6] px-4 text-sm font-bold text-white transition-colors hover:border-[#e77ae6] hover:bg-[#e77ae6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570] sm:w-48"
             >
-              {running ? "Making it" : "Make it"}
+              {submitting ? "Submitting…" : running ? "Making it" : campaignCopy ? "Make image + copy" : "Make it"}
             </button>
           </div>
         </form>
@@ -657,10 +713,11 @@ export default function CreatePage() {
               </dd>
             </div>
           </dl>
+          {job ? <button type="button" onClick={() => reuseFromJob(job)} className="mt-3 min-h-11 text-sm text-[#b8aebb] underline">Reuse this job’s settings</button> : null}
           {job?.script ? (
             <details className="mt-4 border-t border-white/10 pt-3">
               <summary className="min-h-11 cursor-pointer list-none content-center text-sm font-medium text-[#b8aebb] [&::-webkit-details-marker]:hidden">
-                Settings used
+                {job.inputs.campaignCopy === "true" ? "Saved job text" : "Settings used"}
               </summary>
               <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-[10px] bg-white/10 p-3 text-xs text-[#b8aebb]">
                 {job.script}
@@ -691,6 +748,10 @@ export default function CreatePage() {
               </span>
             ) : null}
           </div>
+          {campaignText ? <article className="mt-4 rounded-[10px] border border-white/10 glass p-4">
+            <h3 className="mb-2 text-sm font-bold text-[#f5eff6]">Campaign copy</h3>
+            <pre className="whitespace-pre-wrap break-words text-sm text-[#b8aebb]">{campaignText}</pre>
+          </article> : null}
           {images.length && job ? (
             <ul className="mt-4 grid min-w-0 grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-5">
               {images.map((o) => (
@@ -710,10 +771,10 @@ export default function CreatePage() {
                         alt={o.label}
                         loading="lazy"
                         decoding="async"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
                       <span className="absolute right-2 bottom-2 rounded-full border border-white/15 glass px-2 py-1 text-xs text-[#b8aebb]">
-                        Saved
+                        {job.status === "failed" ? "Retained" : "Saved"}
                       </span>
                     </button>
                     <figcaption className="min-w-0 py-3">
@@ -743,11 +804,12 @@ export default function CreatePage() {
                     <button
                       type="button"
                       disabled={running || !settings}
-                      onClick={() => varyFromJob(job)}
+                      onClick={() => void varyFromJob(job)}
                       className="min-h-11 flex-1 rounded-[10px] border border-white/15 bg-[#2c162f] px-3 text-sm font-bold text-[#e77ae6] transition-colors hover:border-[#d565d6] disabled:border-white/10 disabled:bg-white/10 disabled:text-[#6e6570]"
                     >
                       Vary
                     </button>
+                    <a href={o.url} download className="grid min-h-11 flex-1 place-items-center rounded-[10px] px-3 text-sm font-bold text-[#b8aebb]">Download</a>
                   </div>
                 </li>
               ))}

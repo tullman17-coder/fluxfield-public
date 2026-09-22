@@ -96,7 +96,7 @@ export async function generateZermoText(prompt: string) {
   let data;
   try { data = JSON.parse((await boundedBytes(response, 1024 * 1024)).toString()); }
   catch { throw new Error("Writing service returned an invalid response"); }
-  if (data?.choices?.[0]?.finish_reason === "length" && !(typeof data?.choices?.[0]?.message?.content === "string" && data.choices[0].message.content.trim())) throw new Error("Writing response was truncated; no partial result was accepted");
+  if (data?.choices?.[0]?.finish_reason === "length") throw new Error("Writing response was truncated; no partial result was accepted");
   const text = data?.choices?.[0]?.message?.content;
   if (typeof text !== "string" || !text.trim()) throw new Error("Writing service returned empty content");
   const model = data.model;
@@ -152,7 +152,7 @@ export function imageRequest(ctx: AdapterContext, imageAsset?: string): ZermoReq
     const size = /^(\d+)x(\d+)$/.exec(ctx.job.inputs.size);
     if (!size) throw new Error("Zermo size must be WIDTHxHEIGHT");
     [width, height] = size.slice(1).map(Number);
-    if (![width, height].every((n) => Number.isInteger(n) && n >= 256 && n <= 1024 && n % 8 === 0)) throw new Error("Zermo dimensions must be 256–1024 and divisible by 8");
+    if (![width, height].every((n) => Number.isInteger(n) && n >= 256 && n <= 1024 && n % 16 === 0)) throw new Error("Zermo dimensions must be 256–1024 and divisible by 16");
   }
   const steps = Number(ctx.job.inputs.steps || 8);
   if (![8, 20].includes(steps) || (ctx.job.inputs.cfg && Number(ctx.job.inputs.cfg) !== 1)) throw new Error("Zermo Qwen Image 2.1 supports steps=8 or 20, with CFG=1");
@@ -226,8 +226,9 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
   }
   return { outputs, remotePromptId: intent.remoteId };
 }
-export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = "image") {
+export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = "image", prompts?: string[]) {
   if (!Number.isInteger(count) || count < 1 || count > 12) throw new Error("Zermo image count must be 1–12");
+  if (prompts && (prompts.length !== count || prompts.some(p => !p.trim() || p.length > 8000))) throw new Error("Each requested image needs one bounded nonblank prompt");
   let imageAsset: string | undefined;
   if (ctx.referenceImagePath) {
     const png = await fs.readFile(ctx.referenceImagePath);
@@ -246,8 +247,16 @@ export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = 
   const outputs: AdapterResult["outputs"] = [];
   let remotePromptId: string | undefined;
   for (let i = 0; i < count; i++) {
-    const result = await runZermoJob(ctx.job, `${purpose}:${i}`, body);
+    const request = { ...body };
+    if (prompts) request.prompt = prompts[i];
+    if (body.seed !== undefined && i > 0) {
+      const seed = BigInt.asUintN(64, BigInt(body.seed) + BigInt(i));
+      request.seed = typeof body.seed === "number" && seed <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(seed) : String(seed);
+    }
+    const result = await runZermoJob(ctx.job, `${purpose}:${i}`, request);
     outputs.push(...result.outputs); remotePromptId = result.remotePromptId;
+    const saved = (await getJob(ctx.job.id)) ?? ctx.job;
+    await updateJob(ctx.job.id, { outputs: [...new Map([...saved.outputs, ...outputs].map(o => [o.id, o])).values()] });
   }
   return { outputs, remotePromptId };
 }
@@ -264,6 +273,10 @@ export function wanClipsForDuration(sec: number) {
 }
 
 export async function runZermoVideoAdapter(ctx: AdapterContext, imagePath: string, prompt: string, purpose = "video:wan") {
+  // Native WAN /32 canvases; none exceeds the proven 640×352 pixel budget.
+  const canvas = ({ "16:9": [640,352], "9:16": [352,640], "1:1": [448,448], "2.39:1": [640,256] } as Record<string, number[]>)[ctx.job.aspect];
+  if (!canvas) throw new Error("Unsupported WAN aspect");
+  const [width, height] = canvas;
   const png = await fs.readFile(imagePath);
   const upload = await (await request("/assets", {
     method: "POST",
@@ -277,7 +290,7 @@ export async function runZermoVideoAdapter(ctx: AdapterContext, imagePath: strin
     model: "wan2.2-5b-fp8",
     prompt,
     inputs: { image: upload.id },
-    settings: { frames: WAN_FAST.frames, steps: WAN_FAST.steps },
+    settings: { frames: WAN_FAST.frames, steps: WAN_FAST.steps, width, height },
   };
   return runZermoJob(ctx.job, purpose, body);
 }

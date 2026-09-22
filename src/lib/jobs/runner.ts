@@ -1,6 +1,7 @@
 import path from "path";
 import { promises as fs } from "fs";
-import { fillPrompt, getWorkflow } from "@/lib/workflows";
+import { fillPrompt, getWorkflow, legacyVideoEntry } from "@/lib/workflows";
+import { validateJobInput, type ValidatedJobInput } from "@/lib/jobs/input";
 import {
   fillWrapperPrompt,
   getImage2Wrapper,
@@ -19,12 +20,12 @@ import {
 } from "@/lib/adapters/local-studio";
 import { runMockAdapter } from "@/lib/adapters/mock";
 import { runMusicAdapter } from "@/lib/adapters/music";
-import { runZermoAdapter, runChainedWanClips, WAN_FAST } from "@/lib/adapters/zermo";
+import { runZermoAdapter } from "@/lib/adapters/zermo";
 import { runHiggsfieldAdapter, checkHiggsfieldHealth } from "@/lib/adapters/higgsfield";
-import { assembleExplainerVideo, concatClips, checkFfmpeg } from "@/lib/adapters/ffmpeg";
+import { assembleExplainerVideo, checkFfmpeg } from "@/lib/adapters/ffmpeg";
 import { fitZermoSize } from "@/lib/adapters/zermo-image-size";
 import { runDirectorAdapter } from "@/lib/adapters/director";
-import { runVideoWorkflowAdapter } from "@/lib/adapters/video-workflow";
+import { runVideoWorkflowAdapter, runManagedSceneVideo, parseVideoDuration } from "@/lib/adapters/video-workflow";
 import {
   getVideoWorkflow,
   getVideoWorkflowMode,
@@ -34,6 +35,7 @@ import {
   fallbackExplainerScript,
   fallbackMarketingCopy,
   generateExplainerScript,
+  parseExplainerScript,
   generateMarketingCopy,
 } from "@/lib/adapters/ollama";
 import { synthesizeSpeech } from "@/lib/adapters/tts";
@@ -43,11 +45,7 @@ import {
   localCohereCopy,
   parseMarketingCopy,
 } from "@/lib/compose/copy";
-import {
-  formatReviewNote,
-  verifyCreative,
-  verifySubject,
-} from "@/lib/compose/verify";
+import { checkJobImages } from "@/lib/compose/verify";
 import {
   layoutForWorkflowCategory,
   wrapperForLayout,
@@ -61,25 +59,26 @@ import {
   dreamRatio,
   enhanceNegativePrompt,
   enhancePrompt,
-  stripContentFilters,
+
 } from "@/lib/dream/presets";
 import { visualQaSummary } from "@/lib/studio/presentation";
-import type { JobTool, ModeUsed, StudioJob } from "@/lib/adapters/types";
+import type { ModeUsed, StudioJob } from "@/lib/adapters/types";
 import { nanoid } from "nanoid";
 
-export type CreateJobInput = {
-  tool: JobTool;
-  workflowSlug: string;
-  presetId: string;
-  inputs: Record<string, string>;
-  referenceImagePath?: string;
-};
+export type CreateJobInput = ValidatedJobInput;
 
 export async function createAndRunJob(
   input: CreateJobInput,
 ): Promise<StudioJob> {
+  input = validateJobInput(input, { trustedUploads: true });
+  const originalInputs = { ...input.inputs };
+  const requested = { tool: input.tool, workflowSlug: input.workflowSlug, presetId: input.presetId };
+  const legacy = input.tool === "workflow" && legacyVideoEntry(input.workflowSlug, input.presetId, input.inputs);
+  if (legacy) input = validateJobInput({ ...input, ...legacy, inputs: { ...legacy.inputs, voice: input.inputs.voice || "none" } }, { trustedUploads: true });
   const now = new Date().toISOString();
   const { unrestricted, generationMode } = await readSettings();
+  input = { ...input, inputs: { ...input.inputs } };
+  if (generationMode === "zermo" && input.tool !== "music") input.inputs.visualQa ??= "on";
   let workflowName = input.workflowSlug;
   let presetLabel = input.presetId;
   let prompt = "";
@@ -90,8 +89,8 @@ export async function createAndRunJob(
     const available = dreamPresets(unrestricted);
     const preset =
       available.find((p) => p.id === input.presetId) ?? available[0];
-    const base = input.inputs.prompt?.trim() || "";
-    if (!base) throw new Error("Describe the image you want to create.");
+    const base = input.inputs.prompt || "";
+    if (!base.trim()) throw new Error("Describe the image you want to create.");
     const ratio = dreamRatio(input.inputs.ratio);
     const assist = input.inputs.assist !== "off";
     const framing = input.inputs.framing || "auto";
@@ -99,7 +98,8 @@ export async function createAndRunJob(
     presetLabel = preset.label;
     aspect = ratio.aspect;
     if (generationMode === "zermo") {
-      const size = fitZermoSize(ratio.width, ratio.height);
+      const [w, h] = ratio.aspect.split(":").map(Number);
+      const size = fitZermoSize(w, h);
       input.inputs.size ||= `${size.width}x${size.height}`;
       input.inputs.steps ||= "8";
       input.inputs.cfg ||= "1";
@@ -133,7 +133,7 @@ export async function createAndRunJob(
     ));
   } else if (input.tool === "explainer") {
     const preset = getExplainerPreset(input.presetId);
-    const topic = input.inputs.topic?.trim() || "Untitled topic";
+    const topic = input.inputs.topic || "Untitled topic";
     workflowName = "Explainer";
     presetLabel = preset.name;
     aspect = input.inputs.aspect || "16:9";
@@ -148,7 +148,7 @@ export async function createAndRunJob(
     ));
   } else if (input.tool === "music") {
     const { interpretMusicBrief, applyMusicChip } = await import("@/lib/music/brief");
-    const parsed = applyMusicChip(input.inputs.genre, interpretMusicBrief(input.inputs.brief || ""));
+    const parsed = applyMusicChip(input.inputs.genre, interpretMusicBrief(input.inputs.brief || ""), input.inputs.lyricMode);
     const genre = getGenre(parsed.genre);
     const brief = input.inputs.brief?.trim() || "";
     if (!brief) throw new Error("Describe the track you want.");
@@ -199,8 +199,7 @@ export async function createAndRunJob(
     ));
   }
 
-  // One place to take the filters back out, so every tool behaves the same.
-  if (unrestricted) negativePrompt = stripContentFilters(negativePrompt);
+  // User exclusions are literal intent, even when mature presets are enabled.
 
   const job: StudioJob = {
     id: newJobId(),
@@ -215,6 +214,8 @@ export async function createAndRunJob(
     negativePrompt,
     aspect,
     inputs: input.inputs,
+    originalInputs,
+    requested,
     modeUsed: generationMode === "zermo" ? "zermo" : "mock",
     generationMode,
     referenceImagePath: input.referenceImagePath,
@@ -256,15 +257,19 @@ async function processJob(jobId: string) {
       script = current.script;
     } else if (current.tool === "explainer") {
       const preset = getExplainerPreset(current.presetId);
+      if (settings.generationMode === "zermo") {
+        parseVideoDuration(current.inputs.seconds || current.inputs.duration);
+        if (!settings.ffmpegEnabled || !await checkFfmpeg()) throw new Error("Finished motion requires FFmpeg before planning or rendering");
+      }
       const beats = Number(current.inputs.beats || 6);
-      script =
-        (await generateExplainerScript(settings, {
+      script = await generateExplainerScript(settings, {
           topic: current.inputs.topic || "topic",
           presetName: preset.name,
           beats,
           duration: current.inputs.duration || "1m",
-        })) ||
-        fallbackExplainerScript({
+        });
+      if (!script && settings.generationMode === "zermo") throw new Error("Explainer writer returned no plan; no images submitted");
+      script ||= fallbackExplainerScript({
           topic: current.inputs.topic || "topic",
           presetName: preset.name,
           beats,
@@ -283,6 +288,9 @@ async function processJob(jobId: string) {
       current.tool === "faceless"
     ) {
       // These tools build their own storyboard / arrangement text.
+      script = undefined;
+    } else if (current.inputs.composeOnly === "on" || (current.tool === "workflow" && getWorkflow(current.workflowSlug)?.outputKind === "image")) {
+      // Existing art and clean product shots need no speculative copy-writing call.
       script = undefined;
     } else {
       script =
@@ -311,6 +319,20 @@ async function processJob(jobId: string) {
     }
 
     await updateJob(jobId, { script, progress: 30 });
+
+    if (current.tool === "explainer" && settings.generationMode === "zermo") {
+      const beats = parseExplainerScript(script || "", Number(current.inputs.beats || 6));
+      const planned = (await getJob(jobId)) ?? current;
+      const result = await runManagedSceneVideo({ settings, job: planned, referenceImagePath }, {
+        durationSec: parseVideoDuration(current.inputs.seconds || current.inputs.duration), aspect: current.aspect,
+        shots: beats.map((beat, i) => ({ label: `Scene ${i + 1}`, prompt: `${current.prompt}\nScene action: ${beat.visual}` })),
+        narration: current.inputs.voice === "none" ? undefined : { text: beats.map(b => b.narration).join("\n"), voice: current.inputs.voice },
+        openerImagePath: referenceImagePath,
+        onProgress: async (progress, _label, outputs) => { await updateJob(jobId, { progress, outputs, phase: "compose" }); },
+      });
+      await updateJob(jobId, { status: "completed", progress: 100, phase: "finalize", modeUsed: "zermo", outputs: result.outputs, script, primaryOutputId: result.cut.id });
+      return;
+    }
 
     // Music does not run through the image adapter chain.
     if (current.tool === "music") {
@@ -346,6 +368,7 @@ async function processJob(jobId: string) {
         modeUsed: directed.modeUsed,
         outputs: directed.outputs,
         script: directed.outputs.find((o) => o.kind === "storyboard")?.text,
+        primaryOutputId: [...directed.outputs].reverse().find(o => o.kind === "video")?.id,
       });
       return;
     }
@@ -364,7 +387,7 @@ async function processJob(jobId: string) {
           ? path.resolve(referenceImagePath)
           : undefined,
       });
-      const primary = pack.outputs.find((o) => o.kind === "video")
+      const primary = [...pack.outputs].reverse().find((o) => o.kind === "video")
         ?? pack.outputs.find((o) => o.kind === "image");
       await updateJob(jobId, {
         status: "completed",
@@ -440,12 +463,7 @@ async function processJob(jobId: string) {
     let packCount = 1;
     if (current.tool === "workflow") {
       const workflow = getWorkflow(current.workflowSlug);
-      packCount =
-        workflow?.kind === "pack"
-          ? 3
-          : current.workflowSlug === "marketplace-pack"
-            ? 4
-            : 1;
+      packCount = workflow?.kind === "pack" ? 4 : 1;
     } else if (current.tool === "image2") {
       packCount = 1;
     } else if (current.tool === "dream") {
@@ -475,7 +493,12 @@ async function processJob(jobId: string) {
 
     const runWith = (mode: ModeUsed, job = refreshed) => {
       const next = { ...ctx, job };
-      if (mode === "zermo") return runZermoAdapter(next, packCount);
+      if (mode === "zermo") return runZermoAdapter(next, packCount, "image", current.workflowSlug === "marketplace-pack" ? [
+        "Hero shot: complete product alone, clear silhouette, uncluttered background.",
+        "Detail shot: close view of material, finish and distinctive construction.",
+        "In-use shot: show the same product serving its intended purpose.",
+        "Scale and context shot: the same product in a wider coherent environment.",
+      ].map(role => `${job.prompt}\n${role}`) : undefined);
       if (mode === "higgsfield") return runHiggsfieldAdapter(next);
       return mode === "local-studio"
         ? runLocalStudioAdapter(next, packCount)
@@ -486,7 +509,15 @@ async function processJob(jobId: string) {
 
     let result: Awaited<ReturnType<typeof runWith>> | undefined;
     let lastError: unknown;
-    for (const mode of chain) {
+    if (current.inputs.composeOnly === "on") {
+      if (!referenceImagePath) throw new Error("Layout-only reuse requires a validated reference image");
+      const name = `${current.id}-subject${path.extname(referenceImagePath)}`;
+      const dir = path.join(process.cwd(), ".data", "outputs");
+      await fs.mkdir(dir, { recursive: true });
+      await fs.copyFile(referenceImagePath, path.join(dir, name));
+      result = { outputs: [{ id: `${current.id}-subject`, kind: "image", label: "Subject", url: `/api/outputs/${name}` }] };
+    }
+    for (const mode of result ? [] : chain) {
       try {
         result = await runWith(mode);
         if (mode !== modeUsed) {
@@ -500,30 +531,20 @@ async function processJob(jobId: string) {
     }
     if (!result) throw lastError ?? new Error("Could not make the art");
 
-    const qc: string[] = [];
-    if (modeUsed !== "mock" && current.inputs.visualQa === "on") {
-      const subjectOut = result.outputs.find((o) => o.kind === "image" && o.url);
-      const subjectCheck = await verifySubject(settings, {
-        imageUrl: subjectOut?.url,
-        prompt: refreshed.prompt,
+    await updateJob(jobId, { outputs: result.outputs });
+    if (modeUsed !== "mock") result.outputs = await checkJobImages(ctx, result.outputs);
+
+    if (current.tool === "dream" && current.inputs.campaignCopy === "true") {
+      const saved = current.outputs.find(o => o.label === "Campaign copy" && o.text);
+      const text = saved?.text ?? await generateMarketingCopy(settings, {
+        wrapperName: "image campaign", presetLabel: current.presetLabel,
+        brandName: current.inputs.brandName || "", productName: current.inputs.productName || current.inputs.brandName || "",
+        productDescription: current.originalInputs?.prompt ?? current.inputs.prompt,
       });
-      if (
-        modeUsed !== "zermo" &&
-        subjectCheck.status === "checked" &&
-        !subjectCheck.review.anatomy.ok &&
-        subjectCheck.review.repair
-      ) {
-        await updateJob(jobId, { phase: "subject", progress: 58 });
-        try {
-          result = await runWith(modeUsed, {
-            ...refreshed,
-            prompt: `${refreshed.prompt}. ${subjectCheck.review.repair}`,
-          });
-        } catch {
-          // keep the first pass
-        }
-      }
-      qc.push(formatReviewNote("Subject", subjectCheck));
+      const parsed = text && parseMarketingCopy(text);
+      if (!text || !parsed || !parsed.headline || !parsed.bodyCopy || !parsed.cta) throw new Error("Campaign writing did not return complete headline, subhead and CTA. Image retained; resume to retry writing.");
+      result.outputs.push(saved ?? { id: `${current.id}-copy`, kind: "text", label: "Campaign copy", text });
+      script = [script, "CAMPAIGN COPY", text].filter(Boolean).join("\n\n");
     }
 
     const live = (await getJob(jobId)) ?? current;
@@ -540,19 +561,11 @@ async function processJob(jobId: string) {
       outputs: await finalizeStills(live, result.outputs, modeUsed),
     };
 
-    if (modeUsed !== "mock" && current.inputs.visualQa === "on") {
-      const creative = [...result.outputs]
-        .reverse()
-        .find((o) => o.kind === "image" && /creative/i.test(o.label));
-      const layoutCheck = await verifyCreative(settings, {
-        imageUrl: creative?.url,
-        prompt: live.prompt,
-        copy,
-      });
-      qc.push(formatReviewNote("Layout", layoutCheck));
-    }
+    if (modeUsed !== "mock") result.outputs = await checkJobImages(ctx, result.outputs, copy);
 
-    const qaSummary = visualQaSummary(current.inputs.visualQa, modeUsed, qc);
+    const notes = result.outputs.find(o => o.label === "Visual QA")?.text;
+    const qaSummary = notes ?? visualQaSummary(current.inputs.visualQa, modeUsed, []);
+    result.outputs = result.outputs.filter(o => o.label !== "Visual QA");
     result.outputs.push({
       id: nanoid(8),
       kind: "text",
@@ -574,8 +587,8 @@ async function processJob(jobId: string) {
         current.inputs.topic ||
         "Explainer";
 
-      const audio = await synthesizeSpeech({
-        settings,
+      const audio = current.inputs.voice === "none" ? undefined : await synthesizeSpeech({
+        settings: { ...settings, ttsVoice: current.inputs.voice || settings.ttsVoice },
         text: voText,
         jobId,
         label: `Narration · ${current.inputs.voice || "default voice"}`,
@@ -588,25 +601,7 @@ async function processJob(jobId: string) {
       const extras: NonNullable<typeof audio>[] = [];
       if (audio) extras.push(audio);
 
-      if (modeUsed === "zermo") {
-        const outDir = path.join(process.cwd(), ".data", "outputs");
-        const chained = await runChainedWanClips(
-          { settings, job: (await getJob(jobId)) ?? current, referenceImagePath: undefined },
-          imageUrls.map((url) => ({
-            imagePath: path.join(outDir, path.basename(url)),
-            prompt: current.prompt,
-          })),
-        );
-        extras.push(...chained.outputs.filter((o) => o.kind === "video" || o.kind === "audio"));
-        const cut = await concatClips({
-          jobId,
-          videoUrls: chained.clipUrls,
-          audioUrl: audio?.url,
-          clipSec: WAN_FAST.frames / WAN_FAST.fps,
-          xfade: WAN_FAST.xfade,
-        });
-        if (cut) extras.push(cut);
-      } else if (await checkFfmpeg()) {
+      if (settings.ffmpegEnabled && await checkFfmpeg()) {
         const video = await assembleExplainerVideo({
           jobId,
           imageUrls,
@@ -614,6 +609,7 @@ async function processJob(jobId: string) {
           secondsPerBeat:
             getDurationSeconds(current.inputs.duration || "1m") /
             Math.max(1, imageUrls.length),
+          aspect: current.aspect,
         });
         if (video) extras.push(video);
       }
@@ -689,7 +685,7 @@ async function finalizeStills(
   modeUsed: ModeUsed,
 ) {
   const wrapDream = job.tool === "dream" && job.inputs.campaignWrap === "on";
-  const wrapWorkflow = job.tool === "workflow";
+  const wrapWorkflow = job.tool === "workflow" && getWorkflow(job.workflowSlug)?.outputKind !== "image";
   const wrapImage2 = job.tool === "image2" && modeUsed !== "mock";
   if (!wrapImage2 && !wrapWorkflow && !wrapDream) return outputs;
 
@@ -719,7 +715,7 @@ async function finalizeStills(
       ).filter((u): u is string => Boolean(u)),
     });
     return [
-      ...outputs.filter((o) => o.kind !== "image"),
+      ...outputs,
       {
         id: nanoid(8),
         kind: "image" as const,
@@ -768,7 +764,7 @@ async function finalizeStills(
       url: composed.url,
     });
   }
-  return [...outputs.filter((o) => o.kind !== "image"), ...extras];
+  return [...outputs, ...extras];
 }
 
 function enrichWithDreamControls(

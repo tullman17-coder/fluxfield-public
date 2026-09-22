@@ -1,19 +1,23 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { formQueryValues } from "@/lib/workflows";
 import { getImage2Wrapper } from "@/lib/wrappers/catalog";
 import { JobRunner } from "@/components/studio/job-runner";
 
 export default async function Image2WrapperPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug } = await params;
+  const values = formQueryValues(await searchParams ?? {});
   const wrapper = getImage2Wrapper(slug);
   if (!wrapper) notFound();
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link
@@ -38,6 +42,8 @@ export default async function Image2WrapperPage({
       <JobRunner
         tool="image2"
         workflowSlug={wrapper.slug}
+        initialPresetId={values.preset}
+        initialValues={values}
         fields={wrapper.inputs}
         presets={wrapper.presets}
         accent={wrapper.accent}
