@@ -56,7 +56,7 @@ function schema(options: ValidationOptions) {
       if (job.workflowSlug !== job.tool) error("workflowSlug", "Workflow does not match tool", true);
       if (job.tool === "dream") { presets = styles; required("prompt"); }
       if (job.tool === "explainer") { presets = ids(EXPLAINER_PRESETS); required("topic"); }
-      if (job.tool === "music") { presets = genres; required("brief"); }
+      if (job.tool === "music") { presets = inputs.mode === "music-video" ? [...ids(LOOKS), ...styles] : genres; required("brief"); choice("mode", ["song", "music-video"]); }
       if (job.tool === "director") { presets = [...ids(LOOKS), ...styles]; required("brief"); choice("mode", ["music-video", "tiktok"]); }
       const video = VIDEO_WORKFLOWS.find((item) => item.id === job.tool);
       if (video) {
@@ -92,7 +92,9 @@ function schema(options: ValidationOptions) {
       const value = inputs[key];
       if (value !== undefined && value !== "" && (!/^\d+(?:\.\d+)?$/.test(value) || !Number.isFinite(Number(value)) || Number(value) < min || Number(value) > max || integer && !Number.isInteger(Number(value)))) error(key, "Invalid numeric control");
     }
-    if (job.tool === "music" && inputs.seconds) {
+    if (job.tool === "director" || (job.tool === "music" && inputs.mode === "music-video")) {
+      for (const key of ["runtime", "seconds"]) if (inputs[key] && (Number(inputs[key]) < 10 || Number(inputs[key]) > 90)) error(key, "Choose 10–90 seconds for video");
+    } else if (job.tool === "music" && inputs.seconds) {
       if (Number(inputs.seconds) < 10 || Number(inputs.seconds) > MAX_GENERATION_SECONDS) error("seconds", `Choose 10–${MAX_GENERATION_SECONDS} seconds`);
     }
     if (inputs.seed && (!/^\d{1,20}$/.test(inputs.seed) || BigInt(inputs.seed) > BigInt("18446744073709551615"))) error("seed", "Expected an exact uint64 seed string");

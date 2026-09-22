@@ -38,8 +38,14 @@ export function useJobWatch(scope: string, intervalMs = 1200) {
 
   useEffect(() => {
     let id: string | null = null;
+    let legacyVideo = false;
     try {
       id = window.sessionStorage.getItem(memory);
+      // Read the old watch without migrating its job or stealing TikTok work.
+      if (!id && scope === "music:music-video") {
+        id = window.sessionStorage.getItem("fluxfield:job:director");
+        legacyVideo = true;
+      }
     } catch {
       return;
     }
@@ -50,6 +56,7 @@ export function useJobWatch(scope: string, intervalMs = 1200) {
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { job: StudioJob } | null) => {
         if (dropped || !data?.job) return;
+        if (legacyVideo && (data.job.tool !== "director" || data.job.inputs.mode !== "music-video")) return;
         const age = Date.now() - new Date(data.job.updatedAt).getTime();
         if (age > STILL_INTERESTING_MS) {
           try {
@@ -65,7 +72,7 @@ export function useJobWatch(scope: string, intervalMs = 1200) {
     return () => {
       dropped = true;
     };
-  }, [memory]);
+  }, [memory, scope]);
 
   useEffect(() => {
     const read = () => setOnScreen(document.visibilityState === "visible");

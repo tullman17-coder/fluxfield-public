@@ -35,8 +35,8 @@ const TOOL_LABEL: Record<string, string> = {
   dream: "Image",
   explainer: "Video",
   workflow: "Marketing",
-  music: "Track",
-  director: "Long form",
+  music: "Music",
+  director: "Director",
 };
 
 export default function GalleryPage() {

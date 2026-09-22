@@ -8,7 +8,8 @@ const VIDEO_TOOLS = [
   { href: "/ugc", name: "Creator clips", description: "Reviews, demos, outfit ideas and unboxing concepts." },
   { href: "/ad-multiplier", name: "Ad sequence", description: "One cut with hook, benefit and CTA beats." },
   { href: "/faceless", name: "Faceless story", description: "Visual stories without an on-camera host." },
-  { href: "/director", name: "Director", description: "Short motion cut with a generated or uploaded soundtrack." },
+  { href: "/director", name: "Director", description: "Short-form vertical stories and TikTok templates." },
+  { href: "/music?mode=music-video", name: "Music video", description: "Music's short video mode with an ACE score or uploaded soundtrack." },
 ];
 const card = "glass min-w-0 rounded-[14px] border border-white/10 p-4 transition hover:border-white/30";
 
@@ -58,7 +59,7 @@ export default function HomePage() {
 
       <section className="min-w-0 space-y-3">
         <h2 className="text-2xl font-semibold">Short motion</h2>
-        <p className="text-sm text-[#b8aebb]">10–90 seconds. Managed narration, lip-sync and source-clip remixing are unavailable. Director can add a music soundtrack.</p>
+        <p className="text-sm text-[#b8aebb]">10–90 seconds. Managed narration, lip-sync and source-clip remixing are unavailable. Music video can add a generated or uploaded soundtrack.</p>
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {VIDEO_TOOLS.map((tool) => <Link key={tool.href} href={tool.href} className={card}><h3 className="font-semibold">{tool.name}</h3><p className="mt-1 text-sm text-[#b8aebb]">{tool.description}</p></Link>)}
         </div>

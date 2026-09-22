@@ -73,12 +73,14 @@ export async function createAndRunJob(
   input = validateJobInput(input, { trustedUploads: true });
   const originalInputs = { ...input.inputs };
   const requested = { tool: input.tool, workflowSlug: input.workflowSlug, presetId: input.presetId };
+  // Only new submissions move ownership. Resume reads the persisted tool unchanged.
+  if (input.tool === "director" && input.inputs.mode === "music-video") input = { ...input, tool: "music", workflowSlug: "music" };
   const legacy = input.tool === "workflow" && legacyVideoEntry(input.workflowSlug, input.presetId, input.inputs);
   if (legacy) input = validateJobInput({ ...input, ...legacy, inputs: { ...legacy.inputs, voice: input.inputs.voice || "none" } }, { trustedUploads: true });
   const now = new Date().toISOString();
   const { unrestricted, generationMode } = await readSettings();
   input = { ...input, inputs: { ...input.inputs } };
-  if (generationMode === "zermo" && input.tool !== "music") input.inputs.visualQa ??= "on";
+  if (generationMode === "zermo" && (input.tool !== "music" || input.inputs.mode === "music-video")) input.inputs.visualQa ??= "on";
   let workflowName = input.workflowSlug;
   let presetLabel = input.presetId;
   let prompt = "";
@@ -146,7 +148,7 @@ export async function createAndRunJob(
       negativePrompt,
       input.inputs,
     ));
-  } else if (input.tool === "music") {
+  } else if (input.tool === "music" && input.inputs.mode !== "music-video") {
     const { interpretMusicBrief, applyMusicChip } = await import("@/lib/music/brief");
     const parsed = applyMusicChip(input.inputs.genre, interpretMusicBrief(input.inputs.brief || ""), input.inputs.lyricMode);
     const genre = getGenre(parsed.genre);
@@ -158,10 +160,10 @@ export async function createAndRunJob(
     input.inputs.acePrompt = input.inputs.acePrompt || parsed.tags;
     input.inputs.lyricTopic = parsed.topic;
     prompt = brief;
-  } else if (input.tool === "director") {
+  } else if (input.tool === "director" || (input.tool === "music" && input.inputs.mode === "music-video")) {
     const brief = input.inputs.brief?.trim() || "";
     if (!brief) throw new Error("Describe the film or video you want.");
-    workflowName = input.inputs.mode === "music-video" ? "Music Video" : "TikTok";
+    workflowName = input.inputs.mode === "music-video" ? "Music video" : "TikTok";
     presetLabel = input.presetId;
     aspect = input.inputs.aspect || (input.inputs.mode === "music-video" ? "16:9" : "9:16");
     prompt = brief;
@@ -334,8 +336,8 @@ async function processJob(jobId: string) {
       return;
     }
 
-    // Music does not run through the image adapter chain.
-    if (current.tool === "music") {
+    // Songs bypass the video executor; music videos share Director's renderer.
+    if (current.tool === "music" && current.inputs.mode !== "music-video") {
       const music = await runMusicAdapter({
         settings,
         job: current,
@@ -351,8 +353,8 @@ async function processJob(jobId: string) {
       return;
     }
 
-    // Long-form productions plan their own shots and frames.
-    if (current.tool === "director") {
+    // Keep persisted Director jobs resumable under their original identity.
+    if (current.tool === "director" || (current.tool === "music" && current.inputs.mode === "music-video")) {
       const directed = await runDirectorAdapter({
         settings,
         job: current,

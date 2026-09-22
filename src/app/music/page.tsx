@@ -1,7 +1,10 @@
 "use client";
 import { ZermoJobStatus } from "@/components/studio/zermo-job-status";
 
-import { useCallback, useRef, useState } from "react";
+import { use, useCallback, useRef, useState } from "react";
+import Link from "next/link";
+import { VideoComposer } from "@/components/studio/video-composer";
+import { formQueryValues } from "@/lib/workflows";
 import { GENRES, MOODS, NOTE_NAMES } from "@/lib/music/theory";
 import { applyMusicChip, interpretMusicBrief } from "@/lib/music/brief";
 import { useJobWatch } from "@/lib/jobs/use-job-watch";
@@ -20,7 +23,21 @@ const selectClass =
   "h-11 w-full min-w-0 rounded-[10px] border border-white/10 bg-white/10 px-3 text-sm text-[#f5eff6] transition-colors hover:border-white/15 focus-visible:outline-2 focus-visible:outline-[#f2a1ed]";
 const labelClass = "mb-2 block text-sm font-medium text-[#b8aebb]";
 
-export default function MusicPage() {
+export default function MusicPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const values = formQueryValues(searchParams ? use(searchParams) : {});
+  const mode = values.mode === "music-video" ? "music-video" : "song";
+  return <>
+    <nav aria-label="Music mode" className="mb-6 flex flex-wrap gap-2">
+      {([ ["song", "Song"], ["music-video", "Music video"] ] as const).map(([id, label]) => (
+        <Link key={id} href={`/music?mode=${id}`} aria-current={mode === id ? "page" : undefined}
+          className={cn("min-h-11 rounded-[10px] border px-4 py-3 text-sm font-bold", mode === id ? "border-[#d565d6] bg-[#2c162f] text-[#e77ae6]" : "border-white/10 text-[#b8aebb]")}>{label}</Link>
+      ))}
+    </nav>
+    {mode === "music-video" ? <VideoComposer tool="music" values={values} /> : <SongComposer />}
+  </>;
+}
+
+function SongComposer() {
   const { settings, zermo, error: connectionError } = useStudioConnection();
   const [brief, setBrief] = useState("");
   const [trackName, setTrackName] = useState("");
@@ -54,6 +71,7 @@ export default function MusicPage() {
       form.set(
         "inputs",
         JSON.stringify({
+          mode: "song",
           brief,
           trackName,
           genre,

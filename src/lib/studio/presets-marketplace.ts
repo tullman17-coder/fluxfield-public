@@ -164,7 +164,7 @@ export const MARKETPLACE_PRESETS: MarketplacePreset[] = [
     layoutId: "key-art",
     defaultStyle: "cinematic",
     tagline: "Plan the cut",
-    href: "/director?look=animated",
+    href: "/music?mode=music-video&look=animated",
   },
   {
     id: "motion-ads",

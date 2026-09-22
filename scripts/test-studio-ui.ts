@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { jobRunnerSupportsVisualQa, jobStatusLabel, exactSeed, musicEffectiveSettings, musicLengths, musicSeconds, preferredImproveProvider, settingsWritePayload, supercomputerReady, visualQaSummary, ZERMO_IMAGE_PROFILES } from "../src/lib/studio/presentation";
 import { visibleDreamPresets, DREAM_PRESETS, MATURE_PRESETS } from "../src/lib/dream/presets";
 import { EXPLAINER_PRESETS, getDurationBeats, getDurationSeconds } from "../src/lib/explainer/presets";
+import { MARKETPLACE_PRESETS as marketplace } from "../src/lib/studio/presets-marketplace";
 
 assert.equal(jobStatusLabel(null), "Ready for a prompt");
 assert.equal(jobStatusLabel({ status: "queued" }), "Queued");
@@ -106,5 +107,12 @@ assert.equal(
 for (const file of ["src/app/create/page.tsx", "src/components/studio/job-runner.tsx"]) {
   assert(readFileSync(file, "utf8").includes("Model review can miss identity, color and count errors. Inspect reference edits yourself."), "Known review limits must be visible beside the QA control");
 }
-assert.equal(readFileSync("src/app/director/page.tsx", "utf8").match(/id="brief"[\s\S]*?placeholder="([^"]*)"/)?.[1], "", "Director brief must stay blank, without sample prompt text");
+assert.equal(readFileSync("src/components/studio/video-composer.tsx", "utf8").match(/id="brief"[\s\S]*?placeholder="([^"]*)"/)?.[1], "", "Shared video brief must stay blank, without sample prompt text");
+assert.equal(marketplace.find(p => p.id === "motion-director")?.href, "/music?mode=music-video&look=animated", "Music-video preset must land in Music");
+const gallery = readFileSync("src/app/gallery/page.tsx", "utf8");
+assert.match(gallery, /music: "Music"/, "Music Gallery label must cover audio and video");
+assert.match(gallery, /director: "Director"/);
+const home = readFileSync("src/app/page.tsx", "utf8");
+assert.doesNotMatch(home, /Director can add a music soundtrack/);
+assert.match(home, /href: "\/music\?mode=music-video"/);
 console.log("Studio UI behavior checks passed");

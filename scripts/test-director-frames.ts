@@ -152,7 +152,11 @@ async function main() {
     await execFileAsync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "sine=duration=30", flacPath]);
     const FLAC = await fs.readFile(flacPath);
     const directorRequests: ZermoRequest[] = [];
-    globalThis.fetch = async (_url, init) => {
+    let remoteSeq = 0;
+    const remoteStates = new Map<string, { id: string; state: string; effective: unknown; outputs: string[] }>();
+    const assetRequests = new Map<string, ZermoRequest>();
+    globalThis.fetch = async (url, init) => {
+      assert.equal(new URL(String(url)).origin, "http://127.0.0.1:1", "fixture transport only");
       if (init?.method === "POST") {
         const headers = (init.headers || {}) as Record<string, string>;
         const ct = headers["Content-Type"] || headers["content-type"] || "";
@@ -161,15 +165,24 @@ async function main() {
         }
         const submitted = JSON.parse(String(init.body)) as ZermoRequest;
         directorRequests.push(submitted);
-        const suffix = directorRequests.length.toString(16).padStart(32, "0");
-        return Response.json({
+        const suffix = (++remoteSeq).toString(16).padStart(32, "0");
+        const state = {
           id: `job_${suffix}`,
-          state: "succeeded",
+          state: submitted.settings.duration === 300 ? "failed" : "succeeded",
           effective: submitted.settings,
           outputs: [`asset_${suffix}`],
-        });
+        };
+        remoteStates.set(state.id, state);
+        assetRequests.set(state.outputs[0], submitted);
+        return Response.json(state);
       }
-      const last = directorRequests.at(-1);
+      if (String(url).includes("/jobs/")) {
+        const state = remoteStates.get(path.basename(String(url)));
+        assert.ok(state, "resume must read the accepted remote ID");
+        return Response.json(state);
+      }
+      const last = assetRequests.get(path.basename(String(url)));
+      assert.ok(last, "only fixture-owned assets may be read");
       if (last?.operation === "music.generate") {
         return new Response(FLAC, { headers: { "content-type": "audio/flac" } });
       }
@@ -178,6 +191,110 @@ async function main() {
       }
       return new Response(PNG, { headers: { "content-type": "image/png" } });
     };
+    // Exercise the real multipart route → durable runner → shared video executor.
+    await fs.writeFile(path.join(tmp, ".data", "settings.json"), JSON.stringify({ generationMode: "zermo", ffmpegEnabled: true }));
+    const { POST: create } = await import("../src/app/api/jobs/route");
+    const { getJob: readJob } = await import("../src/lib/jobs/store");
+    const { listLibrary } = await import("../src/lib/library/index");
+    const done = async (id: string) => {
+      for (let i = 0; i < 6000; i++) {
+        const saved = await readJob(id);
+        if (saved && ["completed", "failed"].includes(saved.status)) return saved;
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      throw new Error("Isolated video job did not settle");
+    };
+    const form = new FormData();
+    form.set("tool", "music"); form.set("workflowSlug", "music"); form.set("presetId", "street");
+    form.set("inputs", JSON.stringify({ mode: "music-video", brief, runtime: "30", seconds: "30", look: "street", scoreSource: "upload", aspect: "16:9", visualQa: "off" }));
+    form.set("soundtrack", new File([FLAC], "score.flac", { type: "audio/flac" }));
+    form.set("referenceImage", new File([PNG], "opener.png", { type: "image/png" }));
+    const response = await create(new Request("http://unit.test/api/jobs", { method: "POST", body: form }));
+    const created = await response.json();
+    assert.equal(response.status, 201, `Music video intake must accept visual presets and uploads: ${JSON.stringify(created)}`);
+    const completed = await done(created.job.id);
+    assert.equal(completed.status, "completed", completed.error);
+    assert.equal(completed.tool, "music");
+    assert.equal(completed.workflowSlug, "music");
+    assert.equal(completed.workflowName, "Music video");
+    assert.equal(completed.presetId, "street");
+    assert.equal(completed.inputs.mode, "music-video");
+    assert.deepEqual(await fs.readFile(completed.referenceImagePath!), PNG);
+    assert.deepEqual(await fs.readFile(path.join(tmp, ".data/uploads", completed.inputs.soundtrack)), FLAC);
+    assert.equal(directorRequests.filter(r => r.operation === "music.generate").length, 0, "Drop track skips ACE");
+    assert.equal(directorRequests.filter(r => r.operation === "image.generate").length, 0, "Reference still skips Qwen");
+    assert.equal(directorRequests.filter(r => r.operation === "video.image_to_video").length, wanClipsForDuration(30));
+    const primary = completed.outputs.find(o => o.id === completed.primaryOutputId);
+    assert.equal(primary?.kind, "video");
+    assert.match(primary!.label, /Final cut/);
+    const { stdout } = await execFileAsync("ffprobe", ["-v", "error", "-show_streams", "-of", "json", path.join(tmp, ".data/outputs", path.basename(primary!.url!))]);
+    const streams = JSON.parse(stdout).streams;
+    assert.equal(Number(streams.find((s: { codec_type: string }) => s.codec_type === "video").duration), 30);
+    assert.ok(streams.some((s: { codec_type: string }) => s.codec_type === "audio"));
+    const library = await listLibrary({ tool: "music", kind: "video" });
+    assert.ok(library.entries.some(e => e.jobId === completed.id && e.fileName === path.basename(primary!.url!)), "Music video must publish under Music, not Director or Track-only");
+    const { GET: reload } = await import("../src/app/api/jobs/[id]/route");
+    const reloaded = await reload(new Request(`http://unit.test/api/jobs/${completed.id}`), { params: Promise.resolve({ id: completed.id }) });
+    assert.deepEqual((await reloaded.json()).job, completed, "Job-watch reload preserves identity and primary video");
+    console.log("PASS: Music multipart create → WAN → decoded 30s cut + audio → Music library + exact job reload");
+
+    // Old create payloads are compatibility entry points, not new Director-owned videos.
+    directorRequests.length = 0;
+    form.set("tool", "director"); form.set("workflowSlug", "director");
+    const legacyResponse = await create(new Request("http://unit.test/api/jobs", { method: "POST", body: form }));
+    assert.equal(legacyResponse.status, 201);
+    const legacyCreated = (await legacyResponse.json()).job;
+    const legacyFinished = await done(legacyCreated.id);
+    assert.equal(legacyFinished.status, "completed", legacyFinished.error);
+    assert.equal(legacyCreated.tool, "music", "New legacy Director music-video submissions must be Music-owned");
+    assert.equal(legacyCreated.workflowSlug, "music");
+    assert.deepEqual(legacyCreated.requested, { tool: "director", workflowSlug: "director", presetId: "street" });
+    console.log("PASS: legacy Director create payload → new Music identity; original request retained");
+
+    // Simulate an old persisted Director video without running intake/migration.
+    const oldJob: StudioJob = { ...legacyFinished, tool: "director", workflowSlug: "director", workflowName: "Music Video", status: "failed" };
+    await saveJob(oldJob);
+    const { POST: resume } = await import("../src/app/api/jobs/[id]/route");
+    const postsBeforeResume = directorRequests.length;
+    const resumedResponse = await resume(new Request(`http://unit.test/api/jobs/${oldJob.id}`, { method: "POST" }), { params: Promise.resolve({ id: oldJob.id }) });
+    assert.equal(resumedResponse.status, 202);
+    const resumedOld = await done(oldJob.id);
+    assert.equal(resumedOld.status, "completed", resumedOld.error);
+    for (const key of ["id", "tool", "workflowSlug", "workflowName", "presetId", "inputs", "requested", "originalInputs"] as const) assert.deepEqual(resumedOld[key], oldJob[key], `Legacy ${key} must not be migrated on resume`);
+    for (const [purpose, intent] of Object.entries(oldJob.zermoJobs!)) {
+      assert.equal(resumedOld.zermoJobs![purpose].remoteId, intent.remoteId);
+      assert.deepEqual(resumedOld.zermoJobs![purpose].request, intent.request);
+    }
+    assert.equal(directorRequests.length, postsBeforeResume, "Legacy resume must poll retained worker IDs, not re-submit");
+    console.log("PASS: old Director music-video ID resumes without ownership/request rewrite or new worker POSTs");
+
+    directorRequests.length = 0;
+    const writeResponse = await create(new Request("http://unit.test/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tool: "music", workflowSlug: "music", presetId: "animated", inputs: { mode: "music-video", brief, runtime: "30", seconds: "30", look: "animated", genre: "pop", lyricMode: "instrumental", scoreSource: "write", visualQa: "off" } }) }));
+    assert.equal(writeResponse.status, 201);
+    const written = await done((await writeResponse.json()).job.id);
+    assert.equal(written.status, "completed", written.error);
+    assert.equal(written.outputs.find(o => o.id === written.primaryOutputId)?.kind, "video");
+    assert.deepEqual(directorRequests.map(r => r.operation), ["music.generate", "image.generate", ...Array(wanClipsForDuration(30)).fill("video.image_to_video")]);
+    assert.equal(directorRequests[0].settings.duration, 30);
+    assert.equal(written.tool, "music");
+    console.log("PASS: new Music Write ACE → Qwen opener → WAN → primary video");
+
+    directorRequests.length = 0;
+    const songResponse = await create(new Request("http://unit.test/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tool: "music", workflowSlug: "music", presetId: "pop", inputs: { mode: "song", brief, genre: "pop", seconds: "300", lyricMode: "instrumental" } }) }));
+    assert.equal(songResponse.status, 201);
+    const song = await done((await songResponse.json()).job.id);
+    assert.equal(song.status, "failed", "fixture deliberately stops after full-song worker POST");
+    assert.deepEqual(directorRequests.map(r => [r.operation, r.settings.duration]), [["music.generate", 300]], "Song must remain one native 300s ACE request, with no visuals");
+    console.log("PASS: Song create → one native 300s ACE request (fixture stops at worker)");
+
+    await fs.writeFile(path.join(tmp, ".data/settings.json"), JSON.stringify({ generationMode: "zermo", ffmpegEnabled: false }));
+    const defaultResponse = await create(new Request("http://unit.test/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tool: "music", workflowSlug: "music", presetId: "auto", inputs: { mode: "music-video", brief, runtime: "30" } }) }));
+    assert.equal(defaultResponse.status, 201);
+    const defaultJob = (await defaultResponse.json()).job;
+    await done(defaultJob.id); // disabled FFmpeg stops before any media work
+    assert.equal(defaultJob.inputs.visualQa, "on", "Moving ownership must retain the video QA default");
+
+    directorRequests.length = 0;
     const { runDirectorAdapter } = await import(
       "../src/lib/adapters/director"
     );

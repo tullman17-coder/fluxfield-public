@@ -3,8 +3,9 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import React, { createElement } from "react";
+import { mock } from "node:test";
+import { renderToStaticMarkup, renderToReadableStream } from "react-dom/server";
 import { GENRES, keyLabel, planArrangement } from "../src/lib/music/theory";
 import { applyMusicChip, interpretMusicBrief } from "../src/lib/music/brief";
 import { lyricSheetToSrt, timedLyricCues, wanLyricPrompt } from "../src/lib/music/lyrics";
@@ -203,6 +204,8 @@ async function main() {
 
     const { default: MusicPage } = await import("../src/app/music/page");
     const html = renderToStaticMarkup(createElement(MusicPage));
+    assert.match(html, /href="\/music\?mode=song"/, "Music owns a Song mode");
+    assert.match(html, /href="\/music\?mode=music-video"/, "Music owns a Music video mode");
     const styleControls = html.match(/<legend[^>]*>Style<\/legend>([\s\S]*?)<\/fieldset>/)?.[1] || "";
     assert.equal([...styleControls.matchAll(/aria-pressed=/g)].length, GENRES.length);
     assert.match(html, /<textarea[^>]*id="brief"[^>]*placeholder=""/);
@@ -210,6 +213,82 @@ async function main() {
     assert.match(html, /keyword.*heuristic/i);
     assert.match(html, /timing estimate/i);
     assert.doesNotMatch(html, /where the hook lands|how loud each part gets/);
+
+    const videoPage = await renderToReadableStream(createElement(MusicPage, { searchParams: Promise.resolve({ mode: "music-video", look: "animated", brief: "A dancing otter" }) }));
+    await videoPage.allReady;
+    const videoHtml = await new Response(videoPage).text();
+    assert.match(videoHtml, /<h1[^>]*>Music<\/h1>/);
+    assert.match(videoHtml, /<textarea[^>]*id="brief"[^>]*placeholder=""[^>]*>A dancing otter<\/textarea>/);
+    assert.match(videoHtml, /Write ACE/); assert.match(videoHtml, /Drop track/);
+    const lengthOptions = videoHtml.match(/<select[^>]*id="runtime"[\s\S]*?<\/select>/)?.[0] || "";
+    assert.deepEqual([...lengthOptions.matchAll(/<option value="(\d+)"/g)].map(m => Number(m[1])), [10,15,30,60,90]);
+    const { default: DirectorPage } = await import("../src/app/director/page");
+    const directorHtml = renderToStaticMarkup(await DirectorPage({ searchParams: Promise.resolve({}) }));
+    assert.match(directorHtml, /TikTok/);
+    assert.doesNotMatch(directorHtml, /Music video|Write ACE|Drop track|id="genre"/);
+    assert.match(directorHtml, /<textarea[^>]*id="brief"[^>]*placeholder=""/);
+    for (const query of [{ mode: "music-video", look: "animated", brief: "A dancing otter" }, { look: "animated" }]) {
+      await assert.rejects(DirectorPage({ searchParams: Promise.resolve(query) }), (error: unknown) => {
+        const digest = (error as { digest: string }).digest;
+        assert.match(digest, /NEXT_REDIRECT;replace;\/music\?/);
+        const target = new URL(digest.split(";")[2], "http://unit.test");
+        assert.equal(target.searchParams.get("mode"), "music-video");
+        assert.equal(target.searchParams.get("look"), "animated");
+        if (query.brief) assert.equal(target.searchParams.get("brief"), query.brief);
+        return true;
+      }, "Old music-video query links must enter Music, not TikTok");
+    }
+    console.log("PASS: Music Song/video SSR; short-form-only Director; blank briefs; bounded video menu; legacy query redirect");
+
+    // Run the actual watch hydration effect without a browser or another test library.
+    const { useJobWatch } = await import("../src/lib/jobs/use-job-watch");
+    const legacyWatch = { ...firstJob, tool: "director" as const, workflowSlug: "director", inputs: { mode: "music-video" }, updatedAt: new Date().toISOString() };
+    const songWatch = { ...legacyWatch, id: "song-watch", tool: "music" as const, workflowSlug: "music", inputs: { mode: "song" } };
+    const newVideoWatch = { ...songWatch, id: "video-watch", inputs: { mode: "music-video" } };
+    const stored = new Map([["fluxfield:job:director", legacyWatch.id], ["fluxfield:job:music", songWatch.id]]);
+    const watchJobs = new Map([legacyWatch, songWatch, newVideoWatch].map(j => [j.id, j]));
+    let watched: StudioJob | null = null;
+    let effects: React.EffectCallback[] = [];
+    const windowBefore = Object.getOwnPropertyDescriptor(globalThis, "window");
+    Object.defineProperty(globalThis, "window", { configurable: true, value: { sessionStorage: {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+      removeItem: (key: string) => stored.delete(key),
+    } } });
+    mock.method(React, "useState", ((initial: unknown) => [initial, (next: StudioJob | null | ((old: StudioJob | null) => StudioJob | null)) => { watched = typeof next === "function" ? next(watched) : next; }]) as typeof React.useState);
+    mock.method(React, "useCallback", ((fn: () => unknown) => fn) as typeof React.useCallback);
+    mock.method(React, "useEffect", (effect: React.EffectCallback) => { effects.push(effect); });
+    globalThis.fetch = async url => {
+      const saved = watchJobs.get(String(url).split("/").pop()!);
+      assert.ok(saved, "Watch must reload the exact retained ID");
+      return Response.json({ job: saved });
+    };
+    const hydrate = async (scope: string) => {
+      watched = null; effects = [];
+      // eslint-disable-next-line react-hooks/rules-of-hooks -- the controlled dispatcher above runs this hook's real hydration effect.
+      const watch = useJobWatch(scope);
+      const cleanup = effects[0]();
+      await new Promise(resolve => setImmediate(resolve));
+      if (cleanup) cleanup();
+      return { job: watched as StudioJob | null, setJob: watch.setJob };
+    };
+    try {
+      assert.equal((await hydrate("music:music-video")).job?.id, legacyWatch.id, "Music video must recover a remembered legacy Director video");
+      const watch = await hydrate("music:music-video");
+      watch.setJob(newVideoWatch);
+      assert.equal(stored.get("fluxfield:job:music:music-video"), newVideoWatch.id);
+      assert.equal((await hydrate("music:music-video")).job?.id, newVideoWatch.id, "Video reload must prefer its own new job");
+      assert.equal((await hydrate("music")).job?.id, songWatch.id, "Song reload must not show the video");
+      assert.equal(stored.get("fluxfield:job:director"), legacyWatch.id, "Leave the old watch and persisted ID untouched");
+      stored.delete("fluxfield:job:music:music-video");
+      legacyWatch.inputs.mode = "tiktok";
+      assert.equal((await hydrate("music:music-video")).job, null, "Director TikTok jobs must never migrate into Music's watch");
+    } finally {
+      mock.restoreAll();
+      if (windowBefore) Object.defineProperty(globalThis, "window", windowBefore);
+      else Reflect.deleteProperty(globalThis, "window");
+    }
+    console.log("PASS: real watch hydration, separate Song/video memory, legacy video-only fallback, exact retained IDs");
 
     console.log(`PASS: ${GENRES.length}/${GENRES.length} GENRES × write/instrumental, ${mediaPosts} intercepted ACE POSTs, ${uploads.length} owned-timbre uploads; resume cues/SRT/tags/arrangement; SSR controls; no network/audio generation`);
   } finally {

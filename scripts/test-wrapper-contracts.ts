@@ -188,9 +188,11 @@ check("reuse is deliberate and available on every composition form", () => {
 });
 
 check("motion controls promise only supported lengths and actual capabilities", () => {
-  for (const route of ["ugc", "ad-multiplier", "faceless", "explainer", "director"]) {
-    const source = readFileSync(`src/app/${route}/page.tsx`, "utf8");
-    assert.ok(source.includes("MANAGED_MOTION_LENGTHS"), route);
+  const paths = ["ugc", "ad-multiplier", "faceless", "explainer"].map(route => `src/app/${route}/page.tsx`);
+  paths.push("src/components/studio/video-composer.tsx");
+  for (const file of paths) {
+    const source = readFileSync(file, "utf8");
+    assert.ok(source.includes("MANAGED_MOTION_LENGTHS"), file);
     assert.doesNotMatch(source, /id: "(?:voice|sourceVideoPath|subtitles|script)"|EXPLAINER_DURATIONS|TIKTOK_RUNTIMES|useState\("180"\)|over two minutes/);
   }
 });
@@ -234,6 +236,7 @@ async function routeChecks() {
   const { default: FacelessPage } = await import("../src/app/faceless/page");
   const { default: ExplainerPage } = await import("../src/app/explainer/page");
   const { default: DirectorPage } = await import("../src/app/director/page");
+  const { default: MusicPage } = await import("../src/app/music/page");
   for (const workflow of WORKFLOWS.filter((w) => w.kind === "video")) for (const preset of workflow.presets) {
     const query = { preset: preset.id, productName: "My $& {{cup}}", productDescription: "Photorealistic ceramic" };
     await assert.rejects(WorkflowPage({ params: Promise.resolve({ slug: workflow.slug }), searchParams: Promise.resolve(query) }), (error: unknown) => {
@@ -261,7 +264,9 @@ async function routeChecks() {
     else if (url.pathname === "/ad-multiplier") page = await AdsPage({ searchParams: Promise.resolve(query) });
     else if (url.pathname === "/faceless") page = await FacelessPage({ searchParams: Promise.resolve(query) });
     else {
-      const html = await renderAsync(React.createElement(url.pathname === "/explainer" ? ExplainerPage : DirectorPage, { searchParams: Promise.resolve(query) }));
+      assert.ok(["/explainer", "/director", "/music"].includes(url.pathname), `Unknown shortcut ${preset.href}`);
+      const Component = url.pathname === "/explainer" ? ExplainerPage : url.pathname === "/music" ? MusicPage : DirectorPage;
+      const html = await renderAsync(React.createElement(Component, { searchParams: Promise.resolve(query) }));
       check(`shortcut ${preset.id}`, () => assert.ok(html.includes('aria-pressed="true"')));
       continue;
     }
@@ -274,9 +279,13 @@ async function routeChecks() {
       assert.ok(selected.some((button) => button.includes(preset.previewImage)));
     });
   }
-  for (const look of LOOKS) {
-    const html = await renderAsync(React.createElement(DirectorPage, { searchParams: Promise.resolve({ look: look.id }) }));
-    check(`director selection ${look.id}`, () => assert.ok(new RegExp(`aria-pressed="true"[^>]*>${look.label}</button>`).test(html)));
+  for (const look of LOOKS) for (const mode of ["music-video", "tiktok"]) {
+    const html = await renderAsync(React.createElement(mode === "music-video" ? MusicPage : DirectorPage, { searchParams: Promise.resolve({ mode, look: look.id }) }));
+    check(`${mode} selection ${look.id}`, () => {
+      assert.ok(new RegExp(`aria-pressed="true"[^>]*>${look.label}</button>`).test(html));
+      if (mode === "music-video") assert.match(html, /<h1[^>]*>Music<\/h1>/);
+      else assert.doesNotMatch(html, /Write ACE|Drop track/);
+    });
   }
   console.log("COUNTS " + JSON.stringify({ wrappers: IMAGE2_WRAPPERS.length, wrapperPresets: IMAGE2_WRAPPERS.reduce((n, w) => n + w.presets.length, 0), layouts: new Set(IMAGE2_WRAPPERS.map((w) => w.layout)).size, workflows: WORKFLOWS.length, workflowPresets: WORKFLOWS.reduce((n, w) => n + w.presets.length, 0), marketplaceShortcuts: MARKETPLACE_PRESETS.length, explainerStyles: EXPLAINER_PRESETS.length, directorLooks: LOOKS.length }));
 

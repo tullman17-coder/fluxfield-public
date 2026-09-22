@@ -183,6 +183,15 @@ async function main() {
       assert.deepEqual(validateJobInput(input), input, "Legacy IDs stay valid without silently repairing tokens");
     }
     validateJobInput({ tool: "director", workflowSlug: "director", presetId: "noir", inputs: { brief: literal, look: "noir", template: "", genre: "auto" } });
+    const videoMusic = { tool: "music", workflowSlug: "music", presetId: "street", inputs: { mode: "music-video", brief: literal, runtime: "90", seconds: "90" } };
+    assert.equal(validateJobInput(videoMusic).presetId, "street");
+    for (const key of ["runtime", "seconds"]) for (const value of ["9", "91", "300"]) {
+      assert.throws(() => validateJobInput({ ...videoMusic, inputs: { ...videoMusic.inputs, [key]: value } }), /10–90/, "Music video cannot inherit full-song duration limits");
+    }
+    for (const mode of ["tiktok", " video", "unknown"]) assert.throws(() => validateJobInput({ ...videoMusic, inputs: { ...videoMusic.inputs, mode } }), /mode/);
+    assert.equal(validateJobInput({ tool: "music", workflowSlug: "music", presetId: "pop", inputs: { mode: "song", brief: literal, seconds: "300" } }).inputs.seconds, "300");
+    assert.throws(() => validateJobInput({ ...videoMusic, inputs: { ...videoMusic.inputs, scoreSource: "upload" } }), /soundtrack/);
+    console.log("PASS separate Song 10–300s and Music video 10–90s intake contracts");
     const uploaded = { ...dream, inputs: { prompt: literal, referenceImage: "owned123.png" }, referenceImagePath: path.join(scratch, ".data", "uploads", "owned123.png") };
     assert.throws(() => validateJobInput(uploaded), /server-owned|upload/i);
     assert.deepEqual(validateJobInput(uploaded, { trustedUploads: true }), uploaded);
