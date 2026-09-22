@@ -191,10 +191,11 @@ export default function MusicPage() {
             </div>
             <div className="min-w-0">
               <label htmlFor="seconds" className={labelClass}>
-                Length {zermo ? "(10–90 seconds)" : ""}
+                Track length {zermo ? "(up to 5 minutes)" : ""}
               </label>
               <select
                 id="seconds"
+                aria-describedby="track-length-help"
                 value={effectiveSeconds}
                 onChange={(e) => setSeconds(e.currentTarget.value)}
                 className={selectClass}
@@ -205,6 +206,7 @@ export default function MusicPage() {
                   </option>
                 ))}
               </select>
+              <p id="track-length-help" className="mt-2 text-xs text-[#8d838f]">Playback length, not waiting time. Full songs are generated as one track, not a loop of a shorter clip.</p>
             </div>
             <div className="grid min-w-0 grid-cols-2 gap-3">
               <div className="min-w-0">
@@ -344,7 +346,7 @@ export default function MusicPage() {
             Finished
           </p>
           <h2 className="mt-1 text-lg text-[#f5eff6]">Track</h2>
-          <p className="text-xs text-[#b8aebb]">Zermo mode uses ACE, 10–90 seconds, FLAC. Select the provider in Settings.</p>
+          <p className="text-xs text-[#b8aebb]">Zermo mode uses ACE, 10 seconds–5 minutes, FLAC. Select the provider in Settings.</p>
           <ZermoJobStatus job={job} onResume={setJob} />
           {effectiveSettings.length ? (
             <div className="mt-4 rounded-[10px] border border-white/10 bg-white/5 p-4">

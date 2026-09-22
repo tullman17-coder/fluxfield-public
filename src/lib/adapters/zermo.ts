@@ -194,8 +194,9 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
     intent.remoteId = remote.id; intent.state = remote.state; intent.effective = remote.effective; intent.outputs = remote.outputs;
     await persist(); // retain acknowledgement BEFORE polling / downloading
     if (remote.state === "succeeded") break;
-    if (["failed", "cancelled", "recovery_unknown"].includes(remote.state) || (remote.state === "submission_unknown" && remote.error)) throw new Error(`Zermo ${remote.state}; remote ID retained, no replacement render submitted`);
-    if (!["queued", "preparing", "submission_unknown", "running", "recovering_outputs"].includes(remote.state)) throw new Error("Unknown Zermo job state");
+    if (["failed", "cancelled"].includes(remote.state) || (remote.state === "submission_unknown" && remote.error)) throw new Error(`Zermo ${remote.state}; remote ID retained, no replacement render submitted`);
+    // Queue/history handoff can briefly be unknown; poll the same ID until the bounded deadline.
+    if (!["queued", "preparing", "submission_unknown", "running", "recovery_unknown", "recovering_outputs"].includes(remote.state)) throw new Error("Unknown Zermo job state");
     if (Date.now() >= deadline) throw new Error("Zermo is still pending; resume this job to reconnect");
     await new Promise((resolve) => setTimeout(resolve, remote.state === "queued" ? 1500 : 750));
     remote = await (await request(`/jobs/${remoteId(remote.id, "job")}`)).json();

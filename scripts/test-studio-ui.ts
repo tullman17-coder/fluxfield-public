@@ -14,7 +14,7 @@ assert.equal(jobStatusLabel({ status: "failed", phase: "finalize" }), "Failed");
 assert.equal(exactSeed("18446744073709551615"), "18446744073709551615");
 assert.equal(exactSeed(0), "0");
 assert.equal(exactSeed(18446744073709551615), ""); // Already rounded: never pretend it is reusable.
-assert.equal(musicSeconds("zermo", "300"), "90");
+assert.equal(musicSeconds("zermo", "300"), "300");
 assert.equal(musicSeconds("zermo", "5"), "10");
 assert.equal(musicSeconds("zermo", "60"), "60");
 assert.equal(musicSeconds("zermo", "oops"), "60");
@@ -22,7 +22,8 @@ assert.equal(getDurationSeconds("90s"), 90);
 assert.equal(getDurationBeats("90s"), 8);
 assert.equal(getDurationSeconds("10s"), 10);
 assert.equal(musicSeconds("mock", "300"), "300");
-assert(musicLengths("zermo").every((x) => Number(x.id) >= 10 && Number(x.id) <= 90));
+assert.deepEqual(musicLengths("zermo").map(x => Number(x.id)), [10,15,30,45,60,90,120,180,240,300]);
+assert(musicLengths("zermo").every(x => / · /.test(x.label)), "lengths need a useful purpose, not bare seconds");
 assert.equal(preferredImproveProvider({ improveProvider: "api", hasImproveApiKey: true }), "api");
 assert.equal(preferredImproveProvider({ improveProvider: "api", hasImproveApiKey: false }), "local");
 assert.equal(preferredImproveProvider({ improveProvider: "local", hasImproveApiKey: true }), "local");

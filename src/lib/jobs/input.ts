@@ -8,6 +8,7 @@ import { VIDEO_WORKFLOWS } from "@/lib/video-workflows/catalog";
 import { LOOKS, CUT_SPEEDS, TIKTOK_TEMPLATES } from "@/lib/director/plan";
 import { GENRES, MOODS, NOTE_NAMES } from "@/lib/music/theory";
 import { referenceUrl } from "./reference";
+import { MAX_GENERATION_SECONDS } from "@/lib/generation-lengths";
 
 export class JobInputError extends Error {}
 export type UploadField = "referenceImage" | "soundtrack" | "voiceSample";
@@ -90,6 +91,9 @@ function schema(options: ValidationOptions) {
     ] as const) {
       const value = inputs[key];
       if (value !== undefined && value !== "" && (!/^\d+(?:\.\d+)?$/.test(value) || !Number.isFinite(Number(value)) || Number(value) < min || Number(value) > max || integer && !Number.isInteger(Number(value)))) error(key, "Invalid numeric control");
+    }
+    if (job.tool === "music" && inputs.seconds) {
+      if (Number(inputs.seconds) < 10 || Number(inputs.seconds) > MAX_GENERATION_SECONDS) error("seconds", `Choose 10–${MAX_GENERATION_SECONDS} seconds`);
     }
     if (inputs.seed && (!/^\d{1,20}$/.test(inputs.seed) || BigInt(inputs.seed) > BigInt("18446744073709551615"))) error("seed", "Expected an exact uint64 seed string");
     if (inputs.size && (!/^\d{2,4}x\d{2,4}$/.test(inputs.size) || inputs.size.split("x").some((n) => Number(n) < 64 || Number(n) > 4096))) error("size", "Expected bounded WIDTHxHEIGHT");

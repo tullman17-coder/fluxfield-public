@@ -21,6 +21,7 @@ import {
 import { generateLyrics } from "@/lib/adapters/ollama";
 import { applyMusicChip, interpretMusicBrief, type MusicBrief } from "@/lib/music/brief";
 import { runZermoJob, uploadZermoAsset } from "./zermo";
+import { MAX_GENERATION_SECONDS } from "@/lib/generation-lengths";
 
 const OUT_DIR = path.join(process.cwd(), ".data", "outputs");
 
@@ -156,9 +157,12 @@ export async function runMusicAdapter(
     inputs.lyricMode || "instrumental",
   );
   const tags = parsed.tags;
+  const saved = ctx.settings.generationMode === "zermo" ? ctx.job.zermoJobs?.["music:track"]?.request : undefined;
+  const requestedSeconds = saved?.settings.duration ?? Number(inputs.seconds || 60);
+  if (!Number.isFinite(requestedSeconds) || requestedSeconds < 10 || requestedSeconds > MAX_GENERATION_SECONDS) throw new Error(`Music supports 10–${MAX_GENERATION_SECONDS} seconds; choose a supported track length`);
   const targetSec = Math.max(
     10,
-    Math.min(MAX_RENDER_SEC, Number(inputs.seconds || 60)),
+    Math.min(MAX_RENDER_SEC, requestedSeconds),
   );
 
   const arrangement = planArrangement({
@@ -175,9 +179,7 @@ export async function runMusicAdapter(
 
   const title = inputs.trackName?.trim() || "Untitled";
   if (ctx.settings.generationMode === "zermo") {
-    const saved = ctx.job.zermoJobs?.["music:track"]?.request;
-    const duration = saved?.settings.duration ?? Number(inputs.seconds || 60);
-    if (!Number.isFinite(duration) || duration < 10 || duration > 90) throw new Error("Zermo ACE supports 10–90 seconds; choose a shorter track");
+    const duration = requestedSeconds;
     const draft = saved ? null : await buildLyrics(ctx, arrangement, title, parsed);
     let audioId: string | undefined;
     const sample = inputs.voiceSample?.trim();

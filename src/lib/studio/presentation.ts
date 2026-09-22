@@ -1,4 +1,5 @@
 // Pure UI policy: no server transports or secrets in this import graph.
+import { GENERATION_LENGTHS, MAX_GENERATION_SECONDS } from "@/lib/generation-lengths";
 export type ManagedHealth = {
   configured: boolean;
   ready: boolean;
@@ -34,14 +35,15 @@ export function exactSeed(value: unknown): string {
 }
 
 export function musicLengths(mode: string | undefined) {
-  return (mode === "zermo" ? [10, 30, 60, 90] : [30, 60, 120, 180, 300])
+  if (mode === "zermo") return GENERATION_LENGTHS.map(l => ({ id: String(l.seconds), label: `${l.time} · ${l.music}` }));
+  return [30, 60, 120, 180, 300]
     .map((seconds) => ({ id: String(seconds), label: `${seconds} sec` }));
 }
 
 export function musicSeconds(mode: string | undefined, value: string): string {
   if (mode !== "zermo") return value;
   const n = Number(value);
-  return String(Number.isFinite(n) && value.trim() ? Math.max(10, Math.min(90, Math.round(n))) : 60);
+  return String(Number.isFinite(n) && value.trim() ? Math.max(10, Math.min(MAX_GENERATION_SECONDS, Math.round(n))) : 60);
 }
 
 export function preferredImproveProvider(settings: {

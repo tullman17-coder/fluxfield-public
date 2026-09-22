@@ -64,6 +64,36 @@ async function main() {
     assert.equal(submits, 2); assert.equal(downloads, 2); // resume uses GET, no new render
     globalThis.fetch = async () => Response.json({ id, state: "submission_unknown", error: "uncertain", outputs: [], effective: {} });
     await assert.rejects(runZermoAdapter(ctx), /no replacement/);
+    // History and queue snapshots can briefly disagree while a clip finishes.
+    let recoveryPolls = 0;
+    globalThis.fetch = async (url, init) => {
+      assert.notEqual(init?.method, 'POST', 'Recovery must reconnect to the retained ID, never render again');
+      if (String(url).includes('/assets/')) return new Response(png, { headers: { 'content-type': 'image/png' } });
+      assert.ok(String(url).endsWith('/jobs/' + id));
+      recoveryPolls++;
+      return Response.json(recoveryPolls === 1
+        ? { id, state: 'recovery_unknown', error: 'worker outcome unavailable; reconciliation pending', outputs: [], effective: {} }
+        : { id, state: 'succeeded', outputs: [asset], effective: {} });
+    };
+    assert.equal((await runZermoAdapter(ctx)).remotePromptId, id);
+    assert.equal(recoveryPolls, 2, 'A transient unknown outcome must be reconciled, not treated as a terminal failure');
+    const realNow = Date.now;
+    let clock = 0, pendingPolls = 0;
+    try {
+      Date.now = () => clock;
+      globalThis.fetch = async (url, init) => {
+        assert.notEqual(init?.method, 'POST'); assert.ok(String(url).endsWith('/jobs/' + id));
+        if (++pendingPolls > 1) clock = 600001;
+        return Response.json({ id, state: 'recovery_unknown', error: 'still reconciling', outputs: [], effective: {} });
+      };
+      await assert.rejects(runZermoAdapter(ctx), /still pending; resume this job/);
+      assert.equal(pendingPolls, 2, 'Unknown recovery remains bounded by the existing deadline');
+      assert.equal((await getJob(job.id))!.zermoJobs!['image:0'].remoteId, id);
+    } finally { Date.now = realNow; }
+    for (const state of ['failed', 'cancelled']) {
+      globalThis.fetch = async (_url, init) => { assert.notEqual(init?.method, 'POST'); return Response.json({ id, state, outputs: [], effective: {} }); };
+      await assert.rejects(runZermoAdapter(ctx), /no replacement/);
+    }
     const audioJob = { ...job, id: "audio-parent", outputs: [] };
     await saveJob(audioJob);
     const flac = Buffer.from("fLaC-test-transport-bytes"); // transport fixture, not a claimed playable recording

@@ -26,6 +26,9 @@ async function main() {
     const intake = {tool:'music', workflowSlug:'music', presetId:'pop', inputs:{brief:'A cartoon score',genre:'pop',lyricMode:'instrumental',bpm:'137.5'}};
     assert.throws(()=>validateJobInput(intake),/bpm/, 'fractional tempo must reject at intake, not at the worker');
     for(const bpm of ['30','137','300']) assert.equal(validateJobInput({...intake,inputs:{...intake.inputs,bpm}}).inputs.bpm,bpm);
+    const longMusic = {tool:'music',workflowSlug:'music',presetId:'pop',inputs:{brief:'Original cartoon',seconds:'300'}};
+    assert.equal(validateJobInput(longMusic).inputs.seconds, '300');
+    for (const bad of ['9','301','3600']) assert.throws(() => validateJobInput({...longMusic,inputs:{...longMusic.inputs,seconds:bad}}), /10–300/);
     const { saveJob, getJob } = await import("../src/lib/jobs/store");
     const settings = { generationMode: "zermo" } as AdapterContext["settings"];
     const requests: { inputs: Record<string, string>; request: ZermoRequest; writer: string }[] = [];
@@ -87,6 +90,16 @@ async function main() {
     await assert.rejects(runMusicAdapter({job:invalidJob,settings}),/BPM.*integer/);
     assert.equal(posts,0,'invalid tempo must fail before writer, upload, or media submission');
     const failures: string[] = [];
+    for (const seconds of [120,180,240,300]) {
+      const long = await request({genre:"pop",lyricMode:"instrumental",seconds:String(seconds)});
+      assert.equal(long.body.settings.duration, seconds, "full-song length reaches the durable worker request unchanged");
+    }
+    for (const seconds of ["9","301","NaN","Infinity"]) {
+      const bad = {...invalidJob, id:`invalid-length-${seconds}`, inputs:{...invalidJob.inputs,bpm:"136",seconds}};
+      const before: number = posts;
+      await assert.rejects(runMusicAdapter({job:bad,settings}), /10–300 seconds/);
+      assert.equal(posts,before,"bad duration must not submit writer or GPU work");
+    }
     for (const genre of GENRES) {
       for (const mode of ["write", "instrumental"]) {
         const { body, writer, job } = await request({ brief: "song about rain", genre: genre.id, lyricMode: mode, bpm: "137", key: "D" });
