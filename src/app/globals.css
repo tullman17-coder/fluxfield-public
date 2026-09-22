@@ -210,7 +210,6 @@
   .swirl-blob {
     position: absolute;
     border-radius: 999px;
-    filter: blur(72px);
     animation: swirl-spin 46s linear infinite;
   }
 
@@ -220,12 +219,11 @@
     width: 34rem;
     height: 34rem;
     opacity: 0.5;
-    background: conic-gradient(
-      from 0deg,
-      rgb(138 73 190 / 30%),
-      rgb(205 64 154 / 22%),
-      rgb(88 56 160 / 26%),
-      rgb(138 73 190 / 30%)
+    background: radial-gradient(
+      circle at 42% 40%,
+      rgb(138 73 190 / 28%) 0%,
+      rgb(205 64 154 / 12%) 45%,
+      transparent 72%
     );
   }
 
@@ -235,12 +233,11 @@
     width: 38rem;
     height: 38rem;
     opacity: 0.42;
-    background: conic-gradient(
-      from 180deg,
-      rgb(205 64 154 / 24%),
-      rgb(110 60 190 / 20%),
-      rgb(64 40 110 / 22%),
-      rgb(205 64 154 / 24%)
+    background: radial-gradient(
+      circle at 55% 55%,
+      rgb(205 64 154 / 22%) 0%,
+      rgb(110 60 190 / 10%) 48%,
+      transparent 74%
     );
     animation-duration: 62s;
     animation-direction: reverse;
@@ -252,11 +249,11 @@
     width: 26rem;
     height: 26rem;
     opacity: 0.3;
-    background: conic-gradient(
-      from 90deg,
-      rgb(168 69 176 / 20%),
-      rgb(90 60 150 / 18%),
-      rgb(168 69 176 / 20%)
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgb(168 69 176 / 16%) 0%,
+      rgb(90 60 150 / 8%) 50%,
+      transparent 72%
     );
     animation-duration: 78s;
   }
@@ -326,7 +323,6 @@
      hold without warming up in your hand. */
   .swirl-blob {
     animation: none;
-    filter: blur(48px);
   }
 
   .swirl-blob--c {

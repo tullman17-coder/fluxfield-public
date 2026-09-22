@@ -2,7 +2,24 @@
 
 import { useEffect, useRef } from "react";
 
-/** Star field. Occasional gold glint, ~1s, then gone. */
+function sparkMap(THREE: typeof import("three")) {
+  const s = 64;
+  const c = document.createElement("canvas");
+  c.width = c.height = s;
+  const g = c.getContext("2d");
+  if (!g) return null;
+  const grd = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  grd.addColorStop(0, "rgba(255,246,208,1)");
+  grd.addColorStop(0.28, "rgba(255,246,208,0.55)");
+  grd.addColorStop(1, "rgba(255,246,208,0)");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, s, s);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/** Soft round stars. Occasional gold glint, ~1s, then gone. */
 export function FieldBackdrop() {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -18,10 +35,11 @@ export function FieldBackdrop() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 80);
       camera.position.z = 18;
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
       renderer.setClearColor(0x000000, 0);
 
+      const map = sparkMap(THREE);
       const count = 400;
       const pos = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
@@ -31,10 +49,17 @@ export function FieldBackdrop() {
       }
       const dots = new THREE.BufferGeometry();
       dots.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      const points = new THREE.Points(
-        dots,
-        new THREE.PointsMaterial({ color: 0xd4a017, size: 0.06, transparent: true, opacity: 0.45 }),
-      );
+      const starMat = new THREE.PointsMaterial({
+        color: 0xd4a017,
+        size: 0.14,
+        map: map ?? undefined,
+        transparent: true,
+        opacity: 0.7,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        sizeAttenuation: true,
+      });
+      const points = new THREE.Points(dots, starMat);
       scene.add(points);
 
       const glintPos = new Float32Array(3);
@@ -42,7 +67,8 @@ export function FieldBackdrop() {
       glintGeo.setAttribute("position", new THREE.BufferAttribute(glintPos, 3));
       const glintMat = new THREE.PointsMaterial({
         color: 0xfff6d0,
-        size: 0.2,
+        size: 0.35,
+        map: map ?? undefined,
         transparent: true,
         opacity: 0,
         blending: THREE.AdditiveBlending,
@@ -76,13 +102,13 @@ export function FieldBackdrop() {
           glintPos[2] = pos[i * 3 + 2];
           glintGeo.attributes.position.needsUpdate = true;
           start = t;
-          until = t + 600 + Math.random() * 500;
+          until = t + 700 + Math.random() * 500;
           next = t + 3500 + Math.random() * 9000;
         }
         if (t < until) {
           const envelope = Math.sin(((t - start) / (until - start)) * Math.PI);
-          glintMat.opacity = envelope * 0.95;
-          glintMat.size = 0.12 + envelope * 0.55;
+          glintMat.opacity = envelope * 0.9;
+          glintMat.size = 0.22 + envelope * 0.7;
         } else {
           glintMat.opacity = 0;
         }
@@ -96,8 +122,9 @@ export function FieldBackdrop() {
         window.removeEventListener("resize", onResize);
         dots.dispose();
         glintGeo.dispose();
-        (points.material as { dispose: () => void }).dispose();
-        (glint.material as { dispose: () => void }).dispose();
+        map?.dispose();
+        starMat.dispose();
+        glintMat.dispose();
         renderer.dispose();
       };
     });
