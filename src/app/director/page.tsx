@@ -213,7 +213,7 @@ export default function DirectorPage({ searchParams }: { searchParams: Promise<R
               ref={briefRef}
               value={brief}
               onChange={(e) => setBrief(e.currentTarget.value)}
-              placeholder="A flattering cartoon portrait of a raccoon DJ, silly crowd dance, bright paper-cut stage. Or request realism in your own words."
+              placeholder=""
               className="min-h-28 w-full min-w-0 resize-y rounded-[10px] border border-white/15 bg-white/15 p-3 text-base leading-normal text-[#f5eff6] placeholder:text-[#8d838f] focus-visible:outline-2 focus-visible:outline-[#f2a1ed]"
             />
           </div>

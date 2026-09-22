@@ -105,4 +105,5 @@ assert.equal(
 for (const file of ["src/app/create/page.tsx", "src/components/studio/job-runner.tsx"]) {
   assert(readFileSync(file, "utf8").includes("Model review can miss identity, color and count errors. Inspect reference edits yourself."), "Known review limits must be visible beside the QA control");
 }
+assert.equal(readFileSync("src/app/director/page.tsx", "utf8").match(/id="brief"[\s\S]*?placeholder="([^"]*)"/)?.[1], "", "Director brief must stay blank, without sample prompt text");
 console.log("Studio UI behavior checks passed");
