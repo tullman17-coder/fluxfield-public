@@ -13,6 +13,8 @@ const DATA_DIR = path.join(process.cwd(), ".data");
 const SETTINGS_PATH = path.join(DATA_DIR, "settings.json");
 
 export const DEFAULT_SETTINGS: StudioSettings = {
+  nvidiaFallback: false,
+  nvidiaApiKey: "",
   comfyUrl: "",
   ollamaUrl: defaultFactoryOllamaUrl(),
   ollamaModel: "llama3.2",
@@ -53,6 +55,14 @@ async function studioKeyFromDisk(): Promise<string> {
   }
 }
 
+async function nvidiaKeyFromEnv(): Promise<string> {
+  if (process.env.NVIDIA_NIM_API_KEY?.trim()) return process.env.NVIDIA_NIM_API_KEY.trim();
+  const file = process.env.NVIDIA_NIM_API_KEY_FILE;
+  if (!file) return "";
+  try { return (await fs.readFile(/* turbopackIgnore: true */ file, "utf8")).trim(); }
+  catch { return ""; }
+}
+
 export async function readSettings(): Promise<StudioSettings> {
   await ensureDataDir();
   try {
@@ -61,6 +71,7 @@ export async function readSettings(): Promise<StudioSettings> {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      nvidiaApiKey: parsed.nvidiaApiKey || await nvidiaKeyFromEnv(),
       comfyUrl: sanitizeGenerationUrl(
         parsed.comfyUrl ?? DEFAULT_SETTINGS.comfyUrl,
       ),
@@ -81,6 +92,7 @@ export async function readSettings(): Promise<StudioSettings> {
   } catch {
     return {
       ...DEFAULT_SETTINGS,
+      nvidiaApiKey: await nvidiaKeyFromEnv(),
       studioApiKey:
         process.env.LOCAL_STUDIO_API_KEY ||
         (await studioKeyFromDisk()) ||
@@ -99,6 +111,9 @@ const endpoint = settingText.refine((value) => {
 }, "Expected an HTTP(S) endpoint without embedded credentials or query parameters");
 
 export const settingsPatchSchema = z.object({
+  nvidiaFallback: z.boolean(),
+  nvidiaApiKey: settingText.trim().refine(v => !/[\s\x00-\x1f\x7f]/.test(v), "Invalid key"),
+  clearNvidiaApiKey: z.boolean(), hasNvidiaApiKey: z.boolean(),
   comfyUrl: endpoint, ollamaUrl: endpoint, studioUrl: endpoint, ttsUrl: endpoint,
   musicUrl: endpoint, improveApiBase: endpoint,
   ollamaModel: settingText, comfyCheckpoint: settingText, ttsVoice: settingText,
@@ -126,6 +141,10 @@ export async function writeSettings(
   if (!next.studioApiKey?.trim() && !next.clearStudioApiKey) delete next.studioApiKey;
   if (!next.improveApiKey?.trim() && !next.clearImproveApiKey) delete next.improveApiKey;
   if (!next.higgsfieldApiKey?.trim() && !next.clearHiggsfieldApiKey) delete next.higgsfieldApiKey;
+  if (!next.nvidiaApiKey?.trim() && !next.clearNvidiaApiKey) delete next.nvidiaApiKey;
+  if (next.clearNvidiaApiKey) { next.nvidiaApiKey = ""; next.nvidiaFallback = false; }
+  delete next.clearNvidiaApiKey;
+  delete next.hasNvidiaApiKey;
   if (next.clearStudioApiKey) next.studioApiKey = "";
   if (next.clearImproveApiKey) next.improveApiKey = "";
   if (next.clearHiggsfieldApiKey) next.higgsfieldApiKey = "";
@@ -147,7 +166,9 @@ export async function writeSettings(
     merged.studioUrl =
       sanitizeGenerationUrl(merged.studioUrl) || DEFAULT_SETTINGS.studioUrl;
   }
-  await fs.writeFile(SETTINGS_PATH, JSON.stringify(merged, null, 2));
+  const tmp = `${SETTINGS_PATH}.${crypto.randomUUID()}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(merged, null, 2), { mode: 0o600 });
+  await fs.rename(tmp, SETTINGS_PATH);
   return readSettings();
 }
 
@@ -165,6 +186,8 @@ export function publicEndpoint(value: string) {
 export function publicSettings(settings: StudioSettings) {
   // Allowlist rather than a rest spread: new/persisted secret fields stay private.
   return {
+    nvidiaFallback: settings.nvidiaFallback === true,
+    hasNvidiaApiKey: Boolean(settings.nvidiaApiKey),
     comfyUrl: publicEndpoint(settings.comfyUrl),
     ollamaUrl: publicEndpoint(settings.ollamaUrl),
     ollamaModel: settings.ollamaModel,

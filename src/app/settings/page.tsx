@@ -18,7 +18,7 @@ async function loadHealth(force = false) {
 
 const ENGINE_LABEL: Record<string, string> = {
   zermo: "Qwen Image 2.1 / WAN / ACE",
-  "zermo-unreachable": "Zermo unavailable — no fallback",
+  "zermo-unreachable": "Zermo unavailable",
   "local-studio": "Studio",
   comfyui: "Comfy",
   higgsfield: "Seedance 2.5",
@@ -73,7 +73,7 @@ export default function SettingsPage() {
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [clearKeys, setClearKeys] = useState({ studio: false, improve: false });
+  const [clearKeys, setClearKeys] = useState({ studio: false, improve: false, nvidia: false });
   const [message, setMessage] = useState<string | null>(null);
 
   function applyHealth(
@@ -118,12 +118,12 @@ export default function SettingsPage() {
       const response = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...settings, clearStudioApiKey: clearKeys.studio, clearImproveApiKey: clearKeys.improve }),
+        body: JSON.stringify({ ...settings, clearStudioApiKey: clearKeys.studio, clearImproveApiKey: clearKeys.improve, clearNvidiaApiKey: clearKeys.nvidia }),
       });
       if (!response.ok) throw new Error("Settings save failed");
       const saved = await response.json();
       setSettings(saved.settings);
-      setClearKeys({ studio: false, improve: false });
+      setClearKeys({ studio: false, improve: false, nvidia: false });
       await refresh();
       setMessage("Saved.");
     } catch {
@@ -137,10 +137,32 @@ export default function SettingsPage() {
     return <p className="text-[#8d838f]">Loading…</p>;
   }
 
+  const nvidiaConnection = (
+    <section aria-labelledby="nvidia-title" className="space-y-4 rounded-2xl border border-white/10 glass p-5">
+      <h2 id="nvidia-title" className="text-white">NVIDIA Cloud NIM fallback</h2>
+      <p className="text-sm text-[#b8aebb]">FLUX.2 Klein 4B backs up Zermo text-to-image when the primary is unavailable or definitively fails. Prompts go to NVIDIA; account limits and provider filters apply. References, video, music and uncertain running jobs stay on their original lane.</p>
+      <label htmlFor="nvidia-fallback" className="flex min-h-11 items-center gap-3 text-sm">
+        <input id="nvidia-fallback" type="checkbox" checked={settings.nvidiaFallback === true} onChange={e => setSettings({ ...settings, nvidiaFallback: e.target.checked })} className="size-4 accent-[#d565d6]" />
+        Enable NVIDIA image fallback
+      </label>
+      <div className="space-y-2">
+        <Label htmlFor="nvidia-key">NVIDIA API key</Label>
+        <Input id="nvidia-key" type="password" autoComplete="off" spellCheck={false} value={settings.nvidiaApiKey || ""} placeholder={settings.hasNvidiaApiKey ? "Configured — leave blank to keep" : "Enter key"} onChange={e => { setSettings({ ...settings, nvidiaApiKey: e.target.value }); setClearKeys(v => ({ ...v, nvidia: false })); }} />
+        <p className="text-xs text-[#8d838f]">Stored server-side; never sent back to this browser. Server env: NVIDIA_NIM_API_KEY or NVIDIA_NIM_API_KEY_FILE.</p>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <Button disabled={saving} onClick={save}>{saving ? "Saving…" : "Save NVIDIA fallback"}</Button>
+        {settings.hasNvidiaApiKey ? <Button variant="outline" onClick={() => { setClearKeys(v => ({ ...v, nvidia: true })); setSettings({ ...settings, nvidiaApiKey: "", nvidiaFallback: false }); }}>Clear saved key{clearKeys.nvidia ? " on Save" : ""}</Button> : null}
+      </div>
+      <p className="text-xs text-[#8d838f]">Clearing disables fallback. Environment-managed keys remain on the server.</p>
+    </section>
+  );
+
   if (settings.generationMode === "zermo" && !showAdvanced) return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div><p className="text-xs uppercase tracking-wider text-[#e77ae6]">Connections</p><h1 className="mt-2 text-3xl text-white">Your Zermo studio</h1><p className="mt-2 text-[#b8aebb]">One managed connection. No local addresses or mesh setup needed in this browser.</p></div>
       <ManagedConnection health={health?.zermo} />
+      {nvidiaConnection}
       <div className="flex flex-wrap gap-3"><Button onClick={() => void refresh(true).catch(() => setMessage("Connection check failed. Try again."))}>Check connection</Button><Button variant="outline" onClick={() => setShowAdvanced(true)}>Advanced / other providers</Button></div>
       {message ? <p role="status">{message}</p> : null}
     </div>
@@ -149,6 +171,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       {settings.generationMode === "zermo" ? <Button variant="outline" onClick={() => setShowAdvanced(false)}>Back to managed Zermo connection</Button> : null}
+      {nvidiaConnection}
       {(settings.hasStudioApiKey || settings.hasImproveApiKey) ? <div className="flex flex-wrap gap-2">
         {settings.hasStudioApiKey ? <Button variant="outline" onClick={() => { setClearKeys(v => ({ ...v, studio: true })); setSettings({ ...settings, studioApiKey: "" }); }}>Clear saved Studio key{clearKeys.studio ? " on Save" : ""}</Button> : null}
         {settings.hasImproveApiKey ? <Button variant="outline" onClick={() => { setClearKeys(v => ({ ...v, improve: true })); setSettings({ ...settings, improveApiKey: "" }); }}>Clear saved rewrite key{clearKeys.improve ? " on Save" : ""}</Button> : null}
@@ -306,12 +329,12 @@ export default function SettingsPage() {
           >
             <option value="auto">Automatic — factory Studio, then factory Comfy, then Higgsfield</option>
             <option value="local-studio">Studio only</option>
-            <option value="zermo">Zermo API — Qwen Image 2.1 / WAN / ACE, no fallback</option>
+            <option value="zermo">Zermo API — Qwen Image 2.1 / WAN / ACE</option>
             <option value="comfyui">Comfy only</option>
             <option value="higgsfield">Higgsfield AI — Seedance 2.5, face inputs, cloud</option>
             <option value="mock">Preview art — no graphics card needed</option>
           </select>
-          {settings.generationMode === "zermo" ? <p className="text-xs" role="status">{health?.zermo?.configured ? (health.zermo.ready ? `Ready · stills ${health.zermo.image?.model ?? "—"} · video ${health.zermo.video?.model ?? "—"} · music ${health.zermo.music?.model ?? "—"}` : "Zermo configured but unreachable — no fallback") : "Zermo server credential not configured"}</p> : null}
+          {settings.generationMode === "zermo" ? <p className="text-xs" role="status">{health?.zermo?.configured ? (health.zermo.ready ? `Ready · stills ${health.zermo.image?.model ?? "—"} · video ${health.zermo.video?.model ?? "—"} · music ${health.zermo.music?.model ?? "—"}` : "Zermo configured but unavailable") : "Zermo server credential not configured"}</p> : null}
         </Field>
         <Field
           label="Studio address"

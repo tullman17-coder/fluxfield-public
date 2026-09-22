@@ -21,6 +21,7 @@ export type CardEngine =
   | "comfyui"
   | "local-studio"
   | "higgsfield"
+  | "nvidia"
   | "shipped";
 
 export const ENGINE_LABEL: Record<CardEngine, string> = {
@@ -28,6 +29,7 @@ export const ENGINE_LABEL: Record<CardEngine, string> = {
   "local-studio": "Studio",
   comfyui: "Comfy",
   higgsfield: "Seedance 2.5",
+  nvidia: "NVIDIA FLUX.2 Klein 4B",
   mock: "Preview art",
   shipped: "Sample",
 };

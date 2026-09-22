@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import type { AdapterContext, AdapterResult, StudioJob } from "./types";
 import { getJob, updateJob } from "../jobs/store";
 import { fitZermoSize } from "./zermo-image-size";
+import { nvidiaEligible, runNvidiaImage } from "./nvidia";
 
 export async function boundedBytes(response: Response, limit = 128 * 1024 * 1024): Promise<Buffer> {
   const length = response.headers.get("content-length");
@@ -137,7 +138,7 @@ export async function checkZermoHealth() {
     if (served) health.text = { ready: true, model: served };
   }
   health.ready = health.text.ready && health.image.ready && health.music.ready;
-  if (!health.ready) health.error = health.apiReachable ? "Some managed operations are not configured or entitled; no fallback will be used" : "Zermo API is unreachable";
+  if (!health.ready) health.error = health.apiReachable ? "Some managed operations are not configured or entitled" : "Zermo API is unreachable";
   return health;
 }
 function remoteId(value: string, prefix: "job" | "asset") {
@@ -227,7 +228,7 @@ export async function runZermoJob(job: StudioJob, purpose: string, proposed: Zer
   }
   return { outputs, remotePromptId: intent.remoteId };
 }
-export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = "image", prompts?: string[]) {
+export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = "image", prompts?: string[]): Promise<AdapterResult> {
   if (!Number.isInteger(count) || count < 1 || count > 12) throw new Error("Zermo image count must be 1–12");
   if (prompts && (prompts.length !== count || prompts.some(p => !p.trim() || p.length > 8000))) throw new Error("Each requested image needs one bounded nonblank prompt");
   let imageAsset: string | undefined;
@@ -247,6 +248,8 @@ export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = 
   const body = imageRequest(ctx, imageAsset);
   const outputs: AdapterResult["outputs"] = [];
   let remotePromptId: string | undefined;
+  let usedNvidia = false;
+  let primaryReady: boolean | undefined;
   for (let i = 0; i < count; i++) {
     const request = { ...body };
     if (prompts) request.prompt = prompts[i];
@@ -254,12 +257,32 @@ export async function runZermoAdapter(ctx: AdapterContext, count = 1, purpose = 
       const seed = BigInt.asUintN(64, BigInt(body.seed) + BigInt(i));
       request.seed = typeof body.seed === "number" && seed <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(seed) : String(seed);
     }
-    const result = await runZermoJob(ctx.job, `${purpose}:${i}`, request);
+    const key = `${purpose}:${i}`;
+    const live = await getJob(ctx.job.id);
+    const existing = live?.zermoJobs?.[key];
+    const eligible = nvidiaEligible(ctx, request);
+    let result: AdapterResult;
+    if (live?.nvidiaImages?.[key]) {
+      result = await runNvidiaImage(ctx, key, request);
+    } else {
+      // Probe only before a NEW local submission; ambiguous/pending work keeps its identity.
+      if (eligible && !existing && primaryReady === undefined) primaryReady = (await checkZermoHealth()).image.ready;
+      if (eligible && !existing && primaryReady === false) result = await runNvidiaImage(ctx, key, request);
+      else {
+        try { result = await runZermoJob(ctx.job, key, request); }
+        catch (error) {
+          const retained = (await getJob(ctx.job.id))?.zermoJobs?.[key];
+          if (!eligible || retained?.state !== "failed") throw error;
+          result = await runNvidiaImage(ctx, key, retained.request);
+        }
+      }
+    }
+    usedNvidia ||= result.modeUsed === "nvidia";
     outputs.push(...result.outputs); remotePromptId = result.remotePromptId;
     const saved = (await getJob(ctx.job.id)) ?? ctx.job;
     await updateJob(ctx.job.id, { outputs: [...new Map([...saved.outputs, ...outputs].map(o => [o.id, o])).values()] });
   }
-  return { outputs, remotePromptId };
+  return { outputs, remotePromptId, ...(usedNvidia ? { modeUsed: "nvidia" as const } : {}) };
 }
 
 /** Fast I2V on Boop WAN 2.2 5B: 49 frames / 8 steps (~3s at 16fps). Last-frame chain, not FastWan-QAD. */

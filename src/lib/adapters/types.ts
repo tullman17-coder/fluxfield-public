@@ -1,6 +1,9 @@
 export type GenerationMode = "auto" | "mock" | "comfyui" | "local-studio" | "zermo" | "higgsfield";
 
 export type StudioSettings = {
+  nvidiaFallback?: boolean;
+  nvidiaApiKey?: string;
+  hasNvidiaApiKey?: boolean;
   hasStudioApiKey?: boolean;
   hasImproveApiKey?: boolean;
   hasHiggsfieldApiKey?: boolean;
@@ -64,7 +67,7 @@ export type JobOutput = {
   text?: string;
 };
 
-export type ModeUsed = "mock" | "comfyui" | "local-studio" | "zermo" | "higgsfield";
+export type ModeUsed = "mock" | "comfyui" | "local-studio" | "zermo" | "higgsfield" | "nvidia";
 
 export type StudioJob = {
   id: string;
@@ -86,6 +89,7 @@ export type StudioJob = {
   generationMode?: GenerationMode;
   referenceImagePath?: string;
   zermoJobs?: Record<string, import("./zermo").ZermoIntent>;
+  nvidiaImages?: Record<string, import("./nvidia").NvidiaImage>;
   qualityChecks?: { key: string; outputId: string; sourceSha256?: string; at: string; attempt: import("./ollama").ImageReviewAttempt }[];
   error?: string;
   outputs: JobOutput[];
@@ -106,5 +110,6 @@ export type AdapterContext = {
 
 export type AdapterResult = {
   outputs: JobOutput[];
+  modeUsed?: ModeUsed;
   remotePromptId?: string;
 };

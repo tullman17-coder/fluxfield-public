@@ -129,7 +129,7 @@ export async function generateDirectorFrames(
         1,
         `frame:${outputs.length}`,
       );
-      outputs.push(...result.outputs.map((o) => ({ ...o, label: shot.label })));
+      outputs.push(...result.outputs.map((o) => ({ ...o, label: result.modeUsed === "nvidia" ? `${shot.label} · ${o.label}` : shot.label })));
       liveSucceeded += 1;
       await onFrame?.(outputs.length, capped.length, outputs);
       continue;

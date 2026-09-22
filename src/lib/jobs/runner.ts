@@ -522,8 +522,9 @@ async function processJob(jobId: string) {
     for (const mode of result ? [] : chain) {
       try {
         result = await runWith(mode);
-        if (mode !== modeUsed) {
-          modeUsed = mode;
+        const actualMode = result.modeUsed ?? mode;
+        if (actualMode !== modeUsed) {
+          modeUsed = actualMode;
           await updateJob(jobId, { modeUsed });
         }
         break;
